@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════
+// VACINAS
+// ═══════════════════════════════════════════
+model Vaccine {
+  id           Int      @id @default(autoincrement())
+  name         String
+  manufacturer String
+  dosesTotal   Int      @default(1) @map("doses_total")
+  description  String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  batches  Batch[]
+
+  @@map("vaccines")
+}
+
+// ═══════════════════════════════════════════
+// LOTES
+// ═══════════════════════════════════════════
+model Batch {
+  id                 Int      @id @default(autoincrement())
+  vaccineId          Int      @map("vaccine_id")
+  batchNumber        String   @unique @map("batch_number")
+  expirationDate     DateTime @map("expiration_date")
+  quantityTotal      Int      @map("quantity_total")
+  quantityAvailable  Int      @map("quantity_available")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  vaccine    Vaccine          @relation(fields: [vaccineId], references: [id])
+  movements  StockMovement[]
+
+  @@index([vaccineId])
+  @@index([expirationDate])
+  @@map("batches")
+}
+
+// ═══════════════════════════════════════════
+// PACIENTES
+// ═══════════════════════════════════════════
+model Patient {
+  id        Int       @id @default(autoincrement())
+  name      String
+  cpf       String    @unique
+  birthDate DateTime? @map("birth_date")
+  phone     String?
+  email     String?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  packages  VaccinePackage[]
+  movements StockMovement[]
+
+  @@map("patients")
+}
+
+// ═══════════════════════════════════════════
+// PLANOS VACINAIS
+// ═══════════════════════════════════════════
+model VaccinePackage {
+  id          Int      @id @default(autoincrement())
+  patientId   Int      @map("patient_id")
+  packageName String   @map("package_name")
+  totalDoses  Int      @map("total_doses")
+  dosesUsed   Int      @default(0) @map("doses_used")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([patientId])
+  @@map("vaccine_packages")
+}
+
+// ═══════════════════════════════════════════
+// MOVIMENTAÇÕES DE ESTOQUE
+// ═══════════════════════════════════════════
+model StockMovement {
+  id        Int      @id @default(autoincrement())
+  batchId   Int      @map("batch_id")
+  type      String   // 'entrada' | 'saida'
+  quantity  Int
+  reason    String?
+  patientId Int?     @map("patient_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  batch   Batch    @relation(fields: [batchId], references: [id])
+  patient Patient? @relation(fields: [patientId], references: [id])
+
+  @@index([batchId])
+  @@index([patientId])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
