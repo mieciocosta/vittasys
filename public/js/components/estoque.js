@@ -169,16 +169,38 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
 // ═══ IMPORTAR NF-e ═══
 function modalImportarNFe(){showModal('Importar NF-e (XML)',async(body,close)=>{
   const ua=h('div',{className:'upload-area'});
-  ua.innerHTML=`<div style="color:var(--primary);margin-bottom:8px">${I.upload}</div><p style="font-weight:600;margin-bottom:4px">Arraste o XML ou clique para selecionar</p><p style="font-size:12px;color:var(--text-3)">Aceita arquivos .xml de NF-e</p>`;
+  ua.innerHTML=`<div style="color:var(--primary);margin-bottom:8px">${I.upload}</div><p style="font-weight:600;margin-bottom:4px">Arraste o XML da NF-e ou clique</p><p style="font-size:12px;color:var(--text-3)">O sistema extrai vacinas, quantidades, valores e códigos de barras (GTIN/EAN)</p>`;
   const fi=h('input',{type:'file',accept:'.xml',style:{display:'none'}});
-  fi.addEventListener('change',async()=>{if(!fi.files[0])return;ua.innerHTML=`<div style="color:var(--primary)">📄 ${esc(fi.files[0].name)} — processando...</div>`;
+  const resultDiv=h('div',{style:{marginTop:'16px'}});
+
+  fi.addEventListener('change',async()=>{if(!fi.files[0])return;
+    ua.innerHTML=`<div style="color:var(--primary)">📄 ${esc(fi.files[0].name)} — processando...</div>`;
     const fd=new FormData();fd.append('xml',fi.files[0]);fd.append('usuario_id',AppState.usuario?.id);
-    const r=await Api.importarNFe(fd);if(r?.success){Toast.show(r.message);close();draw()}else Toast.show(r?.error||'Erro','error')});
+    const r=await Api.importarNFe(fd);
+    if(r?.success){
+      Toast.show(r.message);resultDiv.innerHTML='';
+      // Success summary
+      resultDiv.appendChild(h('div',{style:{padding:'14px',background:'var(--green-bg)',borderRadius:'10px',marginBottom:'14px'}},
+        h('div',{style:{fontWeight:'700',color:'var(--green-text)',marginBottom:'4px'}},`✓ NF ${esc(r.numero_nota)} importada`),
+        h('div',{style:{fontSize:'13px',color:'var(--green-text)'}},`Fornecedor: ${esc(r.fornecedor)} · Valor: ${fmtMoeda(r.valor_total)} · ${r.total_itens} vacinas · ${r.total_unidades} unidades`)));
+      // Items table
+      const tbl=document.createElement('table');tbl.style.cssText='width:100%;font-size:12px;border-collapse:collapse';
+      let html='<thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:6px;text-align:left">Vacina</th><th>Qtd</th><th>Valor</th><th>Lote</th><th>GTIN</th></tr></thead><tbody>';
+      (r.itens_importados||[]).forEach(it=>{html+=`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px;font-weight:600">${esc(it.nome)}</td><td style="padding:6px" class="mono">${it.quantidade}</td><td style="padding:6px" class="mono">${fmtMoeda(it.valor_unitario)}</td><td style="padding:6px" class="mono">${esc(it.lote)}</td><td style="padding:6px" class="mono">${it.ean?esc(it.ean):'<span style="color:var(--orange)">—</span>'}</td></tr>`});
+      html+='</tbody>';tbl.innerHTML=html;resultDiv.appendChild(tbl);
+      // Warning for items without barcodes
+      if(r.itens_sem_barcode?.length>0){
+        resultDiv.appendChild(h('div',{style:{padding:'12px',background:'var(--orange-bg)',borderRadius:'8px',marginTop:'14px',border:'1px solid var(--orange-badge)'}},
+          h('div',{style:{fontWeight:'600',color:'var(--orange-text)',marginBottom:'4px'}},`⚠ ${r.itens_sem_barcode.length} item(ns) sem código de barras`),
+          h('div',{style:{fontSize:'12px',color:'var(--orange-text)'}},'Use o "Cadastro por Código de Barras" na tela de Estoque para bipar e vincular os códigos a cada unidade.')));
+      }
+      resultDiv.appendChild(iconBtn('btn btn-primary btn-block',null,'Fechar e Atualizar',()=>{close();draw()},{style:{marginTop:'14px'}}));
+    }else{Toast.show(r?.error||'Erro','error');ua.innerHTML=`<div style="color:var(--red)">${esc(r?.error||'Erro')}</div>`}});
   ua.addEventListener('click',()=>fi.click());
   ua.addEventListener('dragover',e=>{e.preventDefault();ua.classList.add('dragover')});
   ua.addEventListener('dragleave',()=>ua.classList.remove('dragover'));
   ua.addEventListener('drop',e=>{e.preventDefault();ua.classList.remove('dragover');fi.files=e.dataTransfer.files;fi.dispatchEvent(new Event('change'))});
-  body.appendChild(ua);body.appendChild(fi);
-},'560px')}
+  body.appendChild(ua);body.appendChild(fi);body.appendChild(resultDiv);
+},'640px')}
 
 await draw();return wrap;}

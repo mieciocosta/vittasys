@@ -107,3 +107,27 @@ img[src*="logo"] {
   color: var(--primary) !important;
   background: var(--primary-bg) !important;
 }
+
+/* ═══ LOGO FIXES — PRODUCTION ═══ */
+.login-logo img, .sb-brand img {
+  object-fit: contain !important;
+  background: transparent !important;
+  image-rendering: auto !important;
+  max-width: 100%;
+}
+.sb-brand img {
+  height: 30px !important;
+  filter: brightness(1.15) !important;
+}
+.login-logo img {
+  height: 64px !important;
+  max-width: 300px;
+}
+img[src*="logo"] {
+  background-color: transparent !important;
+}
+/* Sortable header hover */
+.table-wrap th[style*="cursor"]:hover {
+  color: var(--primary) !important;
+  background: var(--primary-bg) !important;
+}

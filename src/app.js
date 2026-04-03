@@ -24,6 +24,7 @@ app.use('/api/planos', require('./routes/planos'));
 app.use('/api/financeiro', require('./routes/financeiro'));
 app.use('/api/movimentacoes', require('./routes/movimentacoes'));
 app.use('/api/metas', require('./routes/metas'));
+app.use('/api/nfe', require('./routes/nfe'));
 app.use('/api/ia', require('./routes/ia'));
 // Compat
 app.use('/api/pacotes', require('./routes/planos'));
