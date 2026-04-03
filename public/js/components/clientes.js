@@ -35,7 +35,7 @@ wrap.appendChild(fb);
 const data=await Api.clientes(f);if(!data)return;
 const tw=h('div',{className:'table-wrap'});const t=h('table');
 const thead=document.createElement('thead');const headerRow=document.createElement('tr');
-[['Código','codigo'],['Cliente','nome'],['Idade','nascimento'],['Pacientes',''],['Tipo','tipo'],['Telefone',''],['Planos',''],['Vendedor',''],['Status','status'],['Ações','']].forEach(([label,sortKey])=>{
+[['ID',''],['Código','codigo'],['Cliente','nome'],['Idade','nascimento'],['Tipo','tipo'],['Telefone',''],['Planos',''],['Vendedor',''],['Status','status'],['Ações','']].forEach(([label,sortKey])=>{
   const th=document.createElement('th');th.textContent=label;
   if(sortKey){th.style.cursor='pointer';th.title='Ordenar por '+label;
     th.onclick=()=>{if(f.sort===sortKey)f.order=f.order==='DESC'?'ASC':'DESC';else{f.sort=sortKey;f.order='ASC'}draw()};
@@ -47,11 +47,10 @@ if(!data.data.length)tb.innerHTML='<tr><td colspan="10" class="empty-state">Nenh
 else data.data.forEach(c=>{
   const tr=h('tr',{className:'clickable'});
   if(c.tipo_cliente==='ativo')tr.style.borderLeft='3px solid var(--primary)';
-  const pacStr=(c.pacientes||[]).map(p=>esc(p.nome)).join(', ')||'-';
-  tr.innerHTML=`<td class="mono fw-600" style="color:var(--primary);cursor:pointer" onclick="AppState.verCliente(${c.id})">${esc(c.codigo_cliente||'-')}</td>
+  tr.innerHTML=`<td class="mono text-muted text-sm">#${c.id}</td>
+    <td class="mono fw-600" style="color:var(--primary);cursor:pointer" onclick="AppState.verCliente(${c.id})">${esc(c.codigo_cliente||'-')}</td>
     <td style="cursor:pointer" onclick="AppState.verCliente(${c.id})"><div class="fw-600">${esc(c.nome)}</div>${c.observacoes_clinicas?`<div class="text-sm" style="color:#d97706">⚠ ${esc(c.observacoes_clinicas.slice(0,30))}</div>`:''}</td>
     <td class="text-sm">${c.data_nascimento?fmtIdade(c.data_nascimento):'-'}</td>
-    <td class="text-sm">${pacStr.length>35?pacStr.slice(0,35)+'...':pacStr}</td>
     <td>${tipoClienteBadge(c.tipo_cliente)}</td>
     <td class="text-sm">${esc(c.telefone||'-')}</td>
     <td class="mono fw-600" style="color:${(c.planos_ativos||0)>0?'#7c3aed':'#94a3b8'}">${c.planos_ativos||0}</td>

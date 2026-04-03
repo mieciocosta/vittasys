@@ -6,21 +6,15 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "build": "prisma generate",
-    "postinstall": "prisma generate",
-
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate:deploy": "prisma migrate deploy",
+    "db:push": "npx prisma db push",
     "db:seed": "node prisma/seed.js",
-    "db:studio": "prisma studio",
-    "db:reset": "prisma db push --force-reset && node prisma/seed.js",
-
-    "setup": "npm install && prisma generate && prisma db push && node prisma/seed.js"
+    "db:studio": "npx prisma studio",
+    "db:reset": "npx prisma db push --force-reset && node prisma/seed.js",
+    "setup": "npm install && npx prisma generate && npx prisma db push && node prisma/seed.js",
+    "postinstall": "npx prisma generate",
+    "build": "npx prisma generate"
   },
-  "engines": {
-    "node": ">=18.0.0"
-  },
+  "engines": { "node": ">=18.0.0" },
   "dependencies": {
     "@prisma/client": "^6.2.0",
     "cors": "^2.8.5",
@@ -31,7 +25,5 @@
     "multer": "^1.4.5-lts.1",
     "xml2js": "^0.6.2"
   },
-  "devDependencies": {
-    "prisma": "^6.2.0"
-  }
+  "devDependencies": { "prisma": "^6.2.0" }
 }

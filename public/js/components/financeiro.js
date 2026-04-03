@@ -15,13 +15,13 @@ fb.appendChild(buildSelect([['','Forma Pgto'],['pix','PIX'],['cartao_credito','C
 wrap.appendChild(fb);
 const data=await Api.pagamentos(f);if(!data)return;
 const tw=h('div',{className:'table-wrap'});
-const t=buildSortableTable([['Data','data_pagamento'],['Cliente','cliente_nome'],['Código','codigo_cliente'],['Plano','nome_plano'],['Valor Pago','valor_pago'],['Parcela',''],['Forma','forma_pagamento'],['Vendedor','vendedor_nome'],['Lançado por','']],f,draw);
+const t=buildSortableTable([['ID',''],['Data','data_pagamento'],['Cliente','cliente_nome'],['Plano','nome_plano'],['Valor Pago','valor_pago'],['Parcela',''],['Forma','forma_pagamento'],['Vendedor','vendedor_nome']],f,draw);
 const tb=h('tbody');
-if(!data.data.length)tb.innerHTML='<tr><td colspan="9" class="empty-state">Nenhum pagamento</td></tr>';
+if(!data.data.length)tb.innerHTML='<tr><td colspan="8" class="empty-state">Nenhum pagamento</td></tr>';
 else data.data.forEach(p=>{
   const fm={pix:'PIX',cartao_credito:'Cartão Créd.',cartao_debito:'Cartão Déb.',dinheiro:'Dinheiro',boleto:'Boleto',transferencia:'Transf.'};
   const tr=h('tr',{className:'clickable',onClick:()=>{if(p.plano_contratado_id)AppState.verPlano(p.plano_contratado_id)}});
-  tr.innerHTML=`<td class="mono">${fmtData(p.data_pagamento)}</td><td class="fw-600">${esc(p.cliente_nome)}</td><td class="mono text-sm">${esc(p.codigo_cliente||'-')}</td><td class="text-sm">${esc(p.nome_plano)}</td><td class="mono fw-600" style="color:var(--primary)">${fmtMoeda(p.valor_pago)}</td><td class="mono">${p.numero_parcela||1}x</td><td><span class="badge badge-primary">${fm[p.forma_pagamento]||p.forma_pagamento}</span></td><td class="text-sm text-muted">${esc(p.vendedor_nome||'-')}</td><td class="text-sm text-muted">${esc(p.lancado_por_nome||'-')}</td>`;
+  tr.innerHTML=`<td class="mono text-muted text-sm">#${p.id}</td><td class="mono">${fmtData(p.data_pagamento)}</td><td class="fw-600">${esc(p.cliente_nome)}</td><td class="text-sm">${esc(p.nome_plano)}</td><td class="mono fw-600" style="color:var(--primary)">${fmtMoeda(p.valor_pago)}</td><td class="mono">${p.numero_parcela||1}x</td><td><span class="badge badge-primary">${fm[p.forma_pagamento]||p.forma_pagamento}</span></td><td class="text-sm text-muted">${esc(p.vendedor_nome||'-')}</td>`;
   tb.appendChild(tr);
 });
 t.appendChild(tb);tw.appendChild(t);

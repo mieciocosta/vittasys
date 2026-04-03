@@ -18,15 +18,15 @@ wrap.appendChild(fb);
 
 const data=await Api.movimentacoes(f);if(!data)return;
 const tw=h('div',{className:'table-wrap'});
-const t=buildSortableTable([['Data','data_hora'],['Tipo','tipo'],['Vacina','nome_vacina'],['Lote','numero_lote'],['Paciente','cliente_nome'],['Cliente',''],['Local','local_aplicacao'],['Operador',''],['Status','status'],['Ações','']],f,draw);
+const t=buildSortableTable([['ID',''],['Data','data_hora'],['Tipo','tipo'],['Vacina','nome_vacina'],['Lote','numero_lote'],['CB',''],['Paciente','cliente_nome'],['Cliente',''],['Local','local_aplicacao'],['Status','status'],['Ações','']],f,draw);
 const tb=document.createElement('tbody');
-if(!data.data.length)tb.innerHTML='<tr><td colspan="10" class="empty-state">Nenhuma movimentação</td></tr>';
+if(!data.data.length)tb.innerHTML='<tr><td colspan="11" class="empty-state">Nenhuma movimentação</td></tr>';
 else data.data.forEach(m=>{
   const tm={retirada:['Retirada','badge-orange'],aplicacao:['Aplicação','badge-green'],entrada:['Entrada','badge-primary'],descarte:['Descarte','badge-red'],ajuste:['Ajuste','badge-navy'],estorno:['Estorno','badge-purple']};
   const[tl,tc]=tm[m.tipo]||[m.tipo,'badge-gray'];
   const tr=h('tr',{className:'clickable'});
   if(m.tipo_cliente==='ativo')tr.style.borderLeft='3px solid var(--primary)';
-  tr.innerHTML=`<td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span></td><td class="fw-600" style="cursor:pointer" onclick="event.stopPropagation()">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td style="cursor:pointer" onclick="if(${m.cliente_id})AppState.verCliente(${m.cliente_id})">${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td class="text-muted">${esc(m.usuario_nome||'-')}</td><td><span class="badge ${m.status==='concluido'?'badge-green':'badge-orange'}">${m.status}</span></td>`;
+  tr.innerHTML=`<td class="mono text-muted text-sm">#${m.id}</td><td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span></td><td class="fw-600">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td class="mono text-sm">${esc((m.codigo_barras||'').slice(-10))}</td><td style="cursor:pointer" onclick="if(${m.cliente_id})AppState.verCliente(${m.cliente_id})">${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td><span class="badge ${m.status==='concluido'?'badge-green':'badge-orange'}">${m.status}</span></td>`;
   // Actions
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{e.stopPropagation();modalEditarMovimentacao(m)},{style:{marginRight:'4px'}}));
