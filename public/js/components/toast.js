@@ -1,0 +1,1 @@
+const Toast={show(msg,type='success'){const old=document.querySelector('.toast');if(old)old.remove();const t=h('div',{className:`toast ${type}`},msg);document.body.appendChild(t);setTimeout(()=>{if(t.parentNode)t.remove()},3500)}};
