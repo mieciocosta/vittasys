@@ -13,7 +13,7 @@ fb.appendChild(buildSelect([['','Status'],['ativo','Ativo'],['concluido','Conclu
 wrap.appendChild(fb);
 const data=await Api.planos(f);if(!data)return;
 const tw=h('div',{className:'table-wrap'});
-const t=buildSortableTable([['ID',''],['Cliente','cliente_nome'],['Código','codigo_cliente'],['Plano','nome_plano'],['Faixa',''],['Valor','valor_final'],['Pago',''],['Saldo',''],['Progresso',''],['Vendedor','vendedor_nome'],['Status','status_contrato']],f,draw);
+const t=buildSortableTable([['ID','id'],['Cliente','cliente_nome'],['Código','codigo_cliente'],['Plano','nome_plano'],['Faixa',''],['Valor','valor_final'],['Pago',''],['Saldo',''],['Progresso',''],['Vendedor','vendedor_nome'],['Status','status_contrato']],f,draw);
 const tb=h('tbody');
 if(!data.data.length)tb.innerHTML='<tr><td colspan="12" class="empty-state">Nenhum plano</td></tr>';
 else data.data.forEach(p=>{

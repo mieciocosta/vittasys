@@ -18,24 +18,23 @@ wrap.appendChild(fb);
 
 const data=await Api.movimentacoes(f);if(!data)return;
 const tw=h('div',{className:'table-wrap'});
-const t=buildSortableTable([['ID',''],['Data','data_hora'],['Tipo','tipo'],['Vacina','nome_vacina'],['Lote','numero_lote'],['CB',''],['Paciente','cliente_nome'],['Cliente',''],['Local','local_aplicacao'],['Status','status'],['Ações','']],f,draw);
+const t=buildSortableTable([['ID','id'],['Data','data_hora'],['Tipo','tipo'],['Vacina','nome_vacina'],['Lote','numero_lote'],['CB',''],['Paciente','cliente_nome'],['Cliente',''],['Local','local_aplicacao'],['Status','status'],['Ações','']],f,draw);
 const tb=document.createElement('tbody');
 if(!data.data.length)tb.innerHTML='<tr><td colspan="11" class="empty-state">Nenhuma movimentação</td></tr>';
 else data.data.forEach(m=>{
   const tm={retirada:['Retirada','badge-orange'],aplicacao:['Aplicação','badge-green'],entrada:['Entrada','badge-primary'],descarte:['Descarte','badge-red'],ajuste:['Ajuste','badge-navy'],estorno:['Estorno','badge-purple']};
   const[tl,tc]=tm[m.tipo]||[m.tipo,'badge-gray'];
-  const tr=h('tr',{className:'clickable'});
+  const tr=h('tr',{className:'clickable',onClick:()=>modalDetalheMovimentacao(m.id)});
   if(m.tipo_cliente==='ativo')tr.style.borderLeft='3px solid var(--primary)';
-  tr.innerHTML=`<td class="mono text-muted text-sm">#${m.id}</td><td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span></td><td class="fw-600">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td class="mono text-sm">${esc((m.codigo_barras||'').slice(-10))}</td><td style="cursor:pointer" onclick="if(${m.cliente_id})AppState.verCliente(${m.cliente_id})">${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td><span class="badge ${m.status==='concluido'?'badge-green':'badge-orange'}">${m.status}</span></td>`;
+  tr.innerHTML=`<td class="mono text-muted text-sm">#${m.id}</td><td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span></td><td class="fw-600">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td class="mono text-sm">${esc((m.codigo_barras||'').slice(-10))}</td><td>${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td><span class="badge ${m.status==='concluido'?'badge-green':'badge-orange'}">${m.status}</span></td>`;
   // Actions
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{e.stopPropagation();modalEditarMovimentacao(m)},{style:{marginRight:'4px'}}));
-  // Delete only if no unidade_id (not from bipe)
   if(!m.unidade_id){
     actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'Excluir',async e=>{e.stopPropagation();
-      if(!confirm(`Excluir movimentação de ${m.nome_vacina||'?'} em ${fmtDataHora(m.data_hora)}?`))return;
+      if(!confirm(`Excluir movimentação #${m.id}?`))return;
       const r=await Api.del(`/movimentacoes/${m.id}`);
-      if(r?.success){Toast.show('Movimentação excluída');draw()}else Toast.show(r?.error||'Erro','error')}));
+      if(r?.success){Toast.show('Excluída');draw()}else Toast.show(r?.error||'Erro','error')}));
   }
   tr.appendChild(actTd);tb.appendChild(tr);
 });
@@ -156,5 +155,40 @@ function modalEditarMovimentacao(mov){showModal('Editar Movimentação',async(bo
     else Toast.show(r?.error||'Erro','error');
   },{style:{marginTop:'16px'}}));
 },'560px')}
+
+// ═══ DETALHE DA MOVIMENTAÇÃO ═══
+function modalDetalheMovimentacao(id){showModal('Detalhe da Movimentação',async(body,close)=>{
+  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-3)">Carregando...</div>';
+  const m=await Api.movimentacaoDetalhe(id);
+  if(!m||m.error){body.innerHTML=`<div style="color:var(--red)">${esc(m?.error||'Erro')}</div>`;return}
+  body.innerHTML='';
+  const tm={retirada:['Retirada','badge-orange'],aplicacao:['Aplicação','badge-green'],entrada:['Entrada','badge-primary'],descarte:['Descarte','badge-red']};
+  const[tl,tc]=tm[m.tipo]||[m.tipo,'badge-gray'];
+  body.appendChild(h('div',{style:{display:'flex',alignItems:'center',gap:'10px',marginBottom:'16px'}},
+    h('span',{className:'mono text-muted',style:'font-size:20px;font-weight:700'},`#${m.id}`),
+    h('span',{innerHTML:`<span class="badge ${tc}" style="font-size:13px">${tl}</span>`}),
+    h('span',{className:'badge '+(m.status==='concluido'?'badge-green':'badge-orange')},m.status)));
+
+  const grid=h('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:12px'});
+  const field=(l,v,full)=>{const d=h('div',{style:full?'grid-column:1/-1':''});d.appendChild(h('div',{style:'font-size:11px;color:var(--text-4);text-transform:uppercase;font-weight:600;margin-bottom:2px'},l));d.appendChild(h('div',{style:'font-size:14px;font-weight:500'},v||'-'));return d};
+
+  grid.appendChild(field('Vacina',m.nome_vacina));
+  grid.appendChild(field('Código Vacina',m.vacina_codigo));
+  grid.appendChild(field('Lote',m.numero_lote));
+  grid.appendChild(field('Fabricante',m.lote_fabricante));
+  grid.appendChild(field('Código de Barras',m.codigo_barras,true));
+  grid.appendChild(field('Data / Hora',fmtDataHora(m.data_hora)));
+  grid.appendChild(field('Quantidade',String(m.quantidade)));
+  grid.appendChild(field('Paciente',m.cliente_nome?`${m.cliente_nome} [${m.cliente_codigo||''}]`:'-',true));
+  grid.appendChild(field('Tipo Cliente',m.tipo_cliente));
+  grid.appendChild(field('Tipo Atendimento',m.tipo_atendimento));
+  grid.appendChild(field('Operador (retirou)',m.operador_nome?`${m.operador_nome} (${m.operador_cargo})`:'-'));
+  grid.appendChild(field('Aplicador',m.aplicador_nome?`${m.aplicador_nome} (${m.aplicador_cargo})`:'-'));
+  grid.appendChild(field('Local de Aplicação',m.local_aplicacao));
+  grid.appendChild(field('Observações',m.observacoes,true));
+
+  if(m.plano){grid.appendChild(field('Plano Vacinal',`${m.plano.nome} — ${m.plano.doses_aplicadas}/${m.plano.doses_vacina} doses`,true))}
+  body.appendChild(grid);
+},'580px')}
 
 await draw();return wrap;}

@@ -15,8 +15,11 @@ r.get('/',async(req,res,next)=>{try{
   if(vencimento==='proximo'){const d30=new Date();d30.setDate(d30.getDate()+30);where.validade={gte:now,lte:d30}}
   else if(vencimento==='vencido')where.validade={lt:now};
 
-  const sm={validade:'validade',quantidade_disponivel:'quantidadeDisponivel',numero_lote:'numeroLote',fabricante:'fabricante',valor_unitario_custo:'valorUnitarioCusto',status:'status'};
-  const orderBy=sort&&sm[sort]?{[sm[sort]]:order==='DESC'?'desc':'asc'}:{validade:'asc'};
+  const sm={id:'id',validade:'validade',quantidade_disponivel:'quantidadeDisponivel',numero_lote:'numeroLote',fabricante:'fabricante',valor_unitario_custo:'valorUnitarioCusto',status:'status'};
+  let orderBy;
+  if(sort==='vacina_nome')orderBy={vacina:{nome:order==='DESC'?'desc':'asc'}};
+  else if(sort&&sm[sort])orderBy={[sm[sort]]:order==='DESC'?'desc':'asc'};
+  else orderBy={validade:'asc'};
 
   const[data,total]=await Promise.all([
     prisma.lote.findMany({where,orderBy,skip:(+page-1)*+limit,take:+limit,

@@ -15,7 +15,7 @@ fb.appendChild(buildSelect([['','Forma Pgto'],['pix','PIX'],['cartao_credito','C
 wrap.appendChild(fb);
 const data=await Api.pagamentos(f);if(!data)return;
 const tw=h('div',{className:'table-wrap'});
-const t=buildSortableTable([['ID',''],['Data','data_pagamento'],['Cliente','cliente_nome'],['Plano','nome_plano'],['Valor Pago','valor_pago'],['Parcela',''],['Forma','forma_pagamento'],['Vendedor','vendedor_nome']],f,draw);
+const t=buildSortableTable([['ID','id'],['Data','data_pagamento'],['Cliente','cliente_nome'],['Plano','nome_plano'],['Valor Pago','valor_pago'],['Parcela',''],['Forma','forma_pagamento'],['Vendedor','vendedor_nome']],f,draw);
 const tb=h('tbody');
 if(!data.data.length)tb.innerHTML='<tr><td colspan="8" class="empty-state">Nenhum pagamento</td></tr>';
 else data.data.forEach(p=>{

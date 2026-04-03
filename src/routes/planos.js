@@ -18,7 +18,7 @@ r.get('/',async(req,res,next)=>{try{
   const{page=1,limit=50,search,status_contrato,sort,order}=req.query;
   const where={};if(status_contrato)where.statusContrato=status_contrato;
   if(search)where.OR=[{nomePlano:{contains:search,mode:'insensitive'}},{cliente:{nome:{contains:search,mode:'insensitive'}}}];
-  const sm={cliente_nome:{cliente:{nome:order==='ASC'?'asc':'desc'}},nome_plano:'nomePlano',valor_final:'valorFinal',status_contrato:'statusContrato'};
+  const sm={id:'id',cliente_nome:{cliente:{nome:order==='ASC'?'asc':'desc'}},nome_plano:'nomePlano',valor_final:'valorFinal',status_contrato:'statusContrato',codigo_cliente:{cliente:{codigoCliente:order==='ASC'?'asc':'desc'}}};
   const ob=sort&&sm[sort]?typeof sm[sort]==='string'?{[sm[sort]]:order==='ASC'?'asc':'desc'}:sm[sort]:{criadoEm:'desc'};
   const[data,total]=await Promise.all([
     prisma.planoContratado.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{cliente:{select:{nome:true,codigoCliente:true,tipoPaciente:true,dataNascimento:true,responsavelNome:true}},doses:true,pagamentos:true}}),

@@ -16,7 +16,7 @@ r.get('/pagamentos',async(req,res,next)=>{try{
   const{page=1,limit=50,search,forma_pagamento,sort,order}=req.query;
   const where={};if(forma_pagamento)where.formaPagamento=forma_pagamento;
   if(search)where.OR=[{planoContratado:{cliente:{nome:{contains:search,mode:'insensitive'}}}},{planoContratado:{nomePlano:{contains:search,mode:'insensitive'}}}];
-  const ob=sort==='data_pagamento'?{dataPagamento:order==='ASC'?'asc':'desc'}:sort==='valor_pago'?{valorPago:order==='ASC'?'asc':'desc'}:{dataPagamento:'desc'};
+  const ob=sort==='id'?{id:order==='ASC'?'asc':'desc'}:sort==='data_pagamento'?{dataPagamento:order==='ASC'?'asc':'desc'}:sort==='valor_pago'?{valorPago:order==='ASC'?'asc':'desc'}:sort==='forma_pagamento'?{formaPagamento:order==='ASC'?'asc':'desc'}:{dataPagamento:'desc'};
   const[data,total]=await Promise.all([
     prisma.pagamento.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{planoContratado:{include:{cliente:{select:{nome:true,codigoCliente:true}}}}}}),
     prisma.pagamento.count({where})]);

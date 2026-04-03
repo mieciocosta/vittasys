@@ -4,7 +4,7 @@ r.get('/',async(req,res,next)=>{try{
   const{page=1,limit=50,tipo,tipo_cliente,search,sort,order}=req.query;
   const where={};if(tipo)where.tipo=tipo;if(tipo_cliente)where.tipoCliente=tipo_cliente;
   if(search)where.OR=[{nomeVacina:{contains:search,mode:'insensitive'}},{numeroLote:{contains:search,mode:'insensitive'}},{cliente:{nome:{contains:search,mode:'insensitive'}}}];
-  const sm={data_hora:'dataHora',tipo:'tipo',nome_vacina:'nomeVacina',cliente_nome:{cliente:{nome:order==='ASC'?'asc':'desc'}},numero_lote:'numeroLote',status:'status'};
+  const sm={id:'id',data_hora:'dataHora',tipo:'tipo',nome_vacina:'nomeVacina',cliente_nome:{cliente:{nome:order==='ASC'?'asc':'desc'}},numero_lote:'numeroLote',status:'status'};
   const ob=sort&&sm[sort]?typeof sm[sort]==='string'?{[sm[sort]]:order==='ASC'?'asc':'desc'}:sm[sort]:{dataHora:'desc'};
   const[data,total]=await Promise.all([
     prisma.movimentacao.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{cliente:{select:{nome:true,tipoPaciente:true,codigoCliente:true,tipoCliente:true}}}}),

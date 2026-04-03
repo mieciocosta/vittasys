@@ -23,7 +23,7 @@ async function draw(){wrap.innerHTML='';
 
   const tw=h('div',{className:'table-wrap'});
   const t=buildSortableTable([
-    ['ID',''],['Vacina','vacina_nome'],['Fabricante','fabricante'],['Lote','numero_lote'],
+    ['ID','id'],['Vacina','vacina_nome'],['Fabricante','fabricante'],['Lote','numero_lote'],
     ['Estoque','quantidade_disponivel'],['Unid.',''],['Validade','validade'],['Local',''],
     ['Custo','valor_unitario_custo'],['Status','status']
   ],f,draw);
@@ -83,7 +83,7 @@ function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(
       statusDiv.innerHTML=`<div style="padding:12px;background:var(--green-bg);border-radius:8px;border:1px solid var(--green-badge)"><div style="font-weight:700;color:var(--green-text);margin-bottom:4px">✓ Código encontrado!</div><div style="font-size:13px;color:var(--green-text)">Vacina: <strong>${esc(v.nome)}</strong> (${esc(v.fabricante)})<br>Lote: <strong>${esc(l?.numeroLote||'-')}</strong> · Estoque: ${l?.quantidadeDisponivel||0}</div></div>`;
       // Pre-fill form
       fd.nome_vacina=v.nome;fd.fabricante=v.fabricante;fd.codigo_vacina=v.codigo;
-      if(l){fd.numero_lote=l.numeroLote;fd.validade=l.validade?.toISOString?.()?.split('T')[0]||''}
+      if(l){fd.numero_lote=l.numeroLote||l.numero_lote;const vd=l.validade||l.expirationDate;if(vd)fd.validade=String(vd).slice(0,10)}
       fillForm();
     }else{
       lookupDone=false;
@@ -99,20 +99,39 @@ function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(
   function fillForm(){
     formDiv.innerHTML='';
     const gr=h('div',{className:'form-grid'});
-    [['nome_vacina','Nome da Vacina *','',fd.nome_vacina],
-     ['fabricante','Fabricante *','',fd.fabricante],
-     ['numero_lote','Nº do Lote *','Ex: BCG-202601',fd.numero_lote],
-     ['validade','Validade *','','date',fd.validade],
-     ['quantidade','Quantidade','1','number',fd.quantidade],
-     ['custo_unitario','Custo Unitário R$','0','number',fd.custo_unitario],
-     ['local_armazenamento','Local Armazenamento','Câmara Fria Principal',null,fd.local_armazenamento],
-     ['observacoes','Observações','',null,fd.observacoes],
-    ].forEach(([k,l,ph,type,val])=>{
-      const d=h('div');d.appendChild(h('label',{className:'label'},l));
-      const inp=h('input',{className:'input',type:type||'text',placeholder:ph||'',value:val||''});
-      inp.addEventListener('input',e=>{fd[k]=type==='number'?parseFloat(e.target.value):e.target.value});
-      d.appendChild(inp);gr.appendChild(d);
-    });
+    // Name
+    const d1=h('div');d1.appendChild(h('label',{className:'label',style:fd.nome_vacina?'color:var(--primary)':''},'Nome da Vacina *'+(fd.nome_vacina?' ✓':'')));
+    const i1=h('input',{className:'input',value:fd.nome_vacina||'',placeholder:'Nome da vacina',style:fd.nome_vacina?'border-color:var(--primary);font-weight:600':''});
+    i1.addEventListener('input',e=>{fd.nome_vacina=e.target.value});d1.appendChild(i1);gr.appendChild(d1);
+    // Fabricante dropdown
+    const d2=h('div');d2.appendChild(h('label',{className:'label',style:fd.fabricante?'color:var(--primary)':''},'Fabricante *'+(fd.fabricante?' ✓':'')));
+    d2.appendChild(buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],fd.fabricante||'',v=>{fd.fabricante=v}));
+    gr.appendChild(d2);
+    // Lote
+    const d3=h('div');d3.appendChild(h('label',{className:'label',style:fd.numero_lote?'color:var(--primary)':''},'Nº do Lote *'+(fd.numero_lote?' ✓':'')));
+    const i3=h('input',{className:'input',value:fd.numero_lote||'',placeholder:'Ex: BCG-202601',style:fd.numero_lote?'border-color:var(--primary);font-weight:600':''});
+    i3.addEventListener('input',e=>{fd.numero_lote=e.target.value});d3.appendChild(i3);gr.appendChild(d3);
+    // Validade
+    const d4=h('div');d4.appendChild(h('label',{className:'label'},'Validade *'));
+    const valStr=fd.validade?String(fd.validade).slice(0,10):'';
+    const i4=h('input',{className:'input',type:'date',value:valStr});
+    i4.addEventListener('input',e=>{fd.validade=e.target.value});d4.appendChild(i4);gr.appendChild(d4);
+    // Quantidade
+    const d5=h('div');d5.appendChild(h('label',{className:'label'},'Quantidade'));
+    const i5=h('input',{className:'input',type:'number',value:fd.quantidade||1,min:'1'});
+    i5.addEventListener('input',e=>{fd.quantidade=parseInt(e.target.value)||1});d5.appendChild(i5);gr.appendChild(d5);
+    // Custo
+    const d6=h('div');d6.appendChild(h('label',{className:'label'},'Custo Unit. R$'));
+    const i6=h('input',{className:'input',type:'number',value:fd.custo_unitario||0,step:'0.01'});
+    i6.addEventListener('input',e=>{fd.custo_unitario=parseFloat(e.target.value)||0});d6.appendChild(i6);gr.appendChild(d6);
+    // Local
+    const d7=h('div');d7.appendChild(h('label',{className:'label'},'Local Armazenamento'));
+    const i7=h('input',{className:'input',value:fd.local_armazenamento||'Câmara Fria Principal'});
+    i7.addEventListener('input',e=>{fd.local_armazenamento=e.target.value});d7.appendChild(i7);gr.appendChild(d7);
+    // Observações
+    const d8=h('div');d8.appendChild(h('label',{className:'label'},'Observações'));
+    const i8=h('input',{className:'input',value:fd.observacoes||''});
+    i8.addEventListener('input',e=>{fd.observacoes=e.target.value});d8.appendChild(i8);gr.appendChild(d8);
     formDiv.appendChild(gr);
   }
 
@@ -134,12 +153,16 @@ function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(
 // ═══ NOVA VACINA AVULSA ═══
 function modalNovaVacina(){showModal('Cadastrar Nova Vacina',(body,close)=>{
   const fd={};const gr=h('div',{className:'form-grid'});
-  [['codigo','Código *','Ex: BCG'],['nome','Nome *',''],['fabricante','Fabricante *',''],['laboratorio','Laboratório',''],['categoria','Categoria',''],['via_administracao','Via Adm.','IM, SC, Oral...'],['valor_custo_medio','Custo Médio R$','0','number'],['valor_venda_sugerido','Venda Sugerida R$','0','number']].forEach(([k,l,ph,type])=>{
-    const d=h('div');d.appendChild(h('label',{className:'label'},l));
-    const inp=h('input',{className:'input',type:type||'text',placeholder:ph});
-    inp.addEventListener('input',e=>{fd[k]=type==='number'?parseFloat(e.target.value):e.target.value});
-    d.appendChild(inp);gr.appendChild(d);
-  });body.appendChild(gr);
+  [['codigo','Código *','Ex: BCG'],['nome','Nome *','']].forEach(([k,l,ph])=>{
+    const d=h('div');d.appendChild(h('label',{className:'label'},l));const inp=h('input',{className:'input',placeholder:ph});
+    inp.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(inp);gr.appendChild(d)});
+  // Fabricante dropdown
+  const df=h('div');df.appendChild(h('label',{className:'label'},'Fabricante *'));
+  df.appendChild(buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],'',v=>{fd.fabricante=v}));gr.appendChild(df);
+  [['laboratorio','Laboratório',''],['categoria','Categoria',''],['via_administracao','Via Adm.','IM, SC, Oral...'],['valor_custo_medio','Custo Médio R$','0','number'],['valor_venda_sugerido','Venda Sugerida R$','0','number']].forEach(([k,l,ph,type])=>{
+    const d=h('div');d.appendChild(h('label',{className:'label'},l));const inp=h('input',{className:'input',type:type||'text',placeholder:ph});
+    inp.addEventListener('input',e=>{fd[k]=type==='number'?parseFloat(e.target.value):e.target.value});d.appendChild(inp);gr.appendChild(d)});
+  body.appendChild(gr);
   body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'Cadastrar',async()=>{
     if(!fd.codigo||!fd.nome||!fd.fabricante)return Toast.show('Código, nome e fabricante obrigatórios','error');
     const r=await Api.criarVacina(fd);if(r?.success){Toast.show('Vacina cadastrada!');close();draw()}else Toast.show(r?.error||'Erro','error');
@@ -152,7 +175,10 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
   const d1=h('div');d1.appendChild(h('label',{className:'label'},'Vacina *'));
   d1.appendChild(buildSelect([['','Selecione...'],...vacs.map(v=>[v.id,`${v.nome} (${v.fabricante})`])],'',v=>{fd.vacina_id=v;fd.nome_vacina=vacs.find(x=>x.id==v)?.nome||''}));
   gr.appendChild(d1);
-  [['numero_lote','Nº Lote *','BCG-202601'],['fabricante','Fabricante *',''],['quantidade_total','Quantidade *','','number'],['validade','Validade *','','date'],['temperatura','Temperatura','2-8°C'],['local','Local','Câmara Fria Principal'],['valor_unitario','Custo Unit. R$','0','number']].forEach(([k,l,ph,type])=>{
+  [['numero_lote','Nº Lote *','BCG-202601']].forEach(([k,l,ph])=>{const d=h('div');d.appendChild(h('label',{className:'label'},l));const inp=h('input',{className:'input',placeholder:ph});inp.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(inp);gr.appendChild(d)});
+  // Fabricante dropdown
+  const df2=h('div');df2.appendChild(h('label',{className:'label'},'Fabricante *'));df2.appendChild(buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],'',v=>{fd.fabricante=v}));gr.appendChild(df2);
+  [['quantidade_total','Quantidade *','','number'],['validade','Validade *','','date'],['temperatura','Temperatura','2-8°C'],['local','Local','Câmara Fria Principal'],['valor_unitario','Custo Unit. R$','0','number']].forEach(([k,l,ph,type])=>{
     const d=h('div');d.appendChild(h('label',{className:'label'},l));
     const inp=h('input',{className:'input',type:type||'text',placeholder:ph});
     inp.addEventListener('input',e=>{fd[k]=type==='number'?parseFloat(e.target.value):e.target.value});

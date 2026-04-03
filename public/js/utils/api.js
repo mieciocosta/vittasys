@@ -34,6 +34,7 @@ const Api={
 
   movimentacoes(p){return this.get('/movimentacoes',p)},
   criarMovimentacao(b){return this.post('/movimentacoes',b)},
+  movimentacaoDetalhe(id){return this.get(`/unidades/movimentacao/${id}`)},
 
   planosTemplates(){return this.get('/planos/templates')},
   planos(p){return this.get('/planos',p)},
