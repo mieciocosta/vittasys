@@ -1,1 +1,1 @@
-web: npx prisma migrate deploy && node prisma/seed.js && node src/server.js
+web: npm run db:push && npm run db:seed && npm start
