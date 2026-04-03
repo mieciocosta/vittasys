@@ -14,9 +14,7 @@ r.get('/busca',async(req,res,next)=>{try{
 
 r.put('/barcode/:id',async(req,res,next)=>{try{
   const{codigo_barras}=req.body;if(!codigo_barras)return res.status(400).json({error:'Código obrigatório'});
-  const ex=await prisma.unidade.findFirst({where:{codigoBarras:codigo_barras}});
-  if(ex&&ex.id!==+req.params.id)return res.status(409).json({error:'Código já vinculado a outra unidade'});
-  await prisma.unidade.update({where:{id:+req.params.id},data:{codigoBarras:codigo_barras}});
+  await prisma.unidade.update({where:{id:+req.params.id},data:{codigoBarras:codigo_barras.trim()}});
   res.json({success:true});
 }catch(e){next(e)}});
 

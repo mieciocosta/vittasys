@@ -114,58 +114,40 @@ r.post('/cadastro-barras',async(req,res,next)=>{try{
   if(!b.fabricante)return res.status(400).json({error:'Fabricante é obrigatório'});
   if(!b.numero_lote)return res.status(400).json({error:'Número do lote é obrigatório'});
   if(!b.validade)return res.status(400).json({error:'Validade é obrigatória'});
-  const qty=+(b.quantidade||1);if(qty<1)return res.status(400).json({error:'Quantidade inválida'});
+  const qty=+(b.quantidade||1);if(qty<1||qty>999)return res.status(400).json({error:'Quantidade inválida'});
+  const cb=b.codigo_barras.trim();
 
-  const result=await prisma.$transaction(async tx=>{
-    // 1. Find or create vaccine
-    let vacina=await tx.vacina.findFirst({where:{OR:[{nome:{equals:b.nome_vacina,mode:'insensitive'}},{codigo:{equals:b.codigo_vacina||'',mode:'insensitive'}}]}});
-    if(!vacina){
-      const codigo=b.codigo_vacina||('CB-'+Date.now().toString(36).toUpperCase());
-      vacina=await tx.vacina.create({data:{codigo,nome:b.nome_vacina,fabricante:b.fabricante,laboratorio:b.laboratorio||null,categoria:b.categoria||null,viaAdministracao:b.via_administracao||null,valorCustoMedio:+(b.custo_unitario||0)}});
+  // Use separate queries (NOT transaction) to avoid P2002 cascade abort
+  // 1. Find or create vaccine
+  let vacina=null;
+  // Only search by name (avoid empty-string codigo match)
+  vacina=await prisma.vacina.findFirst({where:{nome:{equals:b.nome_vacina,mode:'insensitive'}}});
+  if(!vacina){
+    const codigo=b.codigo_vacina||('CB-'+Date.now().toString(36).toUpperCase());
+    try{vacina=await prisma.vacina.create({data:{codigo,nome:b.nome_vacina,fabricante:b.fabricante,valorCustoMedio:+(b.custo_unitario||0)}})}
+    catch(e){
+      // Codigo conflict - try with timestamp suffix
+      vacina=await prisma.vacina.create({data:{codigo:codigo+'-'+Date.now().toString(36).slice(-3),nome:b.nome_vacina,fabricante:b.fabricante,valorCustoMedio:+(b.custo_unitario||0)}});
     }
+  }
 
-    // 2. Find or create lot
-    let lote=await tx.lote.findUnique({where:{numeroLote:b.numero_lote}});
-    if(!lote){
-      lote=await tx.lote.create({data:{vacinaId:vacina.id,numeroLote:b.numero_lote,fabricante:b.fabricante,quantidadeTotal:qty,quantidadeDisponivel:qty,validade:new Date(b.validade),localArmazenamento:b.local_armazenamento||'Câmara Fria Principal',valorUnitarioCusto:+(b.custo_unitario||0),observacoes:b.observacoes||null}});
-    }else{
-      // Lot exists — increment stock
-      await tx.lote.update({where:{id:lote.id},data:{quantidadeTotal:{increment:qty},quantidadeDisponivel:{increment:qty}}});
-    }
+  // 2. Find or create lot
+  let lote=await prisma.lote.findUnique({where:{numeroLote:b.numero_lote}});
+  if(!lote){
+    lote=await prisma.lote.create({data:{vacinaId:vacina.id,numeroLote:b.numero_lote,fabricante:b.fabricante,quantidadeTotal:qty,quantidadeDisponivel:qty,validade:new Date(b.validade),localArmazenamento:b.local_armazenamento||'Câmara Fria Principal',valorUnitarioCusto:+(b.custo_unitario||0)}});
+  }else{
+    await prisma.lote.update({where:{id:lote.id},data:{quantidadeTotal:{increment:qty},quantidadeDisponivel:{increment:qty}}});
+  }
 
-    // 3. Create unit(s) with the barcode
-    const unidadesCriadas=[];
-    for(let i=0;i<qty;i++){
-      const cb=i===0?b.codigo_barras:(b.codigo_barras+'-'+String(i+1).padStart(3,'0'));
-      try{
-        const un=await tx.unidade.create({data:{loteId:lote.id,codigoBarras:cb}});
-        unidadesCriadas.push({id:un.id,codigo_barras:cb});
-      }catch(e){
-        const fb=b.codigo_barras+'-'+Date.now().toString(36)+'-'+i;
-        const un=await tx.unidade.create({data:{loteId:lote.id,codigoBarras:fb}});
-        unidadesCriadas.push({id:un.id,codigo_barras:fb});
-      }
-    }
+  // 3. Create units - ALL with same barcode (not unique anymore)
+  for(let i=0;i<qty;i++){
+    await prisma.unidade.create({data:{loteId:lote.id,codigoBarras:cb}});
+  }
 
-    // 4. Register entry movement
-    const mov=await tx.movimentacao.create({data:{
-      tipo:'entrada',loteId:lote.id,vacinaId:vacina.id,usuarioId:+(b.usuario_id||1),
-      quantidade:qty,codigoBarras:b.codigo_barras,numeroLote:b.numero_lote,
-      nomeVacina:vacina.nome,status:'concluido',
-      observacoes:`Cadastro por código de barras: ${b.codigo_barras}`
-    }});
+  // 4. Entry movement
+  const mov=await prisma.movimentacao.create({data:{tipo:'entrada',loteId:lote.id,vacinaId:vacina.id,usuarioId:+(b.usuario_id||1),quantidade:qty,codigoBarras:cb,numeroLote:b.numero_lote,nomeVacina:vacina.nome,status:'concluido',observacoes:`Cadastro por código de barras`}});
 
-    return{vacina,lote,unidades:unidadesCriadas,movimentacao_id:mov.id};
-  });
-
-  res.json({
-    success:true,
-    message:`✓ ${result.vacina.nome} — Lote ${result.lote.numeroLote} — ${result.unidades.length} unidade(s) cadastrada(s)`,
-    vacina_id:result.vacina.id,
-    lote_id:result.lote.id,
-    movimentacao_id:result.movimentacao_id,
-    unidades:result.unidades,
-  });
-}catch(e){next(e)}});
+  res.json({success:true,message:`✓ ${vacina.nome} — Lote ${lote.numeroLote} — ${qty} unidade(s)`,vacina_id:vacina.id,lote_id:lote.id,movimentacao_id:mov.id});
+}catch(e){console.error('cadastro-barras:',e);res.status(500).json({error:'Erro ao cadastrar: '+(e.meta?.cause||e.message)})}});
 
 module.exports=r;

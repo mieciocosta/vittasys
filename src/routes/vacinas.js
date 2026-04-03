@@ -18,9 +18,10 @@ r.post('/',async(req,res,next)=>{try{const b=req.body;
 
 // Barcode lookup: find vaccine/lot/unit by barcode
 r.get('/barcode/:code',async(req,res,next)=>{try{
-  const code=req.params.code;
-  // Search in units first
-  const unit=await prisma.unidade.findUnique({where:{codigoBarras:code},include:{lote:{include:{vacina:true}}}});
+  const code=req.params.code.trim();
+  // Search available units first, then any unit
+  let unit=await prisma.unidade.findFirst({where:{codigoBarras:code,status:'disponivel'},include:{lote:{include:{vacina:true}}}});
+  if(!unit)unit=await prisma.unidade.findFirst({where:{codigoBarras:code},include:{lote:{include:{vacina:true}}}});
   if(unit){return res.json({found:true,source:'unidade',unidade:unit,lote:unit.lote,vacina:unit.lote.vacina})}
   // Search in lots
   const lote=await prisma.lote.findFirst({where:{OR:[{numeroLote:code},{unidades:{some:{codigoBarras:{contains:code}}}}]},include:{vacina:true}});
