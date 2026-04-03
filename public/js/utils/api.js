@@ -20,6 +20,8 @@ const Api={
   cadastroBarras(b){return this.post('/lotes/cadastro-barras',b)},
 
   buscarUnidades(q){return this.get('/unidades/busca',{q})},
+  atualizarBarcode(unidadeId,codigo){return this.put(`/unidades/barcode/${unidadeId}`,{codigo_barras:codigo})},
+  unidadesLote(loteId){return this.get(`/unidades/lote/${loteId}`)},
   retirada(b){return this.post('/unidades/retirada',b)},
   retirasRecentes(){return this.get('/unidades/recentes')},
 

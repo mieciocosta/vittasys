@@ -169,7 +169,7 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
 // ═══ IMPORTAR NF-e ═══
 function modalImportarNFe(){showModal('Importar NF-e (XML)',async(body,close)=>{
   const ua=h('div',{className:'upload-area'});
-  ua.innerHTML=`<div style="color:var(--primary);margin-bottom:8px">${I.upload}</div><p style="font-weight:600;margin-bottom:4px">Arraste o XML da NF-e ou clique</p><p style="font-size:12px;color:var(--text-3)">O sistema extrai vacinas, quantidades, valores e códigos de barras (GTIN/EAN)</p>`;
+  ua.innerHTML=`<div style="color:var(--primary);margin-bottom:8px">${I.upload}</div><p style="font-weight:600;margin-bottom:4px">Arraste o XML da NF-e ou clique</p><p style="font-size:12px;color:var(--text-3)">Extrai vacinas, quantidades, valores e GTIN/EAN automaticamente</p>`;
   const fi=h('input',{type:'file',accept:'.xml',style:{display:'none'}});
   const resultDiv=h('div',{style:{marginTop:'16px'}});
 
@@ -179,28 +179,121 @@ function modalImportarNFe(){showModal('Importar NF-e (XML)',async(body,close)=>{
     const r=await Api.importarNFe(fd);
     if(r?.success){
       Toast.show(r.message);resultDiv.innerHTML='';
-      // Success summary
       resultDiv.appendChild(h('div',{style:{padding:'14px',background:'var(--green-bg)',borderRadius:'10px',marginBottom:'14px'}},
         h('div',{style:{fontWeight:'700',color:'var(--green-text)',marginBottom:'4px'}},`✓ NF ${esc(r.numero_nota)} importada`),
-        h('div',{style:{fontSize:'13px',color:'var(--green-text)'}},`Fornecedor: ${esc(r.fornecedor)} · Valor: ${fmtMoeda(r.valor_total)} · ${r.total_itens} vacinas · ${r.total_unidades} unidades`)));
+        h('div',{style:{fontSize:'13px',color:'var(--green-text)'}},`Fornecedor: ${esc(r.fornecedor)} · ${fmtMoeda(r.valor_total)} · ${r.total_itens} vacinas · ${r.total_unidades} unidades`)));
       // Items table
       const tbl=document.createElement('table');tbl.style.cssText='width:100%;font-size:12px;border-collapse:collapse';
       let html='<thead><tr style="border-bottom:2px solid var(--border)"><th style="padding:6px;text-align:left">Vacina</th><th>Qtd</th><th>Valor</th><th>Lote</th><th>GTIN</th></tr></thead><tbody>';
-      (r.itens_importados||[]).forEach(it=>{html+=`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px;font-weight:600">${esc(it.nome)}</td><td style="padding:6px" class="mono">${it.quantidade}</td><td style="padding:6px" class="mono">${fmtMoeda(it.valor_unitario)}</td><td style="padding:6px" class="mono">${esc(it.lote)}</td><td style="padding:6px" class="mono">${it.ean?esc(it.ean):'<span style="color:var(--orange)">—</span>'}</td></tr>`});
+      (r.itens_importados||[]).forEach(it=>{html+=`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px;font-weight:600">${esc(it.nome)}</td><td style="padding:6px" class="mono">${it.quantidade}</td><td style="padding:6px" class="mono">${fmtMoeda(it.valor_unitario)}</td><td style="padding:6px" class="mono">${esc(it.lote)}</td><td style="padding:6px" class="mono">${it.ean?esc(it.ean):'<span style="color:#d97706">⚠ sem</span>'}</td></tr>`});
       html+='</tbody>';tbl.innerHTML=html;resultDiv.appendChild(tbl);
-      // Warning for items without barcodes
+
+      // Items without barcodes - offer inline registration
       if(r.itens_sem_barcode?.length>0){
-        resultDiv.appendChild(h('div',{style:{padding:'12px',background:'var(--orange-bg)',borderRadius:'8px',marginTop:'14px',border:'1px solid var(--orange-badge)'}},
-          h('div',{style:{fontWeight:'600',color:'var(--orange-text)',marginBottom:'4px'}},`⚠ ${r.itens_sem_barcode.length} item(ns) sem código de barras`),
-          h('div',{style:{fontSize:'12px',color:'var(--orange-text)'}},'Use o "Cadastro por Código de Barras" na tela de Estoque para bipar e vincular os códigos a cada unidade.')));
+        const alertDiv=h('div',{style:{padding:'14px',background:'var(--orange-bg)',borderRadius:'10px',marginTop:'14px',border:'1px solid var(--orange-badge)'}});
+        alertDiv.appendChild(h('div',{style:{fontWeight:'700',color:'var(--orange-text)',marginBottom:'8px'}},`⚠ ${r.itens_sem_barcode.length} item(ns) sem código de barras`));
+        alertDiv.appendChild(h('div',{style:{fontSize:'12px',color:'var(--orange-text)',marginBottom:'12px'}},'Bipe os códigos agora para vincular cada unidade. Ou faça depois em "Cadastro por Código de Barras".'));
+        alertDiv.appendChild(iconBtn('btn btn-primary btn-sm',I.barcode,'Cadastrar Códigos Agora',()=>{
+          close();modalCadastroBarcodesLote(r.itens_sem_barcode)
+        }));
+        resultDiv.appendChild(alertDiv);
       }
-      resultDiv.appendChild(iconBtn('btn btn-primary btn-block',null,'Fechar e Atualizar',()=>{close();draw()},{style:{marginTop:'14px'}}));
+      resultDiv.appendChild(iconBtn('btn btn-outline btn-block',null,'Fechar e Atualizar',()=>{close();draw()},{style:{marginTop:'14px'}}));
     }else{Toast.show(r?.error||'Erro','error');ua.innerHTML=`<div style="color:var(--red)">${esc(r?.error||'Erro')}</div>`}});
+
   ua.addEventListener('click',()=>fi.click());
   ua.addEventListener('dragover',e=>{e.preventDefault();ua.classList.add('dragover')});
   ua.addEventListener('dragleave',()=>ua.classList.remove('dragover'));
   ua.addEventListener('drop',e=>{e.preventDefault();ua.classList.remove('dragover');fi.files=e.dataTransfer.files;fi.dispatchEvent(new Event('change'))});
   body.appendChild(ua);body.appendChild(fi);body.appendChild(resultDiv);
 },'640px')}
+
+// ═══ CADASTRO DE BARCODES EM LOTE (após NF-e) ═══
+function modalCadastroBarcodesLote(itens){
+  let itemIdx=0;let unitIdx=0;let allUnits=[];let currentItem=null;
+
+  async function loadUnits(){
+    allUnits=[];
+    for(const it of itens){
+      const units=await Api.unidadesLote(it.lote_id)||[];
+      // Only units that have auto-generated barcodes (start with "NF")
+      const autoUnits=units.filter(u=>u.codigoBarras.startsWith('NF'));
+      allUnits.push({item:it,units:autoUnits});
+    }
+  }
+
+  showModal('Cadastrar Códigos de Barras',async(body,close)=>{
+    body.appendChild(h('div',{style:{textAlign:'center',padding:'20px',color:'var(--text-3)'}},'Carregando unidades...'));
+    await loadUnits();
+    body.innerHTML='';
+
+    const totalUnits=allUnits.reduce((s,g)=>s+g.units.length,0);
+    let done=0;
+
+    const statusDiv=h('div',{style:{marginBottom:'16px'}});
+    const scanArea=h('div');
+    body.appendChild(statusDiv);body.appendChild(scanArea);
+
+    function renderCurrent(){
+      scanArea.innerHTML='';
+      // Find next unregistered unit
+      let found=false;
+      for(let i=0;i<allUnits.length;i++){
+        for(let j=0;j<allUnits[i].units.length;j++){
+          if(allUnits[i].units[j].codigoBarras.startsWith('NF')){
+            currentItem=allUnits[i];unitIdx=j;found=true;break;
+          }
+        }
+        if(found)break;
+      }
+
+      statusDiv.innerHTML='';
+      statusDiv.appendChild(h('div',{className:'label'},`PROGRESSO: ${done}/${totalUnits} unidades`));
+      const progPct=totalUnits>0?Math.round(done/totalUnits*100):0;
+      statusDiv.innerHTML+=`<div class="prog-bar" style="margin-top:6px"><div class="prog-fill" style="width:${progPct}%;background:var(--primary)"></div></div>`;
+
+      if(!found){
+        scanArea.appendChild(h('div',{style:{padding:'30px',textAlign:'center',background:'var(--green-bg)',borderRadius:'12px'}},
+          h('div',{style:{fontSize:'32px',marginBottom:'8px'}},'✓'),
+          h('div',{style:{fontWeight:'700',color:'var(--green-text)',fontSize:'16px'}},'Todos os códigos cadastrados!'),
+          h('div',{style:{color:'var(--green-text)',marginTop:'8px'}},`${done} unidades vinculadas com sucesso`)));
+        scanArea.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'Concluir e Atualizar',()=>{close();draw()},{style:{marginTop:'16px'}}));
+        return;
+      }
+
+      const unit=currentItem.units[unitIdx];
+      scanArea.appendChild(h('div',{style:{padding:'16px',background:'var(--primary-bg)',borderRadius:'10px',marginBottom:'16px'}},
+        h('div',{style:{fontWeight:'700',fontSize:'14px'}},currentItem.item.nome),
+        h('div',{style:{fontSize:'12px',color:'var(--text-3)',marginTop:'4px'}},`Lote: ${currentItem.item.lote} · Unidade #${unit.id} · Código atual: ${unit.codigoBarras}`)
+      ));
+
+      const inp=h('input',{className:'scanner-input',placeholder:'Bipe o código de barras...',style:{fontSize:'18px',padding:'16px',fontFamily:'var(--mono)',letterSpacing:'2px',textAlign:'center'},id:'nfe-barcode-input'});
+      inp.addEventListener('keydown',async e=>{
+        if(e.key==='Enter'&&inp.value.trim().length>=4){
+          const code=inp.value.trim();
+          const r=await Api.atualizarBarcode(unit.id,code);
+          if(r?.success){
+            Toast.show(`✓ ${code} → ${currentItem.item.nome}`);
+            unit.codigoBarras=code; // Mark as done
+            done++;
+            renderCurrent();
+          }else{Toast.show(r?.error||'Erro','error');inp.value='';inp.focus()}
+        }
+      });
+      scanArea.appendChild(inp);
+      scanArea.appendChild(h('div',{style:{fontSize:'11px',color:'var(--text-3)',marginTop:'8px',textAlign:'center'}},'Bipe e pressione Enter — avança automaticamente'));
+
+      // Skip button
+      scanArea.appendChild(iconBtn('btn btn-outline btn-sm',null,'Pular esta unidade',()=>{
+        unit.codigoBarras='SKIP'; // Mark as skipped
+        done++;renderCurrent();
+      },{style:{marginTop:'12px'}}));
+
+      setTimeout(()=>{const el=document.getElementById('nfe-barcode-input');if(el)el.focus()},100);
+    }
+
+    renderCurrent();
+  },'560px');
+}
 
 await draw();return wrap;}

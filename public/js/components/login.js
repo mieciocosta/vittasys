@@ -1,6 +1,6 @@
 async function renderLogin(){let selId=null,pin='';const usuarios=await Api.usuarios()||[];const wrap=h('div',{className:'login-screen'});
 function draw(){wrap.innerHTML='';const card=h('div',{className:'login-card'});
-const logo=h('div',{className:'login-logo'});const img=h('img',{src:'assets/logos/logo-horizontal-color.png',alt:'Vittalis Saúde'});
+const logo=h('div',{className:'login-logo',style:'background:#1B2838;border-radius:14px;padding:16px 24px;display:inline-block'});const img=h('img',{src:'assets/logos/logo-horizontal-white.png',alt:'Vittalis Saúde',style:'height:50px;object-fit:contain'});
 img.onerror=function(){this.style.display='none';logo.appendChild(h('div',{style:{fontSize:'24px',fontWeight:'800',color:'var(--navy)',textAlign:'center'}},'💎 VittaSys'))};
 logo.appendChild(img);card.appendChild(logo);
 card.appendChild(h('div',{className:'login-sub'},'Sistema de Gestão de Vacinação'));
