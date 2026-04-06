@@ -27,7 +27,18 @@ async function renderRetirada(){
     const inp=h('input',{className:'scanner-input',placeholder:'Código de barras, lote ou nome...',value:query,id:'scanner-main-input'});
     if(etapa!=='scan')inp.disabled=true;
     inp.addEventListener('input',debounce(async e=>{query=e.target.value.trim();if(query.length<2){resultados=[];drawAC(iw);return}
-      resultados=await Api.buscarUnidades(query)||[];if(resultados.length===1&&resultados[0].codigo_barras===query){selUnit(resultados[0]);return}drawAC(iw)},200));
+      resultados=await Api.buscarUnidades(query)||[];
+      // Exact barcode match → direct select
+      if(resultados.length===1&&resultados[0].codigo_barras===query){selUnit(resultados[0]);return}
+      // Multiple with same barcode → select first available
+      if(resultados.length>0&&resultados.every(r=>r.codigo_barras===query)){selUnit(resultados[0]);return}
+      // No results → clear feedback
+      if(resultados.length===0&&query.length>=4){
+        const old=iw.querySelector('.autocomplete-list');if(old)old.remove();
+        const nf=h('div',{className:'autocomplete-list',style:'padding:16px;text-align:center'});
+        nf.innerHTML=`<div style="color:var(--red);font-weight:600">❌ Código não encontrado</div><div style="font-size:12px;color:var(--text-3);margin-top:4px">"${esc(query)}" não existe no estoque</div>`;
+        iw.appendChild(nf);return}
+      drawAC(iw)},200));
     inp.addEventListener('keydown',async e=>{if(e.key==='Enter'&&query.length>=3){resultados=await Api.buscarUnidades(query)||[];if(resultados.length===1)selUnit(resultados[0]);else drawAC(iw)}});
     iw.appendChild(inp);sc.appendChild(iw);
     if(etapa!=='scan')sc.appendChild(iconBtn('btn btn-red btn-sm',I.x,'Cancelar',resetar,{style:{marginTop:'12px'}}));
@@ -88,13 +99,26 @@ async function renderRetirada(){
     if(etapa==='confirmar'){
       const cf=h('div',{className:'confirm-banner slide-up'});
       cf.appendChild(iconBtn('btn btn-outline btn-sm',I.chevL,'Voltar',()=>{etapa='aplicador';draw()}));
+
+      // ALERTS: last unit / last dose
+      if(unidadeSel.quantidade_disponivel<=1){
+        cf.appendChild(h('div',{style:{padding:'12px',background:'#fef2f2',borderRadius:'10px',marginBottom:'14px',border:'1px solid #fca5a5'}},
+          h('div',{style:{fontWeight:'700',color:'#dc2626',fontSize:'14px'}},'⚠ ÚLTIMA UNIDADE DESTE LOTE'),
+          h('div',{style:{fontSize:'12px',color:'#dc2626',marginTop:'4px'}},`Lote ${esc(unidadeSel.numero_lote)} ficará com estoque ZERO após esta retirada.`)));
+      }else if(unidadeSel.quantidade_disponivel<=3){
+        cf.appendChild(h('div',{style:{padding:'10px',background:'#fffbeb',borderRadius:'10px',marginBottom:'14px',border:'1px solid #fcd34d'}},
+          h('div',{style:{fontWeight:'600',color:'#d97706',fontSize:'13px'}},`⚠ Estoque baixo: apenas ${unidadeSel.quantidade_disponivel} unidades restantes neste lote`)));
+      }
+
       cf.appendChild(h('h2',{style:{textAlign:'center',fontSize:'17px',fontWeight:'700',margin:'12px 0'}},'Confirmar Retirada'));
+      // Patient name prominent
+      cf.appendChild(h('div',{style:{textAlign:'center',fontSize:'22px',fontWeight:'800',color:'var(--primary)',marginBottom:'16px'}},esc(clienteSel.nome)));
       const grid=h('div',{className:'confirm-grid'});
-      grid.innerHTML=`<div><div class="cg-label">VACINA</div><div class="cg-value">${esc(unidadeSel.vacina_nome)}</div><div class="cg-sub">Lote: ${esc(unidadeSel.numero_lote)} · CB: ${esc(unidadeSel.codigo_barras.slice(-10))}</div></div><div><div class="cg-label">PACIENTE</div><div class="cg-value">${esc(clienteSel.nome)}</div><div class="cg-sub">${tipoClienteBadge(tipoCliente)}</div></div><div><div class="cg-label">LOCAL</div><div class="cg-value">${esc(localAplicacao)}</div></div><div><div class="cg-label">APLICADOR</div><div class="cg-value">${aplicadorSel?esc(aplicadorSel.nome):'Sem aplicação'}</div></div>`;
+      grid.innerHTML=`<div><div class="cg-label">VACINA</div><div class="cg-value">${esc(unidadeSel.vacina_nome)}</div><div class="cg-sub">Lote: ${esc(unidadeSel.numero_lote)} · CB: ${esc(unidadeSel.codigo_barras.slice(-10))}</div></div><div><div class="cg-label">ESTOQUE APÓS</div><div class="cg-value" style="color:${unidadeSel.quantidade_disponivel<=1?'#dc2626':'inherit'}">${unidadeSel.quantidade_disponivel-1} doses</div></div><div><div class="cg-label">LOCAL</div><div class="cg-value">${esc(localAplicacao)}</div></div><div><div class="cg-label">APLICADOR</div><div class="cg-value">${aplicadorSel?esc(aplicadorSel.nome):'Sem aplicação'}</div></div>`;
       cf.appendChild(grid);
-      const acts=h('div',{style:{display:'flex',gap:'12px',marginTop:'12px'}});
+      const acts=h('div',{style:{display:'flex',gap:'12px',marginTop:'16px'}});
       acts.appendChild(iconBtn('btn btn-outline btn-lg',I.x,'Cancelar',resetar,{style:{flex:'1'}}));
-      acts.appendChild(iconBtn('btn btn-primary btn-lg',I.check,'Confirmar',confirmar,{style:{flex:'2'}}));
+      acts.appendChild(iconBtn('btn btn-primary btn-lg',I.check,'✓ Confirmar Retirada',confirmar,{style:{flex:'2',fontSize:'16px'}}));
       cf.appendChild(acts);wrap.appendChild(cf)}
 
     // ═══ STEPPER ═══

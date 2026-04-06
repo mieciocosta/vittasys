@@ -139,9 +139,9 @@ function buildClienteForm(fd,editId,onDone){
   fm.appendChild(h('div',{className:'client-form-section'},
     h('h4',null,'Dados do Cliente / Responsável Financeiro'),
     h('div',{className:'client-form-grid'},
-      fld('Nome Completo *','nome',fd),fldDate('Data de Nascimento','data_nascimento',fd),
+      fld('Nome Completo *','nome',fd),fldDate('Data de Nascimento *','data_nascimento',fd),
       fldSel('Sexo','sexo',[['','—'],['M','Masculino'],['F','Feminino']],fd),
-      fldMask('CPF','cpf',maskCPF,fd),fldMask('Telefone','telefone',maskTel,fd),
+      fldMask('CPF *','cpf',maskCPF,fd),fldMask('Telefone *','telefone',maskTel,fd),
       fld('E-mail','email',fd,'email'),
       fldSel('Tipo Cliente','tipo_cliente',[['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],fd),
       fldSel('Status','status',[['ativo','Ativo'],['inativo','Inativo'],['pendente','Pendente']],fd)
@@ -167,9 +167,14 @@ function buildClienteForm(fd,editId,onDone){
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px'}},fldArea('Gerais','observacoes',fd),fldArea('Clínicas','observacoes_clinicas',fd))
   ));
   fm.appendChild(iconBtn('btn btn-primary btn-lg',null,editId?'Salvar Alterações':'Cadastrar Cliente',async()=>{
-    if(!fd.nome)return Toast.show('Nome é obrigatório','error');
-    if(fd.cpf&&fd.cpf.length>3&&!validarCPF(fd.cpf))return Toast.show('CPF inválido','error');
-    if(fd.data_nascimento&&!validarNascimento(fd.data_nascimento))return Toast.show('Data nascimento inválida','error');
+    if(!fd.nome||fd.nome.trim().length<3)return Toast.show('Nome é obrigatório (mínimo 3 caracteres)','error');
+    if(!editId){
+      if(!fd.cpf)return Toast.show('CPF é obrigatório','error');
+      if(!fd.data_nascimento)return Toast.show('Data de nascimento é obrigatória','error');
+      if(!fd.telefone)return Toast.show('Telefone é obrigatório','error');
+    }
+    if(fd.cpf&&fd.cpf.replace(/\D/g,'').length>=11&&!validarCPF(fd.cpf))return Toast.show('CPF inválido — verifique os dígitos','error');
+    if(fd.data_nascimento&&!validarNascimento(fd.data_nascimento))return Toast.show('Data de nascimento inválida','error');
     if(editId){const r=await Api.atualizarCliente(editId,fd);if(r?.success){Toast.show('Atualizado!');onDone()}else Toast.show(r?.error||'Erro','error')}
     else{const r=await Api.criarCliente(fd);if(r?.success){Toast.show(`${fd.nome} cadastrado! ${r.codigo_cliente?'['+r.codigo_cliente+']':''}`);onDone()}else Toast.show(r?.error||'Erro','error')}
   }));
