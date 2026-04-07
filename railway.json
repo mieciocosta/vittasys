@@ -2,7 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npx prisma generate && npx vitest run tests/unit --reporter=verbose"
+    "buildCommand": "npx prisma generate && npx vitest run tests/unit --reporter=json --outputFile=tests/results.json && node tests/generate-report.js"
   },
   "deploy": {
     "runtime": "V2",

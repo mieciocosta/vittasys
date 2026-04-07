@@ -45,11 +45,43 @@ tw.appendChild(buildPagination(data.pagination,p=>{f.page=p;draw()}));
 wrap.appendChild(tw);
 }
 
-// ═══ NOVA MOVIMENTAÇÃO (with validation) ═══
+// ═══ NOVA MOVIMENTAÇÃO (with barcode + approval) ═══
 function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,close)=>{
   const fd={usuario_id:AppState.usuario.id,quantidade:1};
   const vacs=await Api.vacinas()||[];
   const lotes=await Api.lotes({limit:200})||{data:[]};
+
+  // ═══ BARCODE SCAN FIELD (first, autofocus) ═══
+  const scanWrap=h('div',{style:{marginBottom:'16px',padding:'16px',background:'var(--primary-bg)',borderRadius:'12px',border:'2px dashed var(--primary)'}});
+  scanWrap.appendChild(h('div',{className:'label',style:{color:'var(--primary)',marginBottom:'8px'}},'📷 BIPAR CÓDIGO DE BARRAS (opcional)'));
+  const scanInput=h('input',{className:'scanner-input',placeholder:'Bipe ou digite o código de barras...',style:'font-size:16px;padding:12px',id:'mov-barcode-input'});
+  const scanStatus=h('div',{id:'mov-scan-status',style:{marginTop:'8px'}});
+
+  scanInput.addEventListener('keydown',async e=>{
+    if(e.key!=='Enter')return;e.preventDefault();
+    const code=scanInput.value.trim();if(code.length<3)return;
+    scanStatus.innerHTML='<div style="font-size:12px;color:var(--text-3)">🔍 Buscando...</div>';
+    const results=await Api.buscarUnidades(code)||[];
+    if(results.length>0){
+      const u=results[0];
+      fd.vacina_id=u.vacina_id;fd.nome_vacina=u.vacina_nome;
+      fd.lote_id=u.lote_id;fd.numero_lote=u.numero_lote;
+      fd.codigo_barras=u.codigo_barras;fd.unidade_id=u.id;
+      scanStatus.innerHTML=`<div style="padding:10px;background:#dcfce7;border-radius:8px;border:1px solid #86efac">
+        <div style="font-weight:700;color:#059669">✓ Encontrado!</div>
+        <div style="font-size:12px;color:#059669;margin-top:4px">${esc(u.vacina_nome)} — Lote: ${esc(u.numero_lote)} — ${u.quantidade_disponivel} disp.</div></div>`;
+      // Update selects visually
+      const vacSel=body.querySelector('#mov-vac-select');if(vacSel){vacSel.value=u.vacina_id+'|'+u.vacina_nome;vacSel.dispatchEvent(new Event('change'))}
+      const lotSel=body.querySelector('#mov-lot-select');if(lotSel){lotSel.value=u.lote_id+'|'+u.numero_lote;lotSel.dispatchEvent(new Event('change'))}
+    }else{
+      scanStatus.innerHTML=`<div style="padding:8px;background:#fef2f2;border-radius:8px;color:#dc2626;font-size:13px">❌ Código "${esc(code)}" não encontrado no estoque</div>`;
+    }
+    scanInput.value='';scanInput.focus();
+  });
+
+  scanWrap.appendChild(scanInput);scanWrap.appendChild(scanStatus);
+  body.appendChild(scanWrap);
+  setTimeout(()=>scanInput.focus(),100);
 
   const gr=h('div',{className:'form-grid'});
 

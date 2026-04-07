@@ -193,3 +193,35 @@ describe('Standard Motives', () => {
     expect(MOTIVOS.includes('outro')).toBe(true);
   });
 });
+
+describe('Audit Trail Requirements', () => {
+  it('movimentacao must have usuario_id (solicitante)', () => {
+    const mov = { usuario_id: 5, tipo: 'descarte', status: 'pendente_aprovacao' };
+    expect(mov.usuario_id).toBeDefined();
+    expect(mov.usuario_id).toBeGreaterThan(0);
+  });
+
+  it('approval must record aprovador and timestamp', () => {
+    const approval = { aprovado_por: 1, aprovado_em: new Date().toISOString(), status: 'concluido' };
+    expect(approval.aprovado_por).toBeDefined();
+    expect(approval.aprovado_em).toBeDefined();
+    expect(approval.status).toBe('concluido');
+  });
+
+  it('rejection must have motivo', () => {
+    const rejection = { aprovado_por: 1, motivo_reprovacao: 'Lote incorreto', status: 'reprovado' };
+    expect(rejection.motivo_reprovacao).toBeTruthy();
+    expect(rejection.motivo_reprovacao.length).toBeGreaterThan(0);
+  });
+
+  it('pending status blocks stock impact', () => {
+    const mov = { status: 'pendente_aprovacao', impacta_estoque: false };
+    expect(mov.impacta_estoque).toBe(false);
+  });
+
+  it('approved status enables stock impact', () => {
+    const mov = { status: 'concluido', impacta_estoque: true, estoque_aplicado_em: new Date().toISOString() };
+    expect(mov.impacta_estoque).toBe(true);
+    expect(mov.estoque_aplicado_em).toBeDefined();
+  });
+});

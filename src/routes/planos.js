@@ -21,12 +21,25 @@ r.get('/',async(req,res,next)=>{try{
   const sm={id:'id',cliente_nome:{cliente:{nome:order==='ASC'?'asc':'desc'}},nome_plano:'nomePlano',valor_final:'valorFinal',status_contrato:'statusContrato',codigo_cliente:{cliente:{codigoCliente:order==='ASC'?'asc':'desc'}}};
   const ob=sort&&sm[sort]?typeof sm[sort]==='string'?{[sm[sort]]:order==='ASC'?'asc':'desc'}:sm[sort]:{id:'desc'};
   const[data,total]=await Promise.all([
-    prisma.planoContratado.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{cliente:{select:{nome:true,codigoCliente:true,tipoPaciente:true,dataNascimento:true,responsavelNome:true}},doses:true,pagamentos:true}}),
+    prisma.planoContratado.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{
+      cliente:{select:{nome:true,codigoCliente:true,tipoPaciente:true,dataNascimento:true,responsavelNome:true}},
+      doses:true,pagamentos:true,
+    }}),
     prisma.planoContratado.count({where})]);
-  const mapped=data.map(p=>{const tp=p.pagamentos.reduce((s,pg)=>s+pg.valorPago,0);const da2=p.doses.filter(d=>d.status==='aplicada').length;
+  // Also get movimentação counts per client for progress fallback
+  const clientIds=[...new Set(data.map(p=>p.clienteId))];
+  const movCounts=clientIds.length>0?await prisma.movimentacao.groupBy({by:['clienteId'],where:{clienteId:{in:clientIds},tipo:{in:['retirada','aplicacao']},status:'concluido'},_count:true}):[];
+  const movMap=Object.fromEntries(movCounts.map(m=>[m.clienteId,m._count]));
+
+  const mapped=data.map(p=>{const tp=p.pagamentos.reduce((s,pg)=>s+pg.valorPago,0);
+    const da2=p.doses.filter(d=>d.status==='aplicada').length;
+    const dt=p.doses.length;
+    // If plan has no formal doses, use movimentações as progress indicator
+    const dosesAplicadas=dt>0?da2:(movMap[p.clienteId]||0);
+    const dosesTotal=dt>0?dt:Math.max(dosesAplicadas,1);
     return{id:p.id,cliente_id:p.clienteId,nome_plano:p.nomePlano,idade_inicio:p.idadeInicio,idade_fim:p.idadeFim,valor_final:p.valorFinal,percentual_desconto:p.percentualDesconto,status_contrato:p.statusContrato,contrato_assinado:p.contratoAssinado,vendedor_id:p.vendedorId,
       cliente_nome:p.cliente.nome,codigo_cliente:p.cliente.codigoCliente,tipo_paciente:p.cliente.tipoPaciente,
-      total_pago:tp,saldo_pendente:p.valorFinal-tp,doses_aplicadas:da2,doses_total:p.doses.length,
+      total_pago:tp,saldo_pendente:p.valorFinal-tp,doses_aplicadas:dosesAplicadas,doses_total:dosesTotal,
       vendedor_nome:'',criado_em:p.criadoEm}});
   res.json({data:mapped,pagination:{page:+page,limit:+limit,total,pages:Math.ceil(total/+limit)}});
 }catch(e){next(e)}});
