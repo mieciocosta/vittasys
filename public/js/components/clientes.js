@@ -33,17 +33,10 @@ fb.appendChild(buildSelect([['','Tipo Paciente'],['bebe','Bebê'],['crianca','Cr
 wrap.appendChild(fb);
 
 const data=await Api.clientes(f);if(!data)return;
-const tw=h('div',{className:'table-wrap'});const t=h('table');
-const thead=document.createElement('thead');const headerRow=document.createElement('tr');
-[['ID',''],['Código','codigo'],['Cliente','nome'],['Idade','nascimento'],['Tipo','tipo'],['Telefone',''],['Planos',''],['Vendedor',''],['Status','status'],['Ações','']].forEach(([label,sortKey])=>{
-  const th=document.createElement('th');th.textContent=label;
-  if(sortKey){th.style.cursor='pointer';th.title='Ordenar por '+label;
-    th.onclick=()=>{if(f.sort===sortKey)f.order=f.order==='DESC'?'ASC':'DESC';else{f.sort=sortKey;f.order='ASC'}draw()};
-    if(f.sort===sortKey)th.textContent+=f.order==='DESC'?' ▼':' ▲';}
-  headerRow.appendChild(th);
-});thead.appendChild(headerRow);t.appendChild(thead);
+const tw=h('div',{className:'table-wrap'});
+const t=buildSortableTable([['ID','id'],['Código','codigo'],['Cliente','nome'],['Idade','nascimento'],['Tipo','tipo'],['Telefone',''],['Planos',''],['Status','status'],['Ações','']],f,draw);
 const tb=h('tbody');
-if(!data.data.length)tb.innerHTML='<tr><td colspan="10" class="empty-state">Nenhum cliente encontrado</td></tr>';
+if(!data.data.length)tb.innerHTML='<tr><td colspan="9" class="empty-state">Nenhum cliente encontrado</td></tr>';
 else data.data.forEach(c=>{
   const tr=h('tr',{className:'clickable'});
   if(c.tipo_cliente==='ativo')tr.style.borderLeft='3px solid var(--primary)';
@@ -54,7 +47,6 @@ else data.data.forEach(c=>{
     <td>${tipoClienteBadge(c.tipo_cliente)}</td>
     <td class="text-sm">${esc(c.telefone||'-')}</td>
     <td class="mono fw-600" style="color:${(c.planos_ativos||0)>0?'#7c3aed':'#94a3b8'}">${c.planos_ativos||0}</td>
-    <td class="text-sm text-muted">${esc(c.vendedor_nome||'-')}</td>
     <td><span class="badge ${c.status==='ativo'?'badge-green':'badge-gray'}">${c.status}</span></td>`;
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{

@@ -56,9 +56,11 @@ async function renderRetirada(){
     // Input
     const iw=h('div',{className:'scanner-input-wrap'});
     iw.appendChild(h('div',{className:'scanner-input-icon',innerHTML:I.search}));
-    const inp=h('input',{className:'scanner-input',id:'scanner-main-input',
+    const inputAttrs={className:'scanner-input',id:'scanner-main-input',
       placeholder:etapa==='scan'?'Código de barras, lote ou nome da vacina...':'Vacina selecionada',
-      value:query,disabled:etapa!=='scan',autocomplete:'off',inputMode:'text'});
+      value:query,autocomplete:'off',inputMode:'text',spellcheck:'false'};
+    if(etapa!=='scan')inputAttrs.disabled=true;
+    const inp=h('input',inputAttrs);
 
     // Status indicator
     const statusEl=h('div',{id:'scan-status'});
@@ -331,10 +333,7 @@ async function renderRetirada(){
       const tm={retirada:['Retirada','badge-orange'],entrada:['Entrada','badge-primary'],aplicacao:['Aplicação','badge-green'],descarte:['Descarte','badge-red']};
       const[tl,tc]=tm[m.tipo]||[m.tipo,'badge-gray'];
       const it=h('div',{className:'recent-bip-item',style:{cursor:'pointer',transition:'background .15s'},
-        onClick:()=>{AppState.setModulo('historico');setTimeout(()=>{
-          // Try to open detail modal if function exists
-          if(typeof modalDetalheMovimentacao==='function')modalDetalheMovimentacao(m.id);
-        },300)},
+        onClick:()=>{AppState.verMovimentacao(m.id)},
         onMouseEnter:function(){this.style.background='var(--primary-bg)'},
         onMouseLeave:function(){this.style.background=''}});
       it.innerHTML=`<div style="flex:1">

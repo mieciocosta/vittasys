@@ -53,3 +53,21 @@ r.post('/',async(req,res,next)=>{try{const b=req.body;
   res.json({success:true,id:p.id});
 }catch(e){next(e)}});
 module.exports=r;
+
+// ═══ DELETE PLANO CONTRATADO ═══
+r.delete('/:id',async(req,res,next)=>{try{
+  const id=+req.params.id;
+  const pc=await prisma.planoContratado.findUnique({where:{id},include:{doses:true,pagamentos:true}});
+  if(!pc)return res.status(404).json({error:'Plano não encontrado'});
+  // Check for applied doses
+  const dosesAplicadas=pc.doses.filter(d=>d.status==='aplicada').length;
+  if(dosesAplicadas>0)return res.status(400).json({error:`Não é possível excluir: ${dosesAplicadas} dose(s) já aplicada(s) neste plano`});
+  // Check for payments
+  const totalPago=pc.pagamentos.reduce((s,p)=>s+p.valorPago,0);
+  if(totalPago>0)return res.status(400).json({error:`Não é possível excluir: R$ ${totalPago.toFixed(2)} em pagamentos vinculados`});
+  // Safe to delete
+  await prisma.planoContratadoDose.deleteMany({where:{planoContratadoId:id}});
+  await prisma.pagamento.deleteMany({where:{planoContratadoId:id}});
+  await prisma.planoContratado.delete({where:{id}});
+  res.json({success:true,message:'Plano excluído com sucesso'});
+}catch(e){next(e)}});
