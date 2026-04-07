@@ -45,41 +45,76 @@ tw.appendChild(buildPagination(data.pagination,p=>{f.page=p;draw()}));
 wrap.appendChild(tw);
 }
 
-// ═══ NOVA MOVIMENTAÇÃO (with barcode + approval) ═══
+// ═══ NOVA MOVIMENTAÇÃO (with autocomplete + approval) ═══
 function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,close)=>{
   const fd={usuario_id:AppState.usuario.id,quantidade:1};
   const vacs=await Api.vacinas()||[];
   const lotes=await Api.lotes({limit:200})||{data:[]};
+  let acResults=[];
 
-  // ═══ BARCODE SCAN FIELD (first, autofocus) ═══
-  const scanWrap=h('div',{style:{marginBottom:'16px',padding:'16px',background:'var(--primary-bg)',borderRadius:'12px',border:'2px dashed var(--primary)'}});
-  scanWrap.appendChild(h('div',{className:'label',style:{color:'var(--primary)',marginBottom:'8px'}},'📷 BIPAR CÓDIGO DE BARRAS (opcional)'));
-  const scanInput=h('input',{className:'scanner-input',placeholder:'Bipe ou digite o código de barras...',style:'font-size:16px;padding:12px',id:'mov-barcode-input'});
-  const scanStatus=h('div',{id:'mov-scan-status',style:{marginTop:'8px'}});
+  // ═══ AUTOCOMPLETE INTELIGENTE ═══
+  const scanWrap=h('div',{style:{marginBottom:'16px',padding:'16px',background:'var(--primary-bg)',borderRadius:'12px',border:'2px dashed var(--primary)',position:'relative'}});
+  scanWrap.appendChild(h('div',{className:'label',style:{color:'var(--primary)',marginBottom:'8px'}},'🔍 BUSCA INTELIGENTE — Bipe, nome, lote ou código'));
+  const scanInput=h('input',{className:'scanner-input',placeholder:'Ex: "Meningo", "7896015", "NF84765"...',style:'font-size:15px;padding:12px',id:'mov-barcode-input',autocomplete:'off'});
+  const scanStatus=h('div',{style:{marginTop:'8px'}});
+  const acList=h('div',{className:'autocomplete-list',style:{display:'none',position:'absolute',left:'16px',right:'16px',zIndex:'100',maxHeight:'220px',overflow:'auto',background:'var(--card-bg)',border:'1px solid var(--border)',borderRadius:'10px',boxShadow:'0 8px 24px #0002'}});
 
-  scanInput.addEventListener('keydown',async e=>{
-    if(e.key!=='Enter')return;e.preventDefault();
-    const code=scanInput.value.trim();if(code.length<3)return;
-    scanStatus.innerHTML='<div style="font-size:12px;color:var(--text-3)">🔍 Buscando...</div>';
-    const results=await Api.buscarUnidades(code)||[];
-    if(results.length>0){
-      const u=results[0];
-      fd.vacina_id=u.vacina_id;fd.nome_vacina=u.vacina_nome;
-      fd.lote_id=u.lote_id;fd.numero_lote=u.numero_lote;
-      fd.codigo_barras=u.codigo_barras;fd.unidade_id=u.id;
-      scanStatus.innerHTML=`<div style="padding:10px;background:#dcfce7;border-radius:8px;border:1px solid #86efac">
-        <div style="font-weight:700;color:#059669">✓ Encontrado!</div>
-        <div style="font-size:12px;color:#059669;margin-top:4px">${esc(u.vacina_nome)} — Lote: ${esc(u.numero_lote)} — ${u.quantidade_disponivel} disp.</div></div>`;
-      // Update selects visually
-      const vacSel=body.querySelector('#mov-vac-select');if(vacSel){vacSel.value=u.vacina_id+'|'+u.vacina_nome;vacSel.dispatchEvent(new Event('change'))}
-      const lotSel=body.querySelector('#mov-lot-select');if(lotSel){lotSel.value=u.lote_id+'|'+u.numero_lote;lotSel.dispatchEvent(new Event('change'))}
-    }else{
-      scanStatus.innerHTML=`<div style="padding:8px;background:#fef2f2;border-radius:8px;color:#dc2626;font-size:13px">❌ Código "${esc(code)}" não encontrado no estoque</div>`;
-    }
-    scanInput.value='';scanInput.focus();
+  let searchTimer=null;
+  scanInput.addEventListener('input',e=>{
+    const q=e.target.value.trim();
+    if(searchTimer)clearTimeout(searchTimer);
+    if(q.length<2){acList.style.display='none';acResults=[];scanStatus.innerHTML='';return}
+    scanStatus.innerHTML='<div style="font-size:11px;color:var(--text-3)">🔍 Buscando...</div>';
+    searchTimer=setTimeout(async()=>{
+      acResults=await Api.buscarUnidades(q)||[];
+      scanStatus.innerHTML='';
+      if(acResults.length===0){
+        acList.style.display='none';
+        scanStatus.innerHTML=`<div style="padding:8px;background:#fef2f2;border-radius:8px;color:#dc2626;font-size:12px">Nenhum resultado para "${esc(q)}"</div>`;
+        return;
+      }
+      // Group by lot
+      acList.innerHTML='';acList.style.display='block';
+      const gr={};acResults.forEach(r=>{const k=r.numero_lote;if(!gr[k])gr[k]={...r,count:0};gr[k].count++});
+      Object.values(gr).forEach(g=>{
+        const it=h('div',{style:'padding:10px 14px;cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background .1s',
+          onMouseEnter:function(){this.style.background='var(--primary-bg)'},
+          onMouseLeave:function(){this.style.background=''},
+          onClick:()=>selectAcItem(g)});
+        const st=statusVenc(g.dias_para_vencer);
+        it.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:600;font-size:13px">${esc(g.vacina_nome)}</div>
+          <div style="font-size:11px;color:#64748b">Lote: ${esc(g.numero_lote)} · CB: ${esc((g.codigo_barras||'').slice(-10))} · <strong>${g.quantidade_disponivel} disp.</strong></div></div>
+          <span class="badge ${st.cls}" style="font-size:10px">${st.label}</span></div>`;
+        acList.appendChild(it);
+      });
+    },200);
   });
 
-  scanWrap.appendChild(scanInput);scanWrap.appendChild(scanStatus);
+  // Enter selects first result
+  scanInput.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();
+      if(acResults.length>0)selectAcItem(acResults[0]);
+      else if(scanInput.value.trim().length>=3){scanInput.dispatchEvent(new Event('input'))}
+    }
+    if(e.key==='Escape'){acList.style.display='none';scanInput.value=''}
+  });
+
+  function selectAcItem(u){
+    fd.vacina_id=u.vacina_id;fd.nome_vacina=u.vacina_nome;
+    fd.lote_id=u.lote_id;fd.numero_lote=u.numero_lote;
+    fd.codigo_barras=u.codigo_barras;fd.unidade_id=u.id;
+    acList.style.display='none';scanInput.value='';
+    scanStatus.innerHTML=`<div style="padding:10px;background:#dcfce7;border-radius:8px;border:1px solid #86efac">
+      <div style="font-weight:700;color:#059669">✓ ${esc(u.vacina_nome)}</div>
+      <div style="font-size:12px;color:#059669;margin-top:2px">Lote: ${esc(u.numero_lote)} · CB: ${esc((u.codigo_barras||'').slice(-10))} · ${u.quantidade_disponivel} disp.</div></div>`;
+    scanInput.focus();
+  }
+
+  // Close autocomplete on outside click
+  body.addEventListener('click',e=>{if(!scanWrap.contains(e.target))acList.style.display='none'});
+
+  scanWrap.appendChild(scanInput);scanWrap.appendChild(acList);scanWrap.appendChild(scanStatus);
   body.appendChild(scanWrap);
   setTimeout(()=>scanInput.focus(),100);
 
