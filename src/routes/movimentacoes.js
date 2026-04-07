@@ -1,5 +1,7 @@
 const{Router}=require('express');const r=Router();const prisma=require('../config/database');
 
+function norm(s){return(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/vacina\s*/gi,'').replace(/\s+/g,' ').trim()}
+
 const TIPOS_SENSIVEIS=['descarte','ajuste','estorno'];
 const MOTIVOS_PADRAO=['vacina_vencida','quebra_avaria','cancelamento_plano','erro_lancamento','divergencia_inventario','devolucao','estorno_indevido','outro'];
 
@@ -105,6 +107,40 @@ r.post('/',async(req,res,next)=>{try{
       if(lote&&lote.quantidadeDisponivel<qty)return res.status(400).json({error:`Estoque insuficiente: ${lote.quantidadeDisponivel} disponíveis`});
       await prisma.lote.update({where:{id:+b.lote_id},data:{quantidadeDisponivel:{decrement:qty}}});
     }
+  }
+
+  // ═══ VINCULAR AO PLANO DO CLIENTE (retirada/aplicação) ═══
+  if(impactaEstoque&&b.cliente_id&&['retirada','aplicacao'].includes(b.tipo)){
+    try{
+      const cli=await prisma.cliente.findUnique({where:{id:+b.cliente_id},select:{tipoCliente:true}});
+      if(cli?.tipoCliente==='ativo'){
+        const planosAtivos=await prisma.planoContratado.findMany({
+          where:{clienteId:+b.cliente_id,statusContrato:'ativo'},
+          include:{doses:{where:{status:'pendente'},include:{vacina:{select:{nome:true}}}}}
+        });
+        // Try to match vaccine to a pending dose
+        for(const plano of planosAtivos){
+          const match=plano.doses.find(d=>{
+            if(d.vacinaId===+(b.vacina_id||0))return true;
+            // Fuzzy match with accent normalization
+            const nv=norm(nomeVacina);const nd=norm(d.vacina?.nome);
+            if(nv.length>3&&nd.length>3){
+              if(nv.includes(nd)||nd.includes(nv))return true;
+              const w1=nv.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
+              const w2=nd.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
+              for(const a of w1){for(const b2 of w2){if(a.includes(b2)||b2.includes(a))return true}}
+            }
+            return false;
+          });
+          if(match){
+            await prisma.planoContratadoDose.update({where:{id:match.id},data:{
+              status:'aplicada',dataAplicacao:new Date(),localAplicacao:b.local_aplicacao||null,movimentacaoId:mov.id
+            }});
+            break;
+          }
+        }
+      }
+    }catch(e){console.error('Dose link warning:',e.message)} // Non-critical - don't block movement
   }
 
   res.json({

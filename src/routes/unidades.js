@@ -1,5 +1,9 @@
 const{Router}=require('express');const r=Router();const prisma=require('../config/database');
 
+// Normalize accents for fuzzy matching
+function norm(s){return(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/vacina\s*/gi,'').replace(/\s+/g,' ').trim()}
+
+
 r.get('/busca',async(req,res,next)=>{try{
   const{q}=req.query;if(!q||q.length<2)return res.json([]);
   const now=new Date();const qt=q.trim();
@@ -30,29 +34,43 @@ r.post('/retirada',async(req,res,next)=>{try{
     if(un.status!=='disponivel')throw Object.assign(new Error(`Unidade já ${un.status}`),{status:400});
     const l=un.lote;const v=l.vacina;
 
-    // ═══ VALIDAÇÃO DE LIMITE DE DOSES DO PLANO ═══
-    // Check plans using CLIENT'S ACTUAL TYPE from DB (not frontend param)
+    // ═══ VINCULAR MOVIMENTAÇÃO AO PLANO CONTRATADO ═══
     const clienteDB=await tx.cliente.findUnique({where:{id:+cliente_id},select:{tipoCliente:true}});
     const isAtivo=clienteDB?.tipoCliente==='ativo'||tipo_cliente==='ativo';
+    let doseVinculada=null;
     if(isAtivo){
-      // Find active plans for this client
+      // Find active plans - get ALL doses to do smart matching
       const planosAtivos=await tx.planoContratado.findMany({
         where:{clienteId:+cliente_id,statusContrato:'ativo'},
-        include:{doses:{where:{vacinaId:v.id}}}
+        include:{doses:{include:{vacina:{select:{id:true,nome:true,codigo:true}}}}}
       });
       for(const plano of planosAtivos){
-        const dosesVacina=plano.doses.filter(d=>d.vacinaId===v.id);
-        if(dosesVacina.length>0){
-          const aplicadas=dosesVacina.filter(d=>d.status==='aplicada').length;
-          const total=dosesVacina.length;
+        // Match by exact vacinaId OR by vaccine name similarity
+        const dosesCompativeis=plano.doses.filter(d=>{
+          if(d.vacinaId===v.id)return true;
+          // Fuzzy match with accent normalization
+          const ns=norm(v.nome);const np=norm(d.vacina?.nome);
+          if(ns.length>3&&np.length>3){
+            if(ns.includes(np)||np.includes(ns))return true;
+            const w1=ns.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
+            const w2=np.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
+            for(const a of w1){for(const b of w2){if(a.includes(b)||b.includes(a))return true}}
+          }
+          return false;
+        });
+
+        if(dosesCompativeis.length>0){
+          const aplicadas=dosesCompativeis.filter(d=>d.status==='aplicada').length;
+          const total=dosesCompativeis.length;
           if(aplicadas>=total){
             throw Object.assign(new Error(
               `Limite de doses atingido: ${v.nome} — ${aplicadas}/${total} doses já aplicadas no plano "${plano.nomePlano}". Não é permitido retirar mais.`
             ),{status:400});
           }
           // Mark next pending dose as applied
-          const proxDose=dosesVacina.find(d=>d.status==='pendente');
+          const proxDose=dosesCompativeis.find(d=>d.status==='pendente');
           if(proxDose){
+            doseVinculada=proxDose;
             await tx.planoContratadoDose.update({
               where:{id:proxDose.id},
               data:{status:'aplicada',dataAplicacao:new Date(),localAplicacao:local_aplicacao}
@@ -68,6 +86,8 @@ r.post('/retirada',async(req,res,next)=>{try{
     if(updLote.quantidadeDisponivel<=0)await tx.lote.update({where:{id:l.id},data:{status:'esgotado'}});
 
     const mov=await tx.movimentacao.create({data:{tipo:'retirada',unidadeId:+unidade_id,loteId:l.id,vacinaId:v.id,clienteId:+cliente_id,usuarioId:+usuario_id,aplicadoPor:aplicador_id?+aplicador_id:null,tipoCliente:tipo_cliente||'espontaneo',tipoAtendimento:tipo_atendimento||'normal',localAplicacao:local_aplicacao,quantidade:1,codigoBarras:un.codigoBarras,numeroLote:l.numeroLote,nomeVacina:v.nome,status:'concluido',observacoes:observacoes||null}});
+    // Link dose to movimentacao for traceability
+    if(doseVinculada){await tx.planoContratadoDose.update({where:{id:doseVinculada.id},data:{movimentacaoId:mov.id}})}
     const cli=await tx.cliente.findUnique({where:{id:+cliente_id},select:{nome:true}});
     await tx.retiradaRecente.create({data:{unidadeId:+unidade_id,vacinaNome:v.nome,lote:l.numeroLote,codigoBarras:un.codigoBarras,clienteNome:cli?.nome,usuarioNome:''}});
     return{movId:mov.id,vacNome:v.nome,cliNome:cli?.nome,antes:l.quantidadeDisponivel,depois:updLote.quantidadeDisponivel};

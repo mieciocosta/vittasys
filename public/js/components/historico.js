@@ -120,8 +120,33 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
 
   // Tipo (obrigatório)
   const dTipo=h('div');dTipo.appendChild(h('label',{className:'label',style:{color:'var(--red)'}},'Tipo * (obrigatório)'));
-  dTipo.appendChild(buildSelect([['','— Selecione o tipo —'],['entrada','Entrada'],['retirada','Retirada (manual)'],['ajuste','Ajuste'],['descarte','Descarte'],['estorno','Estorno']],fd.tipo||'',v=>{fd.tipo=v}));
+  dTipo.appendChild(buildSelect([['','— Selecione o tipo —'],['entrada','Entrada'],['retirada','Retirada (manual)'],['aplicacao','Aplicação'],['ajuste','Ajuste'],['descarte','Descarte'],['estorno','Estorno']],fd.tipo||'',v=>{fd.tipo=v;checkSensitive()}));
   gr.appendChild(dTipo);
+
+  // ═══ CLIENTE (obrigatório para retirada/aplicação) ═══
+  const dCli=h('div',{style:{gridColumn:'1/-1'}});
+  dCli.appendChild(h('label',{className:'label'},'Cliente / Paciente'));
+  const cliInput=h('input',{className:'input',placeholder:'Buscar por nome, CPF ou código...'});
+  const cliResult=h('div',{style:{fontSize:'12px',marginTop:'4px'}});
+  let cliTimer=null;
+  cliInput.addEventListener('input',e=>{
+    const q=e.target.value.trim();if(cliTimer)clearTimeout(cliTimer);
+    if(q.length<2){cliResult.innerHTML='';return}
+    cliTimer=setTimeout(async()=>{
+      const cls=await Api.buscarClientes(q)||[];
+      cliResult.innerHTML='';
+      if(!cls.length){cliResult.innerHTML='<span style="color:var(--text-3)">Nenhum cliente encontrado</span>';return}
+      cls.slice(0,5).forEach(c=>{
+        const btn=h('div',{style:'padding:6px 10px;cursor:pointer;border-radius:6px;font-size:12px;border:1px solid var(--border);margin:2px 0;display:inline-block;margin-right:4px',
+          onMouseEnter:function(){this.style.background='var(--primary-bg)'},onMouseLeave:function(){this.style.background=''},
+          onClick:()=>{fd.cliente_id=c.id;fd.tipo_cliente=c.tipo_cliente;cliInput.value=c.nome;
+            cliResult.innerHTML=`<span style="color:#059669;font-weight:600">✓ ${esc(c.nome)} [${esc(c.codigo_cliente||'')}] — ${c.tipo_cliente}</span>`}});
+        btn.textContent=`${c.nome} [${c.codigo_cliente||''}]`;
+        cliResult.appendChild(btn);
+      });
+    },250);
+  });
+  dCli.appendChild(cliInput);dCli.appendChild(cliResult);gr.appendChild(dCli);
 
   // Vacina (obrigatório)
   const dVac=h('div');dVac.appendChild(h('label',{className:'label',style:{color:'var(--red)'}},'Vacina * (obrigatório)'));

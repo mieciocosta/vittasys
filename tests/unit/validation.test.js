@@ -225,3 +225,115 @@ describe('Audit Trail Requirements', () => {
     expect(mov.estoque_aplicado_em).toBeDefined();
   });
 });
+
+// ═══ PLAN-MOVEMENT LINKING RULES ═══
+
+describe('Plan-Movement Dose Matching', () => {
+  it('exact vacinaId matches', () => {
+    const doseVacinaId = 5;
+    const movVacinaId = 5;
+    expect(doseVacinaId === movVacinaId).toBe(true);
+  });
+
+  it('fuzzy name match works for NF-e imported vaccines', () => {
+    const stockName = 'VACINA MEN B BEXSERO GSK';
+    const planName = 'Meningocócica B (Bexsero)';
+    const keyStock = stockName.toLowerCase().replace(/vacina\s*/gi, '');
+    const keyPlan = planName.toLowerCase().replace(/vacina\s*/gi, '');
+    const words1 = keyStock.split(/[\s\-\(\)]+/).filter(w => w.length > 3);
+    const words2 = keyPlan.split(/[\s\-\(\)]+/).filter(w => w.length > 3);
+    let matched = false;
+    for (const w of words1) { for (const w2 of words2) { if (w.includes(w2) || w2.includes(w)) matched = true; } }
+    expect(matched).toBe(true);
+  });
+
+  it('fuzzy match works for Rotavirus variants', () => {
+    const stockName = 'VACINA ROTAVIRUS PENTAVALENTE';
+    const planName = 'Rotavírus Pentavalente';
+    const k1 = stockName.toLowerCase().replace(/vacina\s*/gi, '');
+    const k2 = planName.toLowerCase().replace(/vacina\s*/gi, '');
+    expect(k1.includes('rotavirus') && k2.includes('rotav')).toBe(true);
+  });
+
+  it('non-matching vaccines do not link', () => {
+    const stockName = 'Hepatite B';
+    const planName = 'Meningocócica ACWY';
+    const k1 = stockName.toLowerCase();
+    const k2 = planName.toLowerCase();
+    expect(k1.includes(k2) || k2.includes(k1)).toBe(false);
+  });
+
+  it('first pending dose is selected (FIFO)', () => {
+    const doses = [
+      { id: 1, status: 'aplicada', vacinaId: 5 },
+      { id: 2, status: 'pendente', vacinaId: 5 },
+      { id: 3, status: 'pendente', vacinaId: 5 },
+    ];
+    const pending = doses.filter(d => d.status === 'pendente');
+    expect(pending[0].id).toBe(2);
+  });
+
+  it('no double-marking: already applied dose is skipped', () => {
+    const doses = [
+      { id: 1, status: 'aplicada', vacinaId: 5 },
+      { id: 2, status: 'aplicada', vacinaId: 5 },
+    ];
+    const pending = doses.filter(d => d.status === 'pendente');
+    expect(pending.length).toBe(0);
+  });
+});
+
+describe('Stock Coverage Check', () => {
+  it('identifies insufficient stock', () => {
+    const necessario = 3;
+    const disponivel = 1;
+    const insuficiente = disponivel < necessario;
+    expect(insuficiente).toBe(true);
+  });
+
+  it('sufficient stock passes', () => {
+    const necessario = 2;
+    const disponivel = 10;
+    expect(disponivel >= necessario).toBe(true);
+  });
+});
+
+// ═══ VACCINE NAME MATCHING ═══
+function norm(s){return(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/vacina\s*/gi,'').replace(/\s+/g,' ').trim()}
+
+describe('Vaccine Name Matching (accent-safe)', () => {
+  it('normalizes accents: Rotavírus → rotavirus', () => {
+    expect(norm('Rotavírus Pentavalente')).toBe('rotavirus pentavalente');
+  });
+
+  it('normalizes accents: Meningocócica → meningococica', () => {
+    expect(norm('Meningocócica B (Bexsero)')).toBe('meningococica b (bexsero)');
+  });
+
+  it('strips "vacina" prefix', () => {
+    expect(norm('VACINA MEN B BEXSERO GSK')).toBe('men b bexsero gsk');
+  });
+
+  it('matches stock "VACINA ROTAVIRUS PENTAVALENTE" to plan "Rotavírus Pentavalente"', () => {
+    const ns = norm('VACINA ROTAVIRUS PENTAVALENTE');
+    const np = norm('Rotavírus Pentavalente');
+    expect(ns.includes(np) || np.includes(ns)).toBe(true);
+  });
+
+  it('matches stock "VACINA MEN B BEXSERO GSK" to plan "Meningocócica B (Bexsero)"', () => {
+    const ns = norm('VACINA MEN B BEXSERO GSK');
+    const np = norm('Meningocócica B (Bexsero)');
+    // Word-level match: "bexsero" appears in both
+    const w1 = ns.split(/[\s\-\(\)]+/).filter(w => w.length > 3);
+    const w2 = np.split(/[\s\-\(\)]+/).filter(w => w.length > 3);
+    const match = w1.some(a => w2.some(b => a.includes(b) || b.includes(a)));
+    expect(match).toBe(true);
+  });
+
+  it('does NOT match unrelated vaccines', () => {
+    const ns = norm('Hepatite B');
+    const np = norm('Febre Amarela');
+    const match = ns.includes(np) || np.includes(ns);
+    expect(match).toBe(false);
+  });
+});

@@ -74,10 +74,18 @@ r.post('/',async(req,res,next)=>{try{const b=req.body;
   }
 
   // Auto-create doses from template
-  if(b.plano_id){const pvs=await prisma.planoVacina.findMany({where:{planoId:+b.plano_id}});const dtI=new Date(b.data_inicio_plano||new Date());
-    for(const pv of pvs){for(let dn=1;dn<=pv.doses;dn++){const mp=pv.mesPrevInicio+(pv.mesPrevFim-pv.mesPrevInicio)*((dn-1)/Math.max(1,pv.doses-1))|0;const dc=new Date(dtI);dc.setMonth(dc.getMonth()+mp);
-      await prisma.planoContratadoDose.create({data:{planoContratadoId:p.id,vacinaId:pv.vacinaId,doseNumero:dn,status:'pendente',mesPrevisto:mp,competencia:`${dc.getFullYear()}-${String(dc.getMonth()+1).padStart(2,'0')}`}})}}}
-  res.json({success:true,id:p.id});
+  let dosesCreated=0;const alertas=[];
+  if(b.plano_id){const pvs=await prisma.planoVacina.findMany({where:{planoId:+b.plano_id},include:{vacina:{select:{nome:true}}}});const dtI=new Date(b.data_inicio_plano||new Date());
+    for(const pv of pvs){
+      // Check stock coverage
+      const estoqueDisp=await prisma.lote.aggregate({where:{vacinaId:pv.vacinaId,status:{not:'esgotado'}},_sum:{quantidadeDisponivel:true}});
+      const disp=estoqueDisp._sum.quantidadeDisponivel||0;
+      if(disp<pv.doses)alertas.push({vacina:pv.vacina?.nome||'?',necessario:pv.doses,disponivel:disp});
+      for(let dn=1;dn<=pv.doses;dn++){const mp=pv.mesPrevInicio+(pv.mesPrevFim-pv.mesPrevInicio)*((dn-1)/Math.max(1,pv.doses-1))|0;const dc=new Date(dtI);dc.setMonth(dc.getMonth()+mp);
+      await prisma.planoContratadoDose.create({data:{planoContratadoId:p.id,vacinaId:pv.vacinaId,doseNumero:dn,status:'pendente',mesPrevisto:mp,competencia:`${dc.getFullYear()}-${String(dc.getMonth()+1).padStart(2,'0')}`}});dosesCreated++}}}
+  const resp={success:true,id:p.id,doses_criadas:dosesCreated};
+  if(alertas.length>0)resp.alertas_estoque=alertas;
+  res.json(resp);
 }catch(e){next(e)}});
 module.exports=r;
 

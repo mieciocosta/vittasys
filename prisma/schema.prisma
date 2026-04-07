@@ -181,11 +181,14 @@ model PlanoContratadoDose {
   doseNumero         Int      @default(1) @map("dose_numero")
   mesPrevisto        Int?     @map("mes_previsto")
   competencia        String?
-  status             String   @default("pendente")
+  status             String   @default("pendente") // pendente, aplicada, cancelada
   dataAplicacao      DateTime? @map("data_aplicacao")
   localAplicacao     String?  @map("local_aplicacao")
+  movimentacaoId     Int?     @map("movimentacao_id")
   planoContratado    PlanoContratado @relation(fields: [planoContratadoId], references: [id], onDelete: Cascade)
   vacina             Vacina   @relation(fields: [vacinaId], references: [id])
+  @@index([planoContratadoId])
+  @@index([vacinaId])
   @@map("plano_contratado_doses")
 }
 
