@@ -13,7 +13,7 @@
     "db:reset": "npx prisma db push --force-reset && node prisma/seed.js",
     "setup": "npm install && npx prisma generate && npx prisma db push && node prisma/seed.js",
     "postinstall": "npx prisma generate",
-    "build": "npx prisma generate && npm run test:ci",
+    "build": "npx prisma generate && npx vitest run tests/unit --reporter=verbose",
     "test": "vitest run",
     "test:ci": "vitest run tests/unit --reporter=verbose",
     "test:unit": "vitest run tests/unit",
