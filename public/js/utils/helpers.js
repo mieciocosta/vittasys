@@ -65,3 +65,6 @@ function inputComMascara(className, placeholder, maskFn, onChange, value) {
   });
   return inp;
 }
+
+// ═══ SHARED CONSTANTS ═══
+const FABRICANTES=['GSK','Pfizer','Sanofi','MSD','Butantan','Bio-Manguinhos','Ataulpho de Paiva','AstraZeneca','Johnson & Johnson','Moderna','Sinovac','Outro'];

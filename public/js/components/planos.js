@@ -13,15 +13,24 @@ fb.appendChild(buildSelect([['','Status'],['ativo','Ativo'],['concluido','Conclu
 wrap.appendChild(fb);
 const data=await Api.planos(f);if(!data)return;
 const tw=h('div',{className:'table-wrap'});
-const t=buildSortableTable([['ID','id'],['Cliente','cliente_nome'],['Código','codigo_cliente'],['Plano','nome_plano'],['Faixa',''],['Valor','valor_final'],['Pago',''],['Saldo',''],['Progresso',''],['Vendedor','vendedor_nome'],['Status','status_contrato']],f,draw);
+const t=buildSortableTable([['ID','id'],['Cliente','cliente_nome'],['Código','codigo_cliente'],['Plano','nome_plano'],['Faixa',''],['Valor','valor_final'],['Pago',''],['Saldo',''],['Progresso',''],['Status','status_contrato'],['Ações','']],f,draw);
 const tb=h('tbody');
-if(!data.data.length)tb.innerHTML='<tr><td colspan="12" class="empty-state">Nenhum plano</td></tr>';
+if(!data.data.length)tb.innerHTML='<tr><td colspan="11" class="empty-state">Nenhum plano</td></tr>';
 else data.data.forEach(p=>{
   const prog=p.doses_total>0?Math.round(p.doses_aplicadas/p.doses_total*100):0;
   const tr=h('tr',{className:'clickable',onClick:()=>AppState.verPlano(p.id)});
   tr.style.borderLeft='3px solid var(--primary)';
-  tr.innerHTML=`<td class="mono text-muted text-sm">#${p.id}</td><td class="fw-600" style="cursor:pointer" onclick="event.stopPropagation();AppState.verCliente(${p.cliente_id})">${esc(p.cliente_nome)}</td><td class="mono text-sm">${esc(p.codigo_cliente||'-')}</td><td class="fw-600">${esc(p.nome_plano)}</td><td class="text-sm">${p.idade_inicio}-${p.idade_fim}m</td><td class="mono fw-600" style="color:#059669">${fmtMoeda(p.valor_final)}</td><td class="mono" style="color:var(--primary)">${fmtMoeda(p.total_pago)}</td><td class="mono" style="color:${p.saldo_pendente>0?'#d97706':'#059669'}">${fmtMoeda(p.saldo_pendente)}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:50px"><div class="prog-fill" style="width:${prog}%;background:${prog===100?'#059669':'var(--primary)'}"></div></div><span class="mono text-sm">${prog}%</span></div></td><td class="text-sm text-muted">${esc(p.vendedor_nome||'-')}</td><td><span class="badge ${p.status_contrato==='ativo'?'badge-green':p.status_contrato==='pendente'?'badge-orange':'badge-gray'}">${p.status_contrato}</span></td>`;
-  tb.appendChild(tr);
+  tr.innerHTML=`<td class="mono text-muted text-sm">#${p.id}</td><td class="fw-600" style="cursor:pointer" onclick="event.stopPropagation();AppState.verCliente(${p.cliente_id})">${esc(p.cliente_nome)}</td><td class="mono text-sm">${esc(p.codigo_cliente||'-')}</td><td class="fw-600">${esc(p.nome_plano)}</td><td class="text-sm">${p.idade_inicio}-${p.idade_fim}m</td><td class="mono fw-600" style="color:#059669">${fmtMoeda(p.valor_final)}</td><td class="mono" style="color:var(--primary)">${fmtMoeda(p.total_pago)}</td><td class="mono" style="color:${p.saldo_pendente>0?'#d97706':'#059669'}">${fmtMoeda(p.saldo_pendente)}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:50px"><div class="prog-fill" style="width:${prog}%;background:${prog===100?'#059669':'var(--primary)'}"></div></div><span class="mono text-sm">${prog}%</span></div></td><td><span class="badge ${p.status_contrato==='ativo'?'badge-green':p.status_contrato==='pendente'?'badge-orange':'badge-gray'}">${p.status_contrato}</span></td>`;
+  // Actions: delete only if 0% progress and 0 paid
+  const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
+  if(prog===0&&(p.total_pago||0)===0){
+    actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'Excluir',async e=>{e.stopPropagation();
+      if(!confirm(`Excluir plano "${p.nome_plano}" de ${p.cliente_nome}?`))return;
+      const r=await Api.del(`/planos/${p.id}`);
+      if(r?.success){Toast.show('Plano excluído');draw()}else Toast.show(r?.error||'Erro','error')
+    }));
+  }
+  tr.appendChild(actTd);tb.appendChild(tr);
 });
 t.appendChild(tb);tw.appendChild(t);
 tw.appendChild(buildPagination(data.pagination,p2=>{f.page=p2;draw()}));

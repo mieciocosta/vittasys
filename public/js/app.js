@@ -36,14 +36,6 @@
     try{
       const content=await(map[AppState.modulo]||renderDashboard)();
       main.appendChild(content);
-
-      // ═══ AUTO-OPEN MOVIMENTACAO DETAIL if routed via /movimentacoes/:id ═══
-      if(AppState.movDetalheId&&AppState.modulo==='historico'){
-        setTimeout(()=>{
-          if(typeof modalDetalheMovimentacao==='function')modalDetalheMovimentacao(AppState.movDetalheId);
-          AppState.movDetalheId=null;
-        },400);
-      }
     }catch(e){
       console.error(e);
       main.appendChild(h('div',{className:'empty-state'},`Erro: ${e.message}`));

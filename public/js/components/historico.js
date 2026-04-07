@@ -191,4 +191,13 @@ function modalDetalheMovimentacao(id){showModal('Detalhe da Movimentação',asyn
   body.appendChild(grid);
 },'580px')}
 
-await draw();return wrap;}
+await draw();
+
+// ═══ AUTO-OPEN DETAIL if navigated via verMovimentacao ═══
+if(AppState.movDetalheId){
+  const detId=AppState.movDetalheId;
+  AppState.movDetalheId=null;
+  setTimeout(()=>modalDetalheMovimentacao(detId),200);
+}
+
+return wrap;}
