@@ -1,5 +1,5 @@
 const{Router}=require('express');const r=Router();const prisma=require('../config/database');
-const PERMS={master:['dashboard','retirada','estoque','historico','planos','clientes','financeiro','metas','alertas'],ativos:['dashboard','retirada','estoque','historico','planos','clientes','alertas'],espontaneos:['dashboard','retirada','estoque','historico','clientes','alertas'],operador:['dashboard','retirada','estoque','historico','clientes','alertas']};
+const PERMS={master:['dashboard','retirada','estoque','historico','planos','clientes','financeiro','metas','alertas','aprovacoes'],ativos:['dashboard','retirada','estoque','historico','planos','clientes','alertas'],espontaneos:['dashboard','retirada','estoque','historico','clientes','alertas'],operador:['dashboard','retirada','estoque','historico','clientes','alertas']};
 
 r.post('/login',async(req,res,next)=>{try{
   const{usuario_id,pin}=req.body;

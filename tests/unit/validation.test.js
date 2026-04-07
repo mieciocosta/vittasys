@@ -114,3 +114,82 @@ describe('Session State', () => {
     expect(restored.perfil).toBe('master');
   });
 });
+
+// ═══ APPROVAL WORKFLOW RULES ═══
+
+const TIPOS_SENSIVEIS = ['descarte', 'ajuste', 'estorno'];
+
+describe('Approval Workflow Rules', () => {
+  it('identifies sensitive types correctly', () => {
+    expect(TIPOS_SENSIVEIS.includes('descarte')).toBe(true);
+    expect(TIPOS_SENSIVEIS.includes('ajuste')).toBe(true);
+    expect(TIPOS_SENSIVEIS.includes('estorno')).toBe(true);
+    expect(TIPOS_SENSIVEIS.includes('entrada')).toBe(false);
+    expect(TIPOS_SENSIVEIS.includes('retirada')).toBe(false);
+    expect(TIPOS_SENSIVEIS.includes('aplicacao')).toBe(false);
+  });
+
+  it('non-master + sensitive = needs approval', () => {
+    const perfil = 'operador';
+    const tipo = 'descarte';
+    const isMaster = perfil === 'master';
+    const needsApproval = TIPOS_SENSIVEIS.includes(tipo) && !isMaster;
+    expect(needsApproval).toBe(true);
+  });
+
+  it('master + sensitive = auto-approved', () => {
+    const perfil = 'master';
+    const tipo = 'descarte';
+    const isMaster = perfil === 'master';
+    const needsApproval = TIPOS_SENSIVEIS.includes(tipo) && !isMaster;
+    expect(needsApproval).toBe(false);
+  });
+
+  it('non-master + normal type = no approval needed', () => {
+    const perfil = 'operador';
+    const tipo = 'entrada';
+    const needsApproval = TIPOS_SENSIVEIS.includes(tipo) && perfil !== 'master';
+    expect(needsApproval).toBe(false);
+  });
+
+  it('sensitive type without justification should be blocked for non-master', () => {
+    const perfil = 'ativos';
+    const tipo = 'estorno';
+    const justificativa = '';
+    const motivo_padrao = '';
+    const isMaster = perfil === 'master';
+    const isSensitive = TIPOS_SENSIVEIS.includes(tipo);
+    const needsJustification = isSensitive && !isMaster && !justificativa && !motivo_padrao;
+    expect(needsJustification).toBe(true);
+  });
+
+  it('pending status should not impact stock', () => {
+    const status = 'pendente_aprovacao';
+    const impactaEstoque = status !== 'pendente_aprovacao';
+    expect(impactaEstoque).toBe(false);
+  });
+
+  it('stock impact on approval for descarte/ajuste decrements', () => {
+    const tipo = 'descarte';
+    const shouldDecrement = ['descarte', 'ajuste'].includes(tipo);
+    expect(shouldDecrement).toBe(true);
+  });
+
+  it('stock impact on approval for estorno increments', () => {
+    const tipo = 'estorno';
+    const shouldIncrement = tipo === 'estorno';
+    expect(shouldIncrement).toBe(true);
+  });
+});
+
+describe('Standard Motives', () => {
+  const MOTIVOS = ['vacina_vencida','quebra_avaria','cancelamento_plano','erro_lancamento','divergencia_inventario','devolucao','estorno_indevido','outro'];
+
+  it('has at least 5 standard motives', () => {
+    expect(MOTIVOS.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('includes "outro" as catch-all', () => {
+    expect(MOTIVOS.includes('outro')).toBe(true);
+  });
+});

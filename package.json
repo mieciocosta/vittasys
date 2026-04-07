@@ -24,7 +24,8 @@
     "test:watch": "vitest watch",
     "test:setup": "dotenv -e .env.test -- npx prisma db push --force-reset && dotenv -e .env.test -- node prisma/seed.js",
     "predeploy": "npm run test:ci",
-    "deploy": "npm run predeploy && npm run db:push && npm run db:seed:prod && npm start"
+    "deploy": "npm run predeploy && npm run db:push && npm run db:seed:prod && npm start",
+    "test:report": "npx vitest run tests/unit --reporter=verbose --reporter=html --outputFile=public/qa-report/index.html"
   },
   "engines": {
     "node": ">=18.0.0"

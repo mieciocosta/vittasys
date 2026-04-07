@@ -1,6 +1,6 @@
 async function renderHistorico(){
   const perfilFilter=AppState.filtroClientePerfil();
-  let f={page:1,limit:50,search:'',tipo:'',tipo_cliente:perfilFilter,sort:'id',order:'DESC'};
+  let f={page:1,limit:50,search:'',tipo:'',tipo_cliente:perfilFilter,status:'',sort:'id',order:'DESC'};
   const wrap=h('div',{className:'fade-in'});
 
 async function draw(){wrap.innerHTML='';
@@ -13,6 +13,7 @@ wrap.appendChild(hdr);
 const fb=h('div',{className:'filters-bar'});
 fb.appendChild(buildSearchBox('Buscar por nome, vacina, lote, código...',v=>{f.search=v;f.page=1;draw()},f.search));
 fb.appendChild(buildSelect([['','Tipo'],['retirada','Retirada'],['aplicacao','Aplicação'],['entrada','Entrada'],['descarte','Descarte'],['ajuste','Ajuste'],['estorno','Estorno']],f.tipo,v=>{f.tipo=v;f.page=1;draw()}));
+fb.appendChild(buildSelect([['','Status'],['concluido','Concluído'],['pendente_aprovacao','⏳ Pendente'],['reprovado','✗ Reprovado'],['cancelado','Cancelado']],f.status,v=>{f.status=v;f.page=1;draw()}));
 if(!perfilFilter){fb.appendChild(buildSelect([['','Cliente'],['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],f.tipo_cliente,v=>{f.tipo_cliente=v;f.page=1;draw()}))}
 wrap.appendChild(fb);
 
@@ -26,7 +27,8 @@ else data.data.forEach(m=>{
   const[tl,tc]=tm[m.tipo]||[m.tipo,'badge-gray'];
   const tr=h('tr',{className:'clickable',onClick:()=>modalDetalheMovimentacao(m.id)});
   if(m.tipo_cliente==='ativo')tr.style.borderLeft='3px solid var(--primary)';
-  tr.innerHTML=`<td class="mono text-muted text-sm">#${m.id}</td><td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span></td><td class="fw-600">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td class="mono text-sm">${esc((m.codigo_barras||'').slice(-10))}</td><td>${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td>${m.plano_progresso?`<div class="fw-600" style="color:var(--primary)">${m.plano_progresso.pct}%</div><div class="text-sm text-muted">${m.plano_progresso.aplicadas} de ${m.plano_progresso.total}</div>`:`<span class="badge ${m.status==='concluido'?'badge-green':'badge-orange'}">${m.status}</span>`}</td>`;
+  const statusBadge=m.status==='pendente_aprovacao'?'<span class="badge badge-orange" style="font-size:10px">⏳ Pendente</span>':m.status==='reprovado'?'<span class="badge badge-red" style="font-size:10px">✗ Reprovado</span>':m.status==='cancelado'?'<span class="badge badge-gray">Cancelado</span>':m.plano_progresso?`<div class="fw-600" style="color:var(--primary)">${m.plano_progresso.pct}%</div><div class="text-sm text-muted">${m.plano_progresso.aplicadas} de ${m.plano_progresso.total}</div>`:`<span class="badge ${m.status==='concluido'?'badge-green':'badge-orange'}">${m.status}</span>`;
+  tr.innerHTML=`<td class="mono text-muted text-sm">#${m.id}</td><td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span></td><td class="fw-600">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td class="mono text-sm">${esc((m.codigo_barras||'').slice(-10))}</td><td>${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td>${statusBadge}</td>`;
   // Actions
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{e.stopPropagation();modalEditarMovimentacao(m)},{style:{marginRight:'4px'}}));
@@ -96,8 +98,32 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
   iObs.addEventListener('input',e=>{fd.observacoes=e.target.value});
   dObs.appendChild(iObs);gr.appendChild(dObs);
 
+  // Motivo padrão (for sensitive types)
+  const dMotivo=h('div',{id:'motivo-wrap',style:{display:'none'}});
+  dMotivo.appendChild(h('label',{className:'label',style:{color:'var(--red)'}},'Motivo * (obrigatório para descarte/ajuste/estorno)'));
+  dMotivo.appendChild(buildSelect([['','— Selecione o motivo —'],['vacina_vencida','Vacina vencida'],['quebra_avaria','Quebra / Avaria'],['cancelamento_plano','Cancelamento de plano'],['erro_lancamento','Erro de lançamento'],['divergencia_inventario','Divergência de inventário'],['devolucao','Devolução'],['estorno_indevido','Estorno por lançamento indevido'],['outro','Outro']],'',v=>{fd.motivo_padrao=v}));
+  gr.appendChild(dMotivo);
+
+  // Justificativa
+  const dJust=h('div',{id:'just-wrap',style:{display:'none'}});
+  dJust.appendChild(h('label',{className:'label'},'Justificativa'));
+  const iJust=h('textarea',{className:'input',placeholder:'Descreva o motivo...',rows:'2',style:'resize:vertical'});
+  iJust.addEventListener('input',e=>{fd.justificativa=e.target.value});
+  dJust.appendChild(iJust);gr.appendChild(dJust);
+
+  // Show/hide justification fields based on type
+  function checkSensitive(){
+    const s=['descarte','ajuste','estorno'].includes(fd.tipo);
+    dMotivo.style.display=s?'':'none';dJust.style.display=s?'':'none';
+  }
+  // Override tipo select to trigger check
+  const tipoSel=dTipo.querySelector('select');
+  if(tipoSel)tipoSel.addEventListener('change',()=>{fd.tipo=tipoSel.value;checkSensitive()});
+
   body.appendChild(gr);
-  body.appendChild(h('div',{style:{marginTop:'12px',padding:'10px',background:'var(--primary-bg)',borderRadius:'8px',fontSize:'12px',color:'var(--primary-dark)'}},'ℹ️ Tipo e Vacina são obrigatórios. Para retirada/aplicação, cliente e local são obrigatórios.'));
+  const isMaster=AppState.isMaster();
+  const infoText=isMaster?'ℹ️ Master: movimentações sensíveis serão aprovadas automaticamente':'⚠️ Descarte, ajuste e estorno requerem aprovação do master';
+  body.appendChild(h('div',{style:{marginTop:'12px',padding:'10px',background:isMaster?'var(--primary-bg)':'#fffbeb',borderRadius:'8px',fontSize:'12px',color:isMaster?'var(--primary-dark)':'#d97706'}},infoText));
   body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'Registrar Movimentação',async()=>{
     if(!fd.tipo)return Toast.show('Selecione o tipo de movimentação','error');
     if(!fd.nome_vacina&&!fd.vacina_id)return Toast.show('Selecione a vacina','error');
@@ -188,6 +214,20 @@ function modalDetalheMovimentacao(id){showModal('Detalhe da Movimentação',asyn
   grid.appendChild(field('Observações',m.observacoes,true));
 
   if(m.plano){grid.appendChild(field('Plano Vacinal',`${m.plano.nome} — ${m.plano.doses_aplicadas}/${m.plano.doses_vacina} doses`,true))}
+
+  // Approval audit trail
+  if(m.requer_aprovacao||m.justificativa||m.motivo_padrao||m.aprovador_nome){
+    grid.appendChild(h('div',{style:'grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:8px'}));
+    grid.appendChild(h('div',{style:'grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-4)'},'AUDITORIA DE APROVAÇÃO'));
+    if(m.motivo_padrao)grid.appendChild(field('Motivo Padrão',m.motivo_padrao.replace(/_/g,' ')));
+    if(m.justificativa)grid.appendChild(field('Justificativa',m.justificativa,true));
+    if(m.aprovador_nome)grid.appendChild(field('Aprovador/Decisor',`${m.aprovador_nome} (${m.aprovador_cargo||''})`));
+    if(m.aprovado_em)grid.appendChild(field('Data da Decisão',fmtDataHora(m.aprovado_em)));
+    if(m.motivo_reprovacao)grid.appendChild(field('Motivo Reprovação',m.motivo_reprovacao,true));
+    grid.appendChild(field('Impactou Estoque',m.impacta_estoque?'✅ Sim':'❌ Não'));
+    if(m.estoque_aplicado_em)grid.appendChild(field('Estoque Aplicado Em',fmtDataHora(m.estoque_aplicado_em)));
+  }
+
   body.appendChild(grid);
 },'580px')}
 

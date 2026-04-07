@@ -11,6 +11,7 @@ const allItems=[
   {key:'clientes',icon:I.users,label:'Clientes'},
   {key:'financeiro',icon:I.dollar,label:'Financeiro'},
   {key:'metas',icon:I.target,label:'Metas'},
+  {key:'aprovacoes',icon:I.check,label:'Aprovações',dot:true},
   {sep:'Sistema'},
   {key:'alertas',icon:I.alert,label:'Alertas',count:alertCount||0},
 ];

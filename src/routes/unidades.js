@@ -99,7 +99,11 @@ r.get('/movimentacao/:id',async(req,res,next)=>{try{
     const pc=await prisma.planoContratado.findFirst({where:{clienteId:m.clienteId,statusContrato:'ativo',doses:{some:{vacinaId:m.vacinaId}}},select:{id:true,nomePlano:true,doses:{where:{vacinaId:m.vacinaId},select:{doseNumero:true,status:true}}}});
     if(pc)planoInfo={id:pc.id,nome:pc.nomePlano,doses_vacina:pc.doses.length,doses_aplicadas:pc.doses.filter(d=>d.status==='aplicada').length};
   }
-  res.json({...m,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,codigo_barras:m.codigoBarras||m.unidade?.codigoBarras,local_aplicacao:m.localAplicacao,tipo_cliente:m.tipoCliente,tipo_atendimento:m.tipoAtendimento,operador_nome:operador?.nome,operador_cargo:operador?.cargo,aplicador_nome:aplicador?.nome,aplicador_cargo:aplicador?.cargo,cliente_nome:m.cliente?.nome,cliente_codigo:m.cliente?.codigoCliente,vacina_codigo:m.vacina?.codigo,lote_fabricante:m.lote?.fabricante,plano:planoInfo});
+  // Get approver name
+  let aprovadorInfo=null;
+  if(m.aprovadoPor){const apr=await prisma.usuario.findUnique({where:{id:m.aprovadoPor},select:{nome:true,cargo:true}});if(apr)aprovadorInfo=apr}
+  res.json({...m,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,codigo_barras:m.codigoBarras||m.unidade?.codigoBarras,local_aplicacao:m.localAplicacao,tipo_cliente:m.tipoCliente,tipo_atendimento:m.tipoAtendimento,operador_nome:operador?.nome,operador_cargo:operador?.cargo,aplicador_nome:aplicador?.nome,aplicador_cargo:aplicador?.cargo,cliente_nome:m.cliente?.nome,cliente_codigo:m.cliente?.codigoCliente,vacina_codigo:m.vacina?.codigo,lote_fabricante:m.lote?.fabricante,plano:planoInfo,
+    requer_aprovacao:m.requerAprovacao,justificativa:m.justificativa,motivo_padrao:m.motivoPadrao,aprovado_em:m.aprovadoEm,motivo_reprovacao:m.motivoReprovacao,aprovador_nome:aprovadorInfo?.nome,aprovador_cargo:aprovadorInfo?.cargo,impacta_estoque:m.impactaEstoque,estoque_aplicado_em:m.estoqueAplicadoEm});
 }catch(e){next(e)}});
 
 module.exports=r;

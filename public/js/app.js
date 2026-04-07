@@ -30,6 +30,7 @@
       dashboard:renderDashboard,retirada:renderRetirada,estoque:renderEstoque,
       historico:renderHistorico,planos:renderPlanos,clientes:renderClientes,
       financeiro:renderFinanceiro,metas:renderMetas,alertas:renderAlertas,
+      aprovacoes:renderAprovacoes,
       'cliente-detalhe':renderClienteDetalhe,'plano-detalhe':renderPlanoDetalhe
     };
 

@@ -35,6 +35,10 @@ const Api={
   movimentacoes(p){return this.get('/movimentacoes',p)},
   criarMovimentacao(b){return this.post('/movimentacoes',b)},
   movimentacaoDetalhe(id){return this.get(`/unidades/movimentacao/${id}`)},
+  movimentacoesPendentes(){return this.get('/movimentacoes/pendentes')},
+  movimentacoesMotivos(){return this.get('/movimentacoes/motivos')},
+  aprovarMovimentacao(id,b){return this.post(`/movimentacoes/${id}/aprovar`,b)},
+  reprovarMovimentacao(id,b){return this.post(`/movimentacoes/${id}/reprovar`,b)},
 
   planosTemplates(){return this.get('/planos/templates')},
   planos(p){return this.get('/planos',p)},

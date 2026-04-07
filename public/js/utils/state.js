@@ -3,6 +3,7 @@ const ROUTE_MAP={
   '/painel':'dashboard','/retirada':'retirada','/estoque':'estoque',
   '/movimentacoes':'historico','/planos':'planos','/clientes':'clientes',
   '/financeiro':'financeiro','/metas':'metas','/alertas':'alertas',
+  '/aprovacoes':'aprovacoes',
 };
 const ROUTE_REVERSE={};Object.entries(ROUTE_MAP).forEach(([k,v])=>ROUTE_REVERSE[v]=k);
 

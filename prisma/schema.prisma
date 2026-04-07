@@ -208,7 +208,7 @@ model Pagamento {
 
 model Movimentacao {
   id                  Int      @id @default(autoincrement())
-  tipo                String
+  tipo                String   // entrada, retirada, aplicacao, descarte, ajuste, estorno
   unidadeId           Int?     @map("unidade_id")
   loteId              Int?     @map("lote_id")
   vacinaId            Int?     @map("vacina_id")
@@ -222,15 +222,27 @@ model Movimentacao {
   codigoBarras        String?  @map("codigo_barras")
   numeroLote          String?  @map("numero_lote")
   nomeVacina          String?  @map("nome_vacina")
-  status              String   @default("concluido")
+  status              String   @default("concluido") // concluido, pendente_aprovacao, aprovado, reprovado, cancelado
   observacoes         String?
   dataHora            DateTime @default(now()) @map("data_hora")
+  // ═══ APPROVAL FIELDS ═══
+  requerAprovacao     Boolean  @default(false) @map("requer_aprovacao")
+  justificativa       String?
+  motivoPadrao        String?  @map("motivo_padrao")
+  aprovadoPor         Int?     @map("aprovado_por")
+  aprovadoEm          DateTime? @map("aprovado_em")
+  motivoReprovacao    String?  @map("motivo_reprovacao")
+  impactaEstoque      Boolean  @default(true) @map("impacta_estoque")
+  estoqueAplicadoEm   DateTime? @map("estoque_aplicado_em")
+  atualizadoEm        DateTime @default(now()) @updatedAt @map("atualizado_em")
+  // Relations
   unidade             Unidade? @relation(fields: [unidadeId], references: [id])
   lote                Lote?    @relation(fields: [loteId], references: [id])
   vacina              Vacina?  @relation(fields: [vacinaId], references: [id])
   cliente             Cliente? @relation(fields: [clienteId], references: [id])
   @@index([dataHora])
   @@index([clienteId])
+  @@index([status])
   @@map("movimentacoes")
 }
 
