@@ -12,7 +12,15 @@
     "db:reset": "npx prisma db push --force-reset && node prisma/seed.js",
     "setup": "npm install && npx prisma generate && npx prisma db push && node prisma/seed.js",
     "postinstall": "npx prisma generate",
-    "build": "npx prisma generate"
+    "build": "npx prisma generate",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "npx playwright test",
+    "test:smoke": "vitest run tests/integration/smoke.test.js",
+    "test:regression": "vitest run && npx playwright test --grep @regression",
+    "test:watch": "vitest watch",
+    "test:setup": "dotenv -e .env.test -- npx prisma db push --force-reset && dotenv -e .env.test -- node prisma/seed.js"
   },
   "engines": { "node": ">=18.0.0" },
   "dependencies": {
@@ -25,5 +33,11 @@
     "multer": "^1.4.5-lts.1",
     "xml2js": "^0.6.2"
   },
-  "devDependencies": { "prisma": "^6.2.0" }
+  "devDependencies": {
+    "prisma": "^6.2.0",
+    "vitest": "^3.0.0",
+    "supertest": "^7.0.0",
+    "@playwright/test": "^1.50.0",
+    "dotenv-cli": "^8.0.0"
+  }
 }
