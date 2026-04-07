@@ -1,4 +1,4 @@
-const { describe, it, expect } = require('vitest');
+// Vitest globals (describe, it, expect) injected by vitest.config.js
 
 // ═══════════════════════════════════════════
 // UNIT TESTS — Validation & Business Rules
