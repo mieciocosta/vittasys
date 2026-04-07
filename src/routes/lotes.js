@@ -19,7 +19,7 @@ r.get('/',async(req,res,next)=>{try{
   let orderBy;
   if(sort==='vacina_nome')orderBy={vacina:{nome:order==='DESC'?'desc':'asc'}};
   else if(sort&&sm[sort])orderBy={[sm[sort]]:order==='DESC'?'desc':'asc'};
-  else orderBy={validade:'asc'};
+  else orderBy={id:'desc'};
 
   const[data,total]=await Promise.all([
     prisma.lote.findMany({where,orderBy,skip:(+page-1)*+limit,take:+limit,

@@ -1,5 +1,5 @@
 async function renderEstoque(){
-  let f={page:1,limit:50,search:'',status:'',vencimento:'',sort:'validade',order:'ASC'};
+  let f={page:1,limit:50,search:'',status:'',vencimento:'',sort:'id',order:'DESC'};
   const wrap=h('div',{className:'fade-in'});
 
 async function draw(){wrap.innerHTML='';

@@ -5,11 +5,24 @@ r.get('/',async(req,res,next)=>{try{
   const where={};if(tipo)where.tipo=tipo;if(tipo_cliente)where.tipoCliente=tipo_cliente;
   if(search)where.OR=[{nomeVacina:{contains:search,mode:'insensitive'}},{numeroLote:{contains:search,mode:'insensitive'}},{cliente:{nome:{contains:search,mode:'insensitive'}}}];
   const sm={id:'id',data_hora:'dataHora',tipo:'tipo',nome_vacina:'nomeVacina',cliente_nome:{cliente:{nome:order==='ASC'?'asc':'desc'}},numero_lote:'numeroLote',status:'status'};
-  const ob=sort&&sm[sort]?typeof sm[sort]==='string'?{[sm[sort]]:order==='ASC'?'asc':'desc'}:sm[sort]:{dataHora:'desc'};
+  const ob=sort&&sm[sort]?typeof sm[sort]==='string'?{[sm[sort]]:order==='ASC'?'asc':'desc'}:sm[sort]:{id:'desc'};
   const[data,total]=await Promise.all([
-    prisma.movimentacao.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{cliente:{select:{nome:true,tipoPaciente:true,codigoCliente:true,tipoCliente:true}}}}),
+    prisma.movimentacao.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{
+      cliente:{select:{id:true,nome:true,tipoPaciente:true,codigoCliente:true,tipoCliente:true,
+        planosContratados:{where:{statusContrato:'ativo'},select:{id:true,nomePlano:true,doses:{select:{status:true}}}}}},
+    }}),
     prisma.movimentacao.count({where})]);
-  res.json({data:data.map(m=>({id:m.id,tipo:m.tipo,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,codigo_barras:m.codigoBarras,quantidade:m.quantidade,local_aplicacao:m.localAplicacao,tipo_cliente:m.tipoCliente||m.cliente?.tipoCliente,tipo_atendimento:m.tipoAtendimento,status:m.status,observacoes:m.observacoes,cliente_id:m.clienteId,cliente_nome:m.cliente?.nome,codigo_cliente:m.cliente?.codigoCliente,usuario_id:m.usuarioId,usuario_nome:'',aplicador_nome:'',unidade_id:m.unidadeId})),pagination:{page:+page,limit:+limit,total,pages:Math.ceil(total/+limit)}});
+  res.json({data:data.map(m=>{
+    // Plan progress for active clients
+    let plano_progresso=null;
+    if(m.cliente?.tipoCliente==='ativo'&&m.cliente?.planosContratados?.length>0){
+      const pc=m.cliente.planosContratados[0];
+      const total_doses=pc.doses.length;
+      const aplicadas=pc.doses.filter(d=>d.status==='aplicada').length;
+      plano_progresso={nome:pc.nomePlano,aplicadas,total:total_doses,pct:total_doses>0?Math.round(aplicadas/total_doses*100):0};
+    }
+    return{id:m.id,tipo:m.tipo,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,codigo_barras:m.codigoBarras,quantidade:m.quantidade,local_aplicacao:m.localAplicacao,tipo_cliente:m.tipoCliente||m.cliente?.tipoCliente,tipo_atendimento:m.tipoAtendimento,status:m.status,observacoes:m.observacoes,cliente_id:m.clienteId,cliente_nome:m.cliente?.nome,codigo_cliente:m.cliente?.codigoCliente,usuario_id:m.usuarioId,usuario_nome:'',aplicador_nome:'',unidade_id:m.unidadeId,plano_progresso};
+  }),pagination:{page:+page,limit:+limit,total,pages:Math.ceil(total/+limit)}});
 }catch(e){next(e)}});
 
 r.post('/',async(req,res,next)=>{try{const b=req.body;

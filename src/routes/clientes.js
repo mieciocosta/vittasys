@@ -22,7 +22,7 @@ r.get('/',async(req,res,next)=>{try{
   if(status)where.status=status;
   if(search){const s=search.replace(/[\.\-]/g,'');where.OR=[{nome:{contains:search,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:search,mode:'insensitive'}},{responsavelNome:{contains:search,mode:'insensitive'}},{telefone:{contains:search,mode:'insensitive'}}]}
   const sm={id:'id',nome:'nome',codigo:'codigoCliente',tipo:'tipoCliente',nascimento:'dataNascimento',status:'status'};
-  const ob=sort&&sm[sort]?{[sm[sort]]:order==='DESC'?'desc':'asc'}:[{tipoCliente:'desc'},{nome:'asc'}];
+  const ob=sort&&sm[sort]?{[sm[sort]]:order==='DESC'?'desc':'asc'}:{id:'desc'};
   const[data,total]=await Promise.all([prisma.cliente.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{_count:{select:{planosContratados:true,movimentacoes:true}}}}),prisma.cliente.count({where})]);
   const mapped=data.map(c=>{const o=mapOut(c);o.planos_ativos=c._count.planosContratados;o.total_movimentacoes=c._count.movimentacoes;o.vendedor_nome='';o.pacientes=[];return o});
   res.json({data:mapped,pagination:{page:+page,limit:+limit,total,pages:Math.ceil(total/+limit)}});
@@ -31,7 +31,7 @@ r.get('/',async(req,res,next)=>{try{
 r.get('/busca',async(req,res,next)=>{try{
   const{q}=req.query;if(!q||q.length<2)return res.json([]);
   const s=q.replace(/[\.\-]/g,'');
-  const data=await prisma.cliente.findMany({where:{OR:[{nome:{contains:q,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:q,mode:'insensitive'}},{responsavelNome:{contains:q,mode:'insensitive'}},{telefone:{contains:q,mode:'insensitive'}}]},orderBy:[{tipoCliente:'desc'},{nome:'asc'}],take:15});
+  const data=await prisma.cliente.findMany({where:{OR:[{nome:{contains:q,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:q,mode:'insensitive'}},{responsavelNome:{contains:q,mode:'insensitive'}},{telefone:{contains:q,mode:'insensitive'}}]},orderBy:{id:'desc'},take:15});
   res.json(data.map(mapOut));
 }catch(e){next(e)}});
 

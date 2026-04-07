@@ -31,7 +31,10 @@ r.post('/retirada',async(req,res,next)=>{try{
     const l=un.lote;const v=l.vacina;
 
     // ═══ VALIDAÇÃO DE LIMITE DE DOSES DO PLANO ═══
-    if(tipo_cliente==='ativo'){
+    // Check plans using CLIENT'S ACTUAL TYPE from DB (not frontend param)
+    const clienteDB=await tx.cliente.findUnique({where:{id:+cliente_id},select:{tipoCliente:true}});
+    const isAtivo=clienteDB?.tipoCliente==='ativo'||tipo_cliente==='ativo';
+    if(isAtivo){
       // Find active plans for this client
       const planosAtivos=await tx.planoContratado.findMany({
         where:{clienteId:+cliente_id,statusContrato:'ativo'},

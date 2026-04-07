@@ -1,6 +1,6 @@
 async function renderHistorico(){
   const perfilFilter=AppState.filtroClientePerfil();
-  let f={page:1,limit:50,search:'',tipo:'',tipo_cliente:perfilFilter,sort:'data_hora',order:'DESC'};
+  let f={page:1,limit:50,search:'',tipo:'',tipo_cliente:perfilFilter,sort:'id',order:'DESC'};
   const wrap=h('div',{className:'fade-in'});
 
 async function draw(){wrap.innerHTML='';
@@ -26,7 +26,7 @@ else data.data.forEach(m=>{
   const[tl,tc]=tm[m.tipo]||[m.tipo,'badge-gray'];
   const tr=h('tr',{className:'clickable',onClick:()=>modalDetalheMovimentacao(m.id)});
   if(m.tipo_cliente==='ativo')tr.style.borderLeft='3px solid var(--primary)';
-  tr.innerHTML=`<td class="mono text-muted text-sm">#${m.id}</td><td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span></td><td class="fw-600">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td class="mono text-sm">${esc((m.codigo_barras||'').slice(-10))}</td><td>${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td><span class="badge ${m.status==='concluido'?'badge-green':'badge-orange'}">${m.status}</span></td>`;
+  tr.innerHTML=`<td class="mono text-muted text-sm">#${m.id}</td><td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span></td><td class="fw-600">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td class="mono text-sm">${esc((m.codigo_barras||'').slice(-10))}</td><td>${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td>${m.plano_progresso?`<div class="fw-600" style="color:var(--primary)">${m.plano_progresso.pct}%</div><div class="text-sm text-muted">${m.plano_progresso.aplicadas} de ${m.plano_progresso.total}</div>`:`<span class="badge ${m.status==='concluido'?'badge-green':'badge-orange'}">${m.status}</span>`}</td>`;
   // Actions
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{e.stopPropagation();modalEditarMovimentacao(m)},{style:{marginRight:'4px'}}));

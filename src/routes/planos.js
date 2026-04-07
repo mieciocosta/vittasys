@@ -19,7 +19,7 @@ r.get('/',async(req,res,next)=>{try{
   const where={};if(status_contrato)where.statusContrato=status_contrato;
   if(search)where.OR=[{nomePlano:{contains:search,mode:'insensitive'}},{cliente:{nome:{contains:search,mode:'insensitive'}}}];
   const sm={id:'id',cliente_nome:{cliente:{nome:order==='ASC'?'asc':'desc'}},nome_plano:'nomePlano',valor_final:'valorFinal',status_contrato:'statusContrato',codigo_cliente:{cliente:{codigoCliente:order==='ASC'?'asc':'desc'}}};
-  const ob=sort&&sm[sort]?typeof sm[sort]==='string'?{[sm[sort]]:order==='ASC'?'asc':'desc'}:sm[sort]:{criadoEm:'desc'};
+  const ob=sort&&sm[sort]?typeof sm[sort]==='string'?{[sm[sort]]:order==='ASC'?'asc':'desc'}:sm[sort]:{id:'desc'};
   const[data,total]=await Promise.all([
     prisma.planoContratado.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{cliente:{select:{nome:true,codigoCliente:true,tipoPaciente:true,dataNascimento:true,responsavelNome:true}},doses:true,pagamentos:true}}),
     prisma.planoContratado.count({where})]);
@@ -46,6 +46,20 @@ r.get('/:id',async(req,res,next)=>{try{
 r.post('/',async(req,res,next)=>{try{const b=req.body;
   const vd=(b.valor_bruto||0)*(b.percentual_desconto||0)/100;const vf=(b.valor_bruto||0)-vd;
   const p=await prisma.planoContratado.create({data:{clienteId:+b.cliente_id,planoId:b.plano_id?+b.plano_id:null,nomePlano:b.nome_plano,idadeInicio:+(b.idade_inicio||0),idadeFim:+(b.idade_fim||18),valorCusto:+(b.valor_custo||0),valorBruto:+(b.valor_bruto||0),valorDesconto:vd,percentualDesconto:+(b.percentual_desconto||0),valorFinal:vf,lucroPrevisto:vf-(+(b.valor_custo||0)),margemLucro:vf>0?((vf-(+(b.valor_custo||0)))/vf*100):0,statusContrato:b.status_contrato||'ativo',vendedorId:b.vendedor_id?+b.vendedor_id:null,vacinadorId:b.vacinador_id?+b.vacinador_id:null,dataVenda:b.data_venda?new Date(b.data_venda):new Date(),dataInicioPlano:b.data_inicio_plano?new Date(b.data_inicio_plano):null,dataFimPlano:b.data_fim_plano?new Date(b.data_fim_plano):null}});
+
+  // ═══ REGRA: Espontâneo + Plano = Ativo ═══
+  const cliente=await prisma.cliente.findUnique({where:{id:+b.cliente_id},select:{id:true,tipoCliente:true,codigoCliente:true}});
+  if(cliente&&cliente.tipoCliente==='espontaneo'){
+    const updateData={tipoCliente:'ativo'};
+    // Generate VIT-XXX code if doesn't have one
+    if(!cliente.codigoCliente||cliente.codigoCliente.startsWith('ESP-')){
+      const last=await prisma.cliente.findFirst({where:{codigoCliente:{startsWith:'VIT-'}},orderBy:{id:'desc'}});
+      const n=last?parseInt(last.codigoCliente.replace('VIT-',''))+1:1;
+      updateData.codigoCliente=`VIT-${String(n).padStart(3,'0')}`;
+    }
+    await prisma.cliente.update({where:{id:+b.cliente_id},data:updateData});
+  }
+
   // Auto-create doses from template
   if(b.plano_id){const pvs=await prisma.planoVacina.findMany({where:{planoId:+b.plano_id}});const dtI=new Date(b.data_inicio_plano||new Date());
     for(const pv of pvs){for(let dn=1;dn<=pv.doses;dn++){const mp=pv.mesPrevInicio+(pv.mesPrevFim-pv.mesPrevInicio)*((dn-1)/Math.max(1,pv.doses-1))|0;const dc=new Date(dtI);dc.setMonth(dc.getMonth()+mp);
