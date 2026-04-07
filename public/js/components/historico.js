@@ -53,11 +53,11 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
   let acResults=[];
 
   // ═══ AUTOCOMPLETE INTELIGENTE ═══
-  const scanWrap=h('div',{style:{marginBottom:'16px',padding:'16px',background:'var(--primary-bg)',borderRadius:'12px',border:'2px dashed var(--primary)',position:'relative'}});
-  scanWrap.appendChild(h('div',{className:'label',style:{color:'var(--primary)',marginBottom:'8px'}},'🔍 BUSCA INTELIGENTE — Bipe, nome, lote ou código'));
-  const scanInput=h('input',{className:'scanner-input',placeholder:'Ex: "Meningo", "7896015", "NF84765"...',style:'font-size:15px;padding:12px',id:'mov-barcode-input',autocomplete:'off'});
-  const scanStatus=h('div',{style:{marginTop:'8px'}});
-  const acList=h('div',{className:'autocomplete-list',style:{display:'none',position:'absolute',left:'16px',right:'16px',zIndex:'100',maxHeight:'220px',overflow:'auto',background:'var(--card-bg)',border:'1px solid var(--border)',borderRadius:'10px',boxShadow:'0 8px 24px #0002'}});
+  const scanWrap=h('div',{style:{marginBottom:'16px',padding:'14px',background:'var(--primary-bg)',borderRadius:'12px',border:'2px dashed var(--primary)',position:'relative',overflow:'visible'}});
+  scanWrap.appendChild(h('div',{className:'label',style:{color:'var(--primary)',marginBottom:'6px',fontSize:'11px'}},'🔍 BUSCA INTELIGENTE — Bipe, nome, lote ou código'));
+  const scanInput=h('input',{className:'scanner-input',placeholder:'Ex: "Meningo", "7896015", "NF84765"...',style:'font-size:14px;padding:10px',id:'mov-barcode-input',autocomplete:'off'});
+  const scanStatus=h('div',{style:{marginTop:'6px',maxHeight:'48px',overflow:'hidden'}});
+  const acList=h('div',{style:{display:'none',position:'absolute',left:'0',right:'0',top:'100%',zIndex:'9999',maxHeight:'200px',overflow:'auto',background:'var(--card-bg)',border:'1px solid var(--border)',borderRadius:'0 0 10px 10px',boxShadow:'0 8px 24px #0003'}});
 
   let searchTimer=null;
   scanInput.addEventListener('input',e=>{
@@ -105,9 +105,7 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
     fd.lote_id=u.lote_id;fd.numero_lote=u.numero_lote;
     fd.codigo_barras=u.codigo_barras;fd.unidade_id=u.id;
     acList.style.display='none';scanInput.value='';
-    scanStatus.innerHTML=`<div style="padding:10px;background:#dcfce7;border-radius:8px;border:1px solid #86efac">
-      <div style="font-weight:700;color:#059669">✓ ${esc(u.vacina_nome)}</div>
-      <div style="font-size:12px;color:#059669;margin-top:2px">Lote: ${esc(u.numero_lote)} · CB: ${esc((u.codigo_barras||'').slice(-10))} · ${u.quantidade_disponivel} disp.</div></div>`;
+    scanStatus.innerHTML=`<div style="font-size:12px;color:#059669;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">✓ ${esc(u.vacina_nome)} — Lote: ${esc(u.numero_lote)} — ${u.quantidade_disponivel} disp.</div>`;
     scanInput.focus();
   }
 
