@@ -1,5 +1,19 @@
 const{Router}=require('express');const r=Router();const prisma=require('../config/database');
 
+// Parse validade: accepts "YYYY-MM-DD", "YYYY-MM", "MM/YYYY" → last day of month
+function parseValidade(v){
+  if(!v)return null;
+  const s=String(v).trim();
+  // MM/YYYY format
+  let m=s.match(/^(\d{1,2})\/(\d{4})$/);
+  if(m){const dt=new Date(+m[2],+m[1],0);return dt} // day 0 of next month = last day
+  // YYYY-MM format
+  m=s.match(/^(\d{4})-(\d{1,2})$/);
+  if(m){const dt=new Date(+m[1],+m[2],0);return dt}
+  // Full date
+  return new Date(s);
+}
+
 r.get('/',async(req,res,next)=>{try{
   const{page=1,limit=50,search,status,vencimento,sort='validade',order='ASC'}=req.query;
   const where={};const now=new Date();
@@ -76,7 +90,7 @@ r.post('/',async(req,res,next)=>{try{
     fabricante:b.fabricante||'',
     quantidadeTotal:qty,
     quantidadeDisponivel:qty,
-    validade:new Date(b.validade),
+    validade:parseValidade(b.validade),
     temperaturaArmazenamento:b.temperatura||'2-8°C',
     localArmazenamento:b.local||'Câmara Fria Principal',
     valorUnitarioCusto:+(b.valor_unitario||0),
@@ -134,7 +148,7 @@ r.post('/cadastro-barras',async(req,res,next)=>{try{
   // 2. Find or create lot
   let lote=await prisma.lote.findUnique({where:{numeroLote:b.numero_lote}});
   if(!lote){
-    lote=await prisma.lote.create({data:{vacinaId:vacina.id,numeroLote:b.numero_lote,fabricante:b.fabricante,quantidadeTotal:qty,quantidadeDisponivel:qty,validade:new Date(b.validade),localArmazenamento:b.local_armazenamento||'Câmara Fria Principal',valorUnitarioCusto:+(b.custo_unitario||0)}});
+    lote=await prisma.lote.create({data:{vacinaId:vacina.id,numeroLote:b.numero_lote,fabricante:b.fabricante,quantidadeTotal:qty,quantidadeDisponivel:qty,validade:parseValidade(b.validade),localArmazenamento:b.local_armazenamento||'Câmara Fria Principal',valorUnitarioCusto:+(b.custo_unitario||0)}});
   }else{
     await prisma.lote.update({where:{id:lote.id},data:{quantidadeTotal:{increment:qty},quantidadeDisponivel:{increment:qty}}});
   }

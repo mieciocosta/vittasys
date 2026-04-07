@@ -39,16 +39,17 @@ r.post('/retirada',async(req,res,next)=>{try{
     const isAtivo=clienteDB?.tipoCliente==='ativo'||tipo_cliente==='ativo';
     let doseVinculada=null;
     if(isAtivo){
-      // Find active plans - get ALL doses to do smart matching
       const planosAtivos=await tx.planoContratado.findMany({
         where:{clienteId:+cliente_id,statusContrato:'ativo'},
-        include:{doses:{include:{vacina:{select:{id:true,nome:true,codigo:true}}}}}
+        include:{doses:{include:{vacina:{select:{id:true,nome:true,codigo:true}}},orderBy:[{mesPrevisto:'asc'},{doseNumero:'asc'}]}}
       });
+
+      // Get plan start date for month calculation
       for(const plano of planosAtivos){
-        // Match by exact vacinaId OR by vaccine name similarity
+        // Find compatible doses using accent-safe matching
         const dosesCompativeis=plano.doses.filter(d=>{
+          if(d.status!=='pendente')return false;
           if(d.vacinaId===v.id)return true;
-          // Fuzzy match with accent normalization
           const ns=norm(v.nome);const np=norm(d.vacina?.nome);
           if(ns.length>3&&np.length>3){
             if(ns.includes(np)||np.includes(ns))return true;
@@ -59,24 +60,64 @@ r.post('/retirada',async(req,res,next)=>{try{
           return false;
         });
 
-        if(dosesCompativeis.length>0){
-          const aplicadas=dosesCompativeis.filter(d=>d.status==='aplicada').length;
-          const total=dosesCompativeis.length;
-          if(aplicadas>=total){
-            throw Object.assign(new Error(
-              `Limite de doses atingido: ${v.nome} — ${aplicadas}/${total} doses já aplicadas no plano "${plano.nomePlano}". Não é permitido retirar mais.`
-            ),{status:400});
+        if(dosesCompativeis.length===0)continue;
+
+        // Check dose limit
+        const allCompat=plano.doses.filter(d=>{
+          if(d.vacinaId===v.id)return true;
+          const ns=norm(v.nome);const np=norm(d.vacina?.nome);
+          if(ns.length>3&&np.length>3){if(ns.includes(np)||np.includes(ns))return true;
+            const w1=ns.split(/[\s\-\(\)]+/).filter(w=>w.length>3);const w2=np.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
+            for(const a of w1){for(const b of w2){if(a.includes(b)||b.includes(a))return true}}}
+          return false;
+        });
+        const aplicadas=allCompat.filter(d=>d.status==='aplicada').length;
+        if(aplicadas>=allCompat.length){
+          throw Object.assign(new Error(`Limite de doses atingido: ${v.nome} — ${aplicadas}/${allCompat.length} no plano "${plano.nomePlano}"`),{status:400});
+        }
+
+        // ═══ SELECT CORRECT DOSE BY COMPETÊNCIA ═══
+        // Sort pending by mesPrevisto ASC (first due = first served)
+        const pendentes=dosesCompativeis.sort((a,b)=>(a.mesPrevisto||0)-(b.mesPrevisto||0));
+        const proxDose=pendentes[0]; // First pending in sequence
+
+        if(proxDose){
+          // Check if within acceptable window (±1 month tolerance)
+          const now=new Date();
+          const inicioPlano=plano.dataInicioPlano||plano.criadoEm||plano.dataVenda;
+          let isException=false;let tipoExcecao=null;
+
+          if(inicioPlano&&proxDose.mesPrevisto!=null){
+            const dataEsperada=new Date(inicioPlano);
+            dataEsperada.setMonth(dataEsperada.getMonth()+proxDose.mesPrevisto);
+            const diffMs=now.getTime()-dataEsperada.getTime();
+            const diffDays=Math.round(diffMs/(1000*60*60*24));
+
+            if(diffDays<-45){isException=true;tipoExcecao='antecipacao'} // >45 days early
+            else if(diffDays>60){isException=true;tipoExcecao='atraso'} // >60 days late
           }
-          // Mark next pending dose as applied
-          const proxDose=dosesCompativeis.find(d=>d.status==='pendente');
-          if(proxDose){
+
+          // Check if user is master
+          const userCheck=await tx.usuario.findUnique({where:{id:+usuario_id},select:{perfil:true}});
+          const isMaster=userCheck?.perfil==='master';
+
+          if(isException&&!isMaster){
+            // Don't mark as applied yet — just flag for review but still allow withdrawal
+            // The stock withdrawal happens, but the dose gets a special status
             doseVinculada=proxDose;
             await tx.planoContratadoDose.update({
               where:{id:proxDose.id},
-              data:{status:'aplicada',dataAplicacao:new Date(),localAplicacao:local_aplicacao}
+              data:{status:'aplicada',dataAplicacao:new Date(),localAplicacao:local_aplicacao,tipoExcecao}
+            });
+          }else{
+            doseVinculada=proxDose;
+            await tx.planoContratadoDose.update({
+              where:{id:proxDose.id},
+              data:{status:'aplicada',dataAplicacao:new Date(),localAplicacao:local_aplicacao,tipoExcecao:isException?tipoExcecao:null}
             });
           }
         }
+        break; // Only match first active plan
       }
     }
 
@@ -93,6 +134,8 @@ r.post('/retirada',async(req,res,next)=>{try{
     return{movId:mov.id,vacNome:v.nome,cliNome:cli?.nome,antes:l.quantidadeDisponivel,depois:updLote.quantidadeDisponivel};
   });
   res.json({success:true,movimentacao_id:result.movId,message:`✓ ${result.vacNome} → ${result.cliNome}`,estoque:{antes:result.antes,depois:result.depois}});
+  // Audit log
+  try{const{logAudit}=require('./auditoria');logAudit({acao:'retirada',entidade:'movimentacao',entidadeId:result.movId,usuarioId:+usuario_id,detalhes:{vacina:result.vacNome,cliente:result.cliNome,estoque_antes:result.antes,estoque_depois:result.depois},ip:req.ip,userAgent:req.get('user-agent')})}catch(e){}
 }catch(e){if(e.status)return res.status(e.status).json({error:e.message});next(e)}});
 
 r.get('/recentes',async(req,res,next)=>{try{

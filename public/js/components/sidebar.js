@@ -12,6 +12,7 @@ const allItems=[
   {key:'financeiro',icon:I.dollar,label:'Financeiro'},
   {key:'metas',icon:I.target,label:'Metas'},
   {key:'aprovacoes',icon:I.check,label:'Aprovações',dot:true},
+  {key:'auditoria',icon:I.history,label:'Auditoria'},
   {sep:'Sistema'},
   {key:'alertas',icon:I.alert,label:'Alertas',count:alertCount||0},
 ];

@@ -31,6 +31,7 @@
       historico:renderHistorico,planos:renderPlanos,clientes:renderClientes,
       financeiro:renderFinanceiro,metas:renderMetas,alertas:renderAlertas,
       aprovacoes:renderAprovacoes,
+      auditoria:renderAuditoria,
       'cliente-detalhe':renderClienteDetalhe,'plano-detalhe':renderPlanoDetalhe
     };
 

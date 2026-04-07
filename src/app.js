@@ -26,6 +26,7 @@ app.use('/api/movimentacoes', require('./routes/movimentacoes'));
 app.use('/api/metas', require('./routes/metas'));
 app.use('/api/nfe', require('./routes/nfe'));
 app.use('/api/ia', require('./routes/ia'));
+app.use('/api/auditoria', require('./routes/auditoria'));
 // Compat
 app.use('/api/pacotes', require('./routes/planos'));
 

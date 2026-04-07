@@ -114,7 +114,7 @@ function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(
     // Validade
     const d4=h('div');d4.appendChild(h('label',{className:'label'},'Validade *'));
     const valStr=fd.validade?String(fd.validade).slice(0,10):'';
-    const i4=h('input',{className:'input',type:'date',value:valStr});
+    const i4=h('input',{className:'input',type:'month',value:valStr});
     i4.addEventListener('input',e=>{fd.validade=e.target.value});d4.appendChild(i4);gr.appendChild(d4);
     // Quantidade
     const d5=h('div');d5.appendChild(h('label',{className:'label'},'Quantidade'));
@@ -178,7 +178,7 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
   [['numero_lote','Nº Lote *','BCG-202601']].forEach(([k,l,ph])=>{const d=h('div');d.appendChild(h('label',{className:'label'},l));const inp=h('input',{className:'input',placeholder:ph});inp.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(inp);gr.appendChild(d)});
   // Fabricante dropdown
   const df2=h('div');df2.appendChild(h('label',{className:'label'},'Fabricante *'));df2.appendChild(buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],'',v=>{fd.fabricante=v}));gr.appendChild(df2);
-  [['quantidade_total','Quantidade *','','number'],['validade','Validade *','','date'],['temperatura','Temperatura','2-8°C'],['local','Local','Câmara Fria Principal'],['valor_unitario','Custo Unit. R$','0','number']].forEach(([k,l,ph,type])=>{
+  [['quantidade_total','Quantidade *','','number'],['validade','Validade * (MM/AAAA)','','month'],['temperatura','Temperatura','2-8°C'],['local','Local','Câmara Fria Principal'],['valor_unitario','Custo Unit. R$','0','number']].forEach(([k,l,ph,type])=>{
     const d=h('div');d.appendChild(h('label',{className:'label'},l));
     const inp=h('input',{className:'input',type:type||'text',placeholder:ph});
     inp.addEventListener('input',e=>{fd[k]=type==='number'?parseFloat(e.target.value):e.target.value});

@@ -4,6 +4,7 @@ const ROUTE_MAP={
   '/movimentacoes':'historico','/planos':'planos','/clientes':'clientes',
   '/financeiro':'financeiro','/metas':'metas','/alertas':'alertas',
   '/aprovacoes':'aprovacoes',
+  '/auditoria':'auditoria',
 };
 const ROUTE_REVERSE={};Object.entries(ROUTE_MAP).forEach(([k,v])=>ROUTE_REVERSE[v]=k);
 
@@ -18,6 +19,7 @@ const AppState={
     this.notify();
   },
   logout(){
+    if(this.usuario){try{Api.auditoriaLog({acao:'logout',usuarioId:this.usuario.id,usuarioNome:this.usuario.nome,perfil:this.usuario.perfil})}catch(e){}}
     this.usuario=null;this.modulo='dashboard';
     try{sessionStorage.removeItem('vittasys_session')}catch(e){}
     history.pushState(null,'','/');
@@ -38,6 +40,8 @@ const AppState={
       const url=ROUTE_REVERSE[m]||'/'+m;
       try{history.pushState({modulo:m},'',url)}catch(e){}
     }
+    // Audit: log screen navigation
+    if(this.usuario){try{Api.auditoriaLog({acao:'navegacao',rota:'/'+m,usuarioId:this.usuario.id,usuarioNome:this.usuario.nome,perfil:this.usuario.perfil})}catch(e){}}
     this.notify();
   },
   verCliente(id){this.clienteDetalhe=id;this.modulo='cliente-detalhe';

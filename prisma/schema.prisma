@@ -181,15 +181,37 @@ model PlanoContratadoDose {
   doseNumero         Int      @default(1) @map("dose_numero")
   mesPrevisto        Int?     @map("mes_previsto")
   competencia        String?
-  status             String   @default("pendente") // pendente, aplicada, cancelada
+  status             String   @default("pendente") // pendente, aplicada, cancelada, pendente_aprovacao
   dataAplicacao      DateTime? @map("data_aplicacao")
   localAplicacao     String?  @map("local_aplicacao")
   movimentacaoId     Int?     @map("movimentacao_id")
+  tipoExcecao        String?  @map("tipo_excecao") // antecipacao, atraso, fora_janela, ajuste_manual
   planoContratado    PlanoContratado @relation(fields: [planoContratadoId], references: [id], onDelete: Cascade)
   vacina             Vacina   @relation(fields: [vacinaId], references: [id])
   @@index([planoContratadoId])
   @@index([vacinaId])
   @@map("plano_contratado_doses")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  acao        String   // login, logout, login_falha, criar, editar, excluir, aprovar, reprovar, retirada, estorno, etc
+  entidade    String?  // movimentacao, cliente, plano, lote, unidade, etc
+  entidadeId  Int?     @map("entidade_id")
+  usuarioId   Int?     @map("usuario_id")
+  usuarioNome String?  @map("usuario_nome")
+  perfil      String?
+  detalhes    String?  // JSON with before/after, motivo, etc
+  ip          String?
+  userAgent   String?  @map("user_agent")
+  rota        String?
+  sessaoId    String?  @map("sessao_id")
+  criadoEm    DateTime @default(now()) @map("criado_em")
+  @@index([usuarioId])
+  @@index([acao])
+  @@index([entidade, entidadeId])
+  @@index([criadoEm])
+  @@map("audit_logs")
 }
 
 model Pagamento {

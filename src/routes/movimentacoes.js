@@ -1,4 +1,5 @@
 const{Router}=require('express');const r=Router();const prisma=require('../config/database');
+const{logAudit}=require('./auditoria');
 
 function norm(s){return(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/vacina\s*/gi,'').replace(/\s+/g,' ').trim()}
 
@@ -148,6 +149,7 @@ r.post('/',async(req,res,next)=>{try{
     message:needsApproval?`Movimentação #${mov.id} criada — aguardando aprovação do master`:`Movimentação #${mov.id} registrada`,
     requer_aprovacao:needsApproval,
   });
+  logAudit({acao:needsApproval?'criar_pendente':'criar',entidade:'movimentacao',entidadeId:mov.id,usuarioId:+b.usuario_id,detalhes:{tipo:b.tipo,vacina:nomeVacina,quantidade:qty,status:mov.status},ip:req.ip,userAgent:req.get('user-agent')});
 }catch(e){next(e)}});
 
 // ═══ APPROVE ═══
@@ -182,6 +184,7 @@ r.post('/:id/aprovar',async(req,res,next)=>{try{
   }});
 
   res.json({success:true,message:`Movimentação #${req.params.id} aprovada por ${user.nome}`});
+  logAudit({acao:'aprovar',entidade:'movimentacao',entidadeId:+req.params.id,usuarioId:+aprovador_id,usuarioNome:user.nome,perfil:'master',detalhes:{tipo:mov.tipo,vacina:mov.nomeVacina},ip:req.ip,userAgent:req.get('user-agent')});
 }catch(e){next(e)}});
 
 // ═══ REJECT ═══
@@ -203,6 +206,7 @@ r.post('/:id/reprovar',async(req,res,next)=>{try{
   }});
 
   res.json({success:true,message:`Movimentação #${req.params.id} reprovada por ${user.nome}`});
+  logAudit({acao:'reprovar',entidade:'movimentacao',entidadeId:+req.params.id,usuarioId:+aprovador_id,usuarioNome:user.nome,perfil:'master',detalhes:{tipo:mov.tipo,motivo},ip:req.ip,userAgent:req.get('user-agent')});
 }catch(e){next(e)}});
 
 // ═══ EDIT ═══

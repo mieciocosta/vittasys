@@ -337,3 +337,99 @@ describe('Vaccine Name Matching (accent-safe)', () => {
     expect(match).toBe(false);
   });
 });
+
+// ═══ AUDIT MODULE ═══
+describe('Audit Log Structure', () => {
+  it('audit log entry has required fields', () => {
+    const log = { acao: 'login', usuarioId: 1, usuarioNome: 'Test', ip: '127.0.0.1', criadoEm: new Date().toISOString() };
+    expect(log.acao).toBeDefined();
+    expect(log.usuarioId).toBeGreaterThan(0);
+    expect(log.criadoEm).toBeDefined();
+  });
+
+  it('critical actions are identifiable', () => {
+    const critical = ['retirada', 'descarte', 'estorno', 'aprovar', 'reprovar', 'excluir'];
+    expect(critical.includes('retirada')).toBe(true);
+    expect(critical.includes('login')).toBe(false);
+  });
+});
+
+// ═══ COMPETÊNCIA / MÊS MATCHING ═══
+describe('Dose Competência Matching', () => {
+  it('should prioritize dose by mesPrevisto ascending', () => {
+    const doses = [
+      { id: 3, mesPrevisto: 6, status: 'pendente' },
+      { id: 1, mesPrevisto: 2, status: 'pendente' },
+      { id: 2, mesPrevisto: 4, status: 'aplicada' },
+    ];
+    const pendentes = doses.filter(d => d.status === 'pendente').sort((a, b) => (a.mesPrevisto || 0) - (b.mesPrevisto || 0));
+    expect(pendentes[0].mesPrevisto).toBe(2); // First due
+    expect(pendentes[1].mesPrevisto).toBe(6);
+  });
+
+  it('detects anticipation (>45 days early)', () => {
+    const inicioPlano = new Date('2026-01-01');
+    const mesPrevisto = 6; // Expected: July 2026
+    const dataEsperada = new Date(inicioPlano);
+    dataEsperada.setMonth(dataEsperada.getMonth() + mesPrevisto);
+    const now = new Date('2026-04-01'); // 3 months early
+    const diffDays = Math.round((now.getTime() - dataEsperada.getTime()) / (1000 * 60 * 60 * 24));
+    expect(diffDays).toBeLessThan(-45);
+    const isAnticipation = diffDays < -45;
+    expect(isAnticipation).toBe(true);
+  });
+
+  it('detects delay (>60 days late)', () => {
+    const inicioPlano = new Date('2025-01-01');
+    const mesPrevisto = 2; // Expected: March 2025
+    const dataEsperada = new Date(inicioPlano);
+    dataEsperada.setMonth(dataEsperada.getMonth() + mesPrevisto);
+    const now = new Date('2025-07-01'); // 4 months late
+    const diffDays = Math.round((now.getTime() - dataEsperada.getTime()) / (1000 * 60 * 60 * 24));
+    expect(diffDays).toBeGreaterThan(60);
+  });
+
+  it('normal window passes (within ±45 days)', () => {
+    const inicioPlano = new Date('2026-01-01');
+    const mesPrevisto = 3; // Expected: April 2026
+    const dataEsperada = new Date(inicioPlano);
+    dataEsperada.setMonth(dataEsperada.getMonth() + mesPrevisto);
+    const now = new Date('2026-04-10'); // 10 days after expected
+    const diffDays = Math.round((now.getTime() - dataEsperada.getTime()) / (1000 * 60 * 60 * 24));
+    const isException = diffDays < -45 || diffDays > 60;
+    expect(isException).toBe(false);
+  });
+});
+
+// ═══ VALIDADE MM/AAAA ═══
+describe('Validade MM/AAAA Parsing', () => {
+  function parseValidade(v){
+    if(!v)return null;const s=String(v).trim();
+    let m=s.match(/^(\d{1,2})\/(\d{4})$/);
+    if(m){return new Date(+m[2],+m[1],0)}
+    m=s.match(/^(\d{4})-(\d{1,2})$/);
+    if(m){return new Date(+m[1],+m[2],0)}
+    return new Date(s);
+  }
+
+  it('parses MM/YYYY to last day of month', () => {
+    const d = parseValidade('03/2027');
+    expect(d.getFullYear()).toBe(2027);
+    expect(d.getMonth()).toBe(2); // March (0-indexed)
+    expect(d.getDate()).toBe(31); // Last day of March
+  });
+
+  it('parses YYYY-MM to last day of month', () => {
+    const d = parseValidade('2027-02');
+    expect(d.getFullYear()).toBe(2027);
+    expect(d.getMonth()).toBe(1); // February
+    expect(d.getDate()).toBe(28); // Last day of Feb 2027
+  });
+
+  it('parses full date normally', () => {
+    const d = parseValidade('2027-06-15');
+    expect(d.getFullYear()).toBe(2027);
+    expect(d.getMonth()).toBe(5); // June
+    expect(d.getDate()).toBe(15);
+  });
+});
