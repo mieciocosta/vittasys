@@ -7,6 +7,9 @@ const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
 
+// ═══ TRUST PROXY — Required for real IP behind Railway/nginx ═══
+app.set('trust proxy', true);
+
 // Security
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(cors());

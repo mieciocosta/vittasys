@@ -1,16 +1,16 @@
 const{Router}=require('express');const r=Router();const prisma=require('../config/database');
-const{logAudit}=require('./auditoria');
+const{logAudit,getRealIP}=require('./auditoria');
 const PERMS={master:['dashboard','retirada','estoque','historico','planos','clientes','financeiro','metas','alertas','aprovacoes','auditoria'],ativos:['dashboard','retirada','estoque','historico','planos','clientes','alertas'],espontaneos:['dashboard','retirada','estoque','historico','clientes','alertas'],operador:['dashboard','retirada','estoque','historico','clientes','alertas']};
 
 r.post('/login',async(req,res,next)=>{try{
   const{usuario_id,pin}=req.body;
   const u=await prisma.usuario.findFirst({where:{id:parseInt(usuario_id),pin,ativo:true},select:{id:true,nome:true,cargo:true,email:true,perfil:true}});
   if(!u){
-    logAudit({acao:'login_falha',usuarioId:parseInt(usuario_id),detalhes:{motivo:'PIN incorreto'},ip:req.ip,userAgent:req.get('user-agent')});
+    logAudit({acao:'login_falha',usuarioId:parseInt(usuario_id),detalhes:{motivo:'PIN incorreto'},ip:getRealIP(req),userAgent:req.get('user-agent')});
     return res.status(401).json({error:'PIN incorreto'});
   }
   u.modulos_permitidos=PERMS[u.perfil]||PERMS.operador;
-  logAudit({acao:'login',usuarioId:u.id,usuarioNome:u.nome,perfil:u.perfil,ip:req.ip,userAgent:req.get('user-agent')});
+  logAudit({acao:'login',usuarioId:u.id,usuarioNome:u.nome,perfil:u.perfil,ip:getRealIP(req),userAgent:req.get('user-agent')});
   res.json({success:true,usuario:u});
 }catch(e){next(e)}});
 

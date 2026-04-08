@@ -135,7 +135,7 @@ r.post('/retirada',async(req,res,next)=>{try{
   });
   res.json({success:true,movimentacao_id:result.movId,message:`✓ ${result.vacNome} → ${result.cliNome}`,estoque:{antes:result.antes,depois:result.depois}});
   // Audit log
-  try{const{logAudit}=require('./auditoria');logAudit({acao:'retirada',entidade:'movimentacao',entidadeId:result.movId,usuarioId:+usuario_id,detalhes:{vacina:result.vacNome,cliente:result.cliNome,estoque_antes:result.antes,estoque_depois:result.depois},ip:req.ip,userAgent:req.get('user-agent')})}catch(e){}
+  try{const{logAudit,getRealIP}=require('./auditoria');logAudit({acao:'retirada',entidade:'movimentacao',entidadeId:result.movId,usuarioId:+usuario_id,detalhes:{vacina:result.vacNome,cliente:result.cliNome,estoque_antes:result.antes,estoque_depois:result.depois},ip:getRealIP(req),userAgent:req.get('user-agent')})}catch(e){}
 }catch(e){if(e.status)return res.status(e.status).json({error:e.message});next(e)}});
 
 r.get('/recentes',async(req,res,next)=>{try{

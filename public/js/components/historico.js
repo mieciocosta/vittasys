@@ -229,12 +229,16 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
 
     const r=await Api.criarMovimentacao(fd);
     if(r?.success){
-      // Send audit with photo if captured
-      if(fotoBlob&&r.id){
-        sendAuditWithPhoto({acao:fd.tipo,entidade:'movimentacao',entidadeId:r.id,
+      // Send audit with photo + geo for critical actions
+      if(tiposCriticos.includes(fd.tipo)&&r.id){
+        const auditData={acao:fd.tipo,entidade:'movimentacao',entidadeId:r.id,
           usuarioId:AppState.usuario?.id,usuarioNome:AppState.usuario?.nome,
-          perfil:AppState.usuario?.perfil,
-          detalhes:JSON.stringify({vacina:fd.nome_vacina,tipo:fd.tipo,quantidade:fd.quantidade})},fotoBlob);
+          perfil:AppState.usuario?.perfil};
+        // Capture geolocation
+        const geo=await captureGeoForAudit();
+        const detObj={vacina:fd.nome_vacina,tipo:fd.tipo,quantidade:fd.quantidade,...geo};
+        auditData.detalhes=JSON.stringify(detObj);
+        sendAuditWithPhoto(auditData,fotoBlob);
       }
       Toast.show(r.message||'Movimentação registrada!');close();draw()
     }

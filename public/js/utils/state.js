@@ -40,8 +40,19 @@ const AppState={
       const url=ROUTE_REVERSE[m]||'/'+m;
       try{history.pushState({modulo:m},'',url)}catch(e){}
     }
-    // Audit: log screen navigation
-    if(this.usuario){try{Api.auditoriaLog({acao:'navegacao',rota:'/'+m,usuarioId:this.usuario.id,usuarioNome:this.usuario.nome,perfil:this.usuario.perfil})}catch(e){}}
+    // Audit: log navigation with geo attempt
+    if(this.usuario){
+      const logData={acao:'navegacao',rota:'/'+m,usuarioId:this.usuario.id,
+        usuarioNome:this.usuario.nome,perfil:this.usuario.perfil};
+      // Try to get geolocation (non-blocking)
+      if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(
+          pos=>{logData.detalhes=JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy)});Api.auditoriaLog(logData)},
+          err=>{logData.detalhes=JSON.stringify({geo_status:'negado',geo_erro:err.message});Api.auditoriaLog(logData)},
+          {timeout:3000,maximumAge:60000}
+        );
+      }else{logData.detalhes=JSON.stringify({geo_status:'indisponivel'});Api.auditoriaLog(logData)}
+    }
     this.notify();
   },
   verCliente(id){this.clienteDetalhe=id;this.modulo='cliente-detalhe';

@@ -207,3 +207,23 @@ async function sendAuditWithPhoto(logData,fotoBlob){
     return await r.json();
   }catch(e){console.error('Audit photo error:',e);return{success:false}}
 }
+
+/**
+ * Capture geolocation for audit (non-blocking, 3s timeout)
+ * Returns: {latitude, longitude, accuracy, geo_status} or {geo_status:'negado|indisponivel|timeout'}
+ */
+function captureGeoForAudit(){
+  return new Promise(resolve=>{
+    if(!navigator.geolocation){
+      resolve({geo_status:'indisponivel'});return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos=>resolve({latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy),geo_status:'ok'}),
+      err=>{
+        const status=err.code===1?'negado':err.code===3?'timeout':'erro';
+        resolve({geo_status:status,geo_erro:err.message});
+      },
+      {timeout:3000,maximumAge:60000,enableHighAccuracy:false}
+    );
+  });
+}
