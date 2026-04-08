@@ -2,7 +2,7 @@ const{Router}=require('express');const r=Router();const prisma=require('../confi
 
 r.get('/templates',async(req,res,next)=>{try{
   const planos=await prisma.plano.findMany({where:{status:'ativo'},orderBy:[{idadeInicio:'asc'},{idadeFim:'asc'}],include:{vacinas:{include:{vacina:true}}}});
-  res.json(planos.map(p=>({...p,idade_inicio:p.idadeInicio,idade_fim:p.idadeFim,valor_tabela:p.valorTabela,vacinas:p.vacinas.map(v=>({...v,vacina_nome:v.vacina.nome,vacina_codigo:v.vacina.codigo}))})));
+  res.json(planos.map(p=>({...p,idade_inicio:p.idadeInicio,idade_fim:p.idadeFim,valor_tabela:p.valorTabela,valor_avista:p.valorAvista,valor_cartao:p.valorCartao,parcelas:p.parcelas,desc_pagamento:p.descPagamento,vacinas:p.vacinas.map(v=>({...v,vacina_nome:v.vacina.nome,vacina_codigo:v.vacina.codigo}))})));
 }catch(e){next(e)}});
 
 r.get('/stats/resumo',async(req,res,next)=>{try{
@@ -58,7 +58,7 @@ r.get('/:id',async(req,res,next)=>{try{
 
 r.post('/',async(req,res,next)=>{try{const b=req.body;
   const vd=(b.valor_bruto||0)*(b.percentual_desconto||0)/100;const vf=(b.valor_bruto||0)-vd;
-  const p=await prisma.planoContratado.create({data:{clienteId:+b.cliente_id,planoId:b.plano_id?+b.plano_id:null,nomePlano:b.nome_plano,idadeInicio:+(b.idade_inicio||0),idadeFim:+(b.idade_fim||18),valorCusto:+(b.valor_custo||0),valorBruto:+(b.valor_bruto||0),valorDesconto:vd,percentualDesconto:+(b.percentual_desconto||0),valorFinal:vf,lucroPrevisto:vf-(+(b.valor_custo||0)),margemLucro:vf>0?((vf-(+(b.valor_custo||0)))/vf*100):0,statusContrato:b.status_contrato||'ativo',vendedorId:b.vendedor_id?+b.vendedor_id:null,vacinadorId:b.vacinador_id?+b.vacinador_id:null,dataVenda:b.data_venda?new Date(b.data_venda):new Date(),dataInicioPlano:b.data_inicio_plano?new Date(b.data_inicio_plano):null,dataFimPlano:b.data_fim_plano?new Date(b.data_fim_plano):null}});
+  const p=await prisma.planoContratado.create({data:{clienteId:+b.cliente_id,planoId:b.plano_id?+b.plano_id:null,nomePlano:b.nome_plano,idadeInicio:+(b.idade_inicio||0),idadeFim:+(b.idade_fim||18),valorCusto:+(b.valor_custo||0),valorBruto:+(b.valor_bruto||0),valorDesconto:vd,percentualDesconto:+(b.percentual_desconto||0),valorFinal:vf,lucroPrevisto:vf-(+(b.valor_custo||0)),margemLucro:vf>0?((vf-(+(b.valor_custo||0)))/vf*100):0,statusContrato:b.status_contrato||'ativo',formaPagamento:b.forma_pagamento||'avista',vendedorId:b.vendedor_id?+b.vendedor_id:null,vacinadorId:b.vacinador_id?+b.vacinador_id:null,dataVenda:b.data_venda?new Date(b.data_venda):new Date(),dataInicioPlano:b.data_inicio_plano?new Date(b.data_inicio_plano):null,dataFimPlano:b.data_fim_plano?new Date(b.data_fim_plano):null}});
 
   // ═══ REGRA: Espontâneo + Plano = Ativo ═══
   const cliente=await prisma.cliente.findUnique({where:{id:+b.cliente_id},select:{id:true,tipoCliente:true,codigoCliente:true}});

@@ -43,6 +43,12 @@ const Api={
   auditoriaLogs(p){return this.get('/auditoria',p)},
   auditoriaStats(){return this.get('/auditoria/stats')},
   auditoriaLog(b){return this.post('/auditoria/log',b)},
+  async auditoriaLogComFoto(data,fotoBlob){
+    const fd=new FormData();
+    Object.entries(data).forEach(([k,v])=>{if(v!=null)fd.append(k,String(v))});
+    if(fotoBlob)fd.append('foto',fotoBlob,'auditoria.jpg');
+    try{const r=await fetch(`${API}/auditoria/log-com-foto`,{method:'POST',body:fd});return await r.json()}catch(e){console.error(e);return null}
+  },
 
   planosTemplates(){return this.get('/planos/templates')},
   planos(p){return this.get('/planos',p)},

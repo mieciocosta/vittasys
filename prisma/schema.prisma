@@ -122,6 +122,10 @@ model Plano {
   tipoPlano         String   @default("padrao") @map("tipo_plano")
   validadeMeses     Int      @default(18) @map("validade_meses")
   valorTabela       Float    @default(0) @map("valor_tabela")
+  valorAvista       Float?   @map("valor_avista")
+  valorCartao       Float?   @map("valor_cartao")
+  parcelas          Int?     @default(1)
+  descPagamento     String?  @map("desc_pagamento") // ex: "10x sem juros"
   status            String   @default("ativo")
   criadoEm          DateTime @default(now()) @map("criado_em")
   vacinas           PlanoVacina[]
@@ -160,6 +164,7 @@ model PlanoContratado {
   margemLucro           Float    @default(0) @map("margem_lucro_percentual")
   contratoAssinado      Boolean  @default(false) @map("contrato_assinado")
   statusContrato        String   @default("ativo") @map("status_contrato")
+  formaPagamento        String?  @default("avista") @map("forma_pagamento") // avista, cartao
   vendedorId            Int?     @map("vendedor_id")
   vacinadorId           Int?     @map("vacinador_id")
   dataVenda             DateTime? @map("data_venda")
@@ -206,6 +211,7 @@ model AuditLog {
   userAgent   String?  @map("user_agent")
   rota        String?
   sessaoId    String?  @map("sessao_id")
+  fotoPath    String?  @map("foto_path") // path to webcam photo evidence
   criadoEm    DateTime @default(now()) @map("criado_em")
   @@index([usuarioId])
   @@index([acao])

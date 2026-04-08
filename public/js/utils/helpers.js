@@ -68,3 +68,79 @@ function inputComMascara(className, placeholder, maskFn, onChange, value) {
 
 // ═══ SHARED CONSTANTS ═══
 const FABRICANTES=['GSK','Pfizer','Sanofi','MSD','Butantan','Bio-Manguinhos','Ataulpho de Paiva','AstraZeneca','Johnson & Johnson','Moderna','Sinovac','Outro'];
+
+// ═══ CAMERA CAPTURE FOR CRITICAL AUDIT ACTIONS ═══
+// Shows camera feed in modal, captures photo, sends to backend
+// Usage: const result = await capturaFotoAuditoria({acao:'descarte', ...});
+async function capturaFotoAuditoria(auditData){
+  return new Promise((resolve)=>{
+    let stream=null;
+    showModal('📸 Registro de Evidência',async(body,close)=>{
+      body.appendChild(h('div',{style:{textAlign:'center',marginBottom:'12px',padding:'10px',background:'#fffbeb',borderRadius:'8px',border:'1px solid #fcd34d',fontSize:'13px',color:'#92400e'}},
+        '⚠ Ação crítica — foto do operador será registrada como evidência'));
+
+      // Video feed
+      const video=h('video',{style:'width:100%;max-width:320px;border-radius:12px;background:#000;display:block;margin:0 auto',autoplay:true,playsinline:true});
+      const canvas=h('canvas',{style:'display:none'});
+      const statusEl=h('div',{style:{textAlign:'center',marginTop:'8px',fontSize:'12px',color:'var(--text-3)'}});
+      body.appendChild(video);
+      body.appendChild(canvas);
+      body.appendChild(statusEl);
+
+      // Request camera
+      try{
+        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+        video.srcObject=stream;
+        statusEl.innerHTML='<span style="color:#059669">✓ Câmera ativa — clique em Registrar</span>';
+      }catch(err){
+        statusEl.innerHTML=`<span style="color:#dc2626">❌ Câmera não disponível: ${err.message}</span><br><span style="font-size:11px">A ação será registrada sem foto.</span>`;
+        // Log that camera was denied
+        if(auditData){
+          auditData.detalhes=JSON.stringify({...(auditData.detalhes?JSON.parse(auditData.detalhes):{}),camera:'negada',motivo:err.message});
+        }
+      }
+
+      const acts=h('div',{style:{display:'flex',gap:'10px',marginTop:'16px'}});
+
+      // Skip button (proceed without photo)
+      acts.appendChild(iconBtn('btn btn-outline btn-lg',null,'Pular (sem foto)',async()=>{
+        stopCam();
+        // Log without photo
+        if(auditData){
+          const r=await Api.auditoriaLog({...auditData,detalhes:JSON.stringify({...(auditData.detalhes?JSON.parse(auditData.detalhes):{}),foto:'recusada'})});
+          resolve({success:true,foto:null,audit_id:r?.id});
+        }else resolve({success:true,foto:null});
+        close();
+      },{style:{flex:'1'}}));
+
+      // Capture button
+      acts.appendChild(iconBtn('btn btn-primary btn-lg',null,'📸 Registrar Evidência',async()=>{
+        let fotoBlob=null;
+        if(stream){
+          canvas.width=video.videoWidth||640;
+          canvas.height=video.videoHeight||480;
+          canvas.getContext('2d').drawImage(video,0,0);
+          fotoBlob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.8));
+        }
+        stopCam();
+        statusEl.innerHTML='<span style="color:var(--primary)">Enviando...</span>';
+
+        const r=await Api.auditoriaLogComFoto(auditData||{},fotoBlob);
+        if(r?.success){
+          statusEl.innerHTML='<span style="color:#059669">✅ Evidência registrada</span>';
+          setTimeout(()=>{resolve({success:true,foto:r.foto,audit_id:r.id});close()},600);
+        }else{
+          statusEl.innerHTML=`<span style="color:#dc2626">Erro: ${r?.error||'falha no envio'}</span>`;
+          resolve({success:false,foto:null});
+          setTimeout(close,2000);
+        }
+      },{style:{flex:'2'}}));
+
+      body.appendChild(acts);
+    },'420px');
+
+    function stopCam(){
+      if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+    }
+  });
+}

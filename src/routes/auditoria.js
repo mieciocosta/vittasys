@@ -46,7 +46,7 @@ r.get('/usuario/:id/dia/:data',async(req,res,next)=>{try{
     const os=ua.includes('Windows')?'Windows':ua.includes('Mac')?'macOS':ua.includes('Linux')?'Linux':ua.includes('Android')?'Android':ua.includes('iPhone')?'iOS':'—';
     const device=ua.includes('Mobile')||ua.includes('Android')||ua.includes('iPhone')?'📱 Mobile':'🖥️ Desktop';
     let det=null;try{if(e.detalhes)det=JSON.parse(e.detalhes)}catch(x){}
-    return{id:e.id,hora:e.criadoEm,acao:e.acao,entidade:e.entidade,entidade_id:e.entidadeId,detalhes:det,ip:e.ip,browser,os,device,rota:e.rota,sessao_id:e.sessaoId,gap_seconds:gap,latitude:det?.latitude||null,longitude:det?.longitude||null};
+    return{id:e.id,hora:e.criadoEm,acao:e.acao,entidade:e.entidade,entidade_id:e.entidadeId,detalhes:det,ip:e.ip,browser,os,device,rota:e.rota,sessao_id:e.sessaoId,gap_seconds:gap,latitude:det?.latitude||null,longitude:det?.longitude||null,foto:e.fotoPath||null};
   });
   const p=events[0]?.criadoEm;const u=events[events.length-1]?.criadoEm;
   const dur=p&&u?Math.round((u.getTime()-p.getTime())/60000):0;
@@ -67,3 +67,39 @@ r.post('/log',async(req,res,next)=>{try{
 }catch(e){next(e)}});
 
 module.exports=r;module.exports.logAudit=logAudit;
+
+// ═══ PHOTO EVIDENCE UPLOAD ═══
+const multer=require('multer');const path=require('path');const fs=require('fs');
+const auditUploadDir=path.join(__dirname,'..','..','uploads','audit');
+if(!fs.existsSync(auditUploadDir))fs.mkdirSync(auditUploadDir,{recursive:true});
+const storage=multer.diskStorage({
+  destination:(_,__,cb)=>cb(null,auditUploadDir),
+  filename:(_,file,cb)=>cb(null,`audit-${Date.now()}-${Math.random().toString(36).slice(2,8)}.jpg`)
+});
+const upload=multer({storage,limits:{fileSize:2*1024*1024},fileFilter:(_,file,cb)=>{
+  cb(null,file.mimetype.startsWith('image/'));
+}});
+
+r.post('/foto',upload.single('foto'),async(req,res,next)=>{try{
+  if(!req.file)return res.status(400).json({error:'Foto não recebida'});
+  const relativePath=`/uploads/audit/${req.file.filename}`;
+  // If audit_log_id provided, link photo to existing log
+  if(req.body.audit_log_id){
+    await prisma.auditLog.update({where:{id:+req.body.audit_log_id},data:{fotoPath:relativePath}});
+  }
+  res.json({success:true,path:relativePath,filename:req.file.filename});
+}catch(e){next(e)}});
+
+// Log with photo in one step
+r.post('/log-com-foto',upload.single('foto'),async(req,res,next)=>{try{
+  const b=req.body;
+  const fotoPath=req.file?`/uploads/audit/${req.file.filename}`:null;
+  const log=await prisma.auditLog.create({data:{
+    acao:b.acao||'acao_critica',entidade:b.entidade||null,entidadeId:b.entidade_id?+b.entidade_id:null,
+    usuarioId:b.usuario_id?+b.usuario_id:null,usuarioNome:b.usuario_nome||null,
+    perfil:b.perfil||null,detalhes:b.detalhes||null,
+    ip:req.ip,userAgent:req.get('user-agent'),rota:b.rota||null,
+    sessaoId:b.sessao_id||null,fotoPath,
+  }});
+  res.json({success:true,id:log.id,foto:fotoPath});
+}catch(e){next(e)}});

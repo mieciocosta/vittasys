@@ -203,6 +203,23 @@ async function renderAuditoria(){
         card.appendChild(mapLink);
       }
 
+      // Photo evidence
+      if(e.foto){
+        const fotoWrap=h('div',{style:{marginTop:'8px',display:'flex',alignItems:'center',gap:'8px'}});
+        fotoWrap.appendChild(h('span',{style:'font-size:11px;color:#d97706;font-weight:600'},'📸 Evidência:'));
+        const img=h('img',{src:e.foto,style:'width:48px;height:48px;object-fit:cover;border-radius:8px;border:2px solid #fcd34d;cursor:pointer',
+          onClick:()=>{
+            // Expand photo in modal
+            showModal('📸 Evidência Fotográfica',(body,close)=>{
+              body.appendChild(h('img',{src:e.foto,style:'width:100%;max-width:480px;border-radius:12px;display:block;margin:0 auto'}));
+              body.appendChild(h('div',{style:{textAlign:'center',marginTop:'12px',fontSize:'12px',color:'var(--text-3)'}},
+                `Capturada em ${new Date(e.hora).toLocaleString('pt-BR')} · ${e.acao.toUpperCase()}`));
+            },'520px');
+          }});
+        fotoWrap.appendChild(img);
+        card.appendChild(fotoWrap);
+      }
+
       ev.appendChild(card);tl.appendChild(ev);
     });
     wrap.appendChild(tl);

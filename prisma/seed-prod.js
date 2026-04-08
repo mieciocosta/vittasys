@@ -55,7 +55,7 @@ async function main() {
   const planosDef = [
     {
       nome: 'Plano Vacinal Completo 0 a 18 meses',
-      idadeInicio: 0, idadeFim: 18, valorTabela: 13630, validadeMeses: 18,
+      idadeInicio: 0, idadeFim: 18, valorTabela: 13630, valorAvista: 9200, valorCartao: 9450, parcelas: 10, descPagamento: '10x de R$ 945 sem juros', validadeMeses: 18,
       descricao: 'Plano completo com todas as vacinas premium de 0 a 18 meses. Valor à vista: R$ 9.200 | Crédito: R$ 9.450',
       vacinas: [
         { cod: 'HEP-B', doses: 1, ini: 0, fim: 0 },
@@ -74,7 +74,7 @@ async function main() {
     },
     {
       nome: 'Plano Vacinal 0 a 9 meses',
-      idadeInicio: 0, idadeFim: 9, valorTabela: 8760, validadeMeses: 9,
+      idadeInicio: 0, idadeFim: 9, valorTabela: 8760, valorAvista: 6200, valorCartao: 6500, parcelas: 10, descPagamento: '10x de R$ 650 sem juros', validadeMeses: 9,
       descricao: 'Plano premium de 0 a 9 meses. Valor à vista: R$ 6.200 | Crédito: R$ 6.500',
       vacinas: [
         { cod: 'HEP-B', doses: 1, ini: 0, fim: 0 },
@@ -90,7 +90,7 @@ async function main() {
     },
     {
       nome: 'Plano Vacinal 2 a 9 meses',
-      idadeInicio: 2, idadeFim: 9, valorTabela: 7200, validadeMeses: 7,
+      idadeInicio: 2, idadeFim: 9, valorTabela: 7200, valorAvista: 5000, valorCartao: 5200, parcelas: 10, descPagamento: '10x sem juros', validadeMeses: 7,
       descricao: 'Plano de 2 a 9 meses sem a dose de nascimento',
       vacinas: [
         { cod: 'HEXA', doses: 2, ini: 2, fim: 6 },
@@ -105,7 +105,7 @@ async function main() {
     },
     {
       nome: 'Plano Vacinal 0 a 6 meses',
-      idadeInicio: 0, idadeFim: 6, valorTabela: 5800, validadeMeses: 6,
+      idadeInicio: 0, idadeFim: 6, valorTabela: 5800, valorAvista: 4000, valorCartao: 4200, parcelas: 6, descPagamento: '6x sem juros', validadeMeses: 6,
       descricao: 'Plano básico de 0 a 6 meses',
       vacinas: [
         { cod: 'HEP-B', doses: 1, ini: 0, fim: 0 },
@@ -120,7 +120,7 @@ async function main() {
     },
     {
       nome: 'Plano Vacinal 2 a 6 meses',
-      idadeInicio: 2, idadeFim: 6, valorTabela: 5200, validadeMeses: 4,
+      idadeInicio: 2, idadeFim: 6, valorTabela: 5200, valorAvista: 3600, valorCartao: 3800, parcelas: 6, descPagamento: '6x sem juros', validadeMeses: 4,
       descricao: 'Plano de 2 a 6 meses sem dose de nascimento',
       vacinas: [
         { cod: 'HEXA', doses: 2, ini: 2, fim: 6 },
@@ -134,7 +134,7 @@ async function main() {
     },
     {
       nome: 'Plano Vacinal 2 a 18 meses',
-      idadeInicio: 2, idadeFim: 18, valorTabela: 12800, validadeMeses: 16,
+      idadeInicio: 2, idadeFim: 18, valorTabela: 12800, valorAvista: 8800, valorCartao: 9100, parcelas: 10, descPagamento: '10x sem juros', validadeMeses: 16,
       descricao: 'Plano completo de 2 a 18 meses sem dose de nascimento',
       vacinas: [
         { cod: 'HEXA', doses: 2, ini: 2, fim: 6 },
@@ -157,7 +157,7 @@ async function main() {
   if (existingPlanos === 0) {
     for (const pd of planosDef) {
       const plano = await prisma.plano.create({
-        data: { nome: pd.nome, descricao: pd.descricao, idadeInicio: pd.idadeInicio, idadeFim: pd.idadeFim, valorTabela: pd.valorTabela, validadeMeses: pd.validadeMeses }
+        data: { nome: pd.nome, descricao: pd.descricao, idadeInicio: pd.idadeInicio, idadeFim: pd.idadeFim, valorTabela: pd.valorTabela, valorAvista: pd.valorAvista||null, valorCartao: pd.valorCartao||null, parcelas: pd.parcelas||1, descPagamento: pd.descPagamento||null, validadeMeses: pd.validadeMeses }
       });
       for (const v of pd.vacinas) {
         if (vacinaMap[v.cod]) {

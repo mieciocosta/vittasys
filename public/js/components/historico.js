@@ -218,8 +218,26 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
     if(!fd.tipo)return Toast.show('Selecione o tipo de movimentação','error');
     if(!fd.nome_vacina&&!fd.vacina_id)return Toast.show('Selecione a vacina','error');
     if(['retirada','aplicacao'].includes(fd.tipo)&&!fd.local_aplicacao)return Toast.show('Local de aplicação obrigatório para retirada','error');
+
+    // ═══ CAMERA FOR CRITICAL ACTIONS ═══
+    const tiposCriticos=['descarte','ajuste','estorno'];
+    let fotoBlob=null;
+    if(tiposCriticos.includes(fd.tipo)&&typeof captureAuditPhoto==='function'){
+      fotoBlob=await captureAuditPhoto(`${fd.tipo.toUpperCase()} — ${fd.nome_vacina||'Vacina'}`);
+      // Photo is optional — operation continues even without it
+    }
+
     const r=await Api.criarMovimentacao(fd);
-    if(r?.success){Toast.show('Movimentação registrada!');close();draw()}
+    if(r?.success){
+      // Send audit with photo if captured
+      if(fotoBlob&&r.id){
+        sendAuditWithPhoto({acao:fd.tipo,entidade:'movimentacao',entidadeId:r.id,
+          usuarioId:AppState.usuario?.id,usuarioNome:AppState.usuario?.nome,
+          perfil:AppState.usuario?.perfil,
+          detalhes:JSON.stringify({vacina:fd.nome_vacina,tipo:fd.tipo,quantidade:fd.quantidade})},fotoBlob);
+      }
+      Toast.show(r.message||'Movimentação registrada!');close();draw()
+    }
     else Toast.show(r?.error||'Erro ao registrar','error');
   },{style:{marginTop:'16px'}}));
 },'600px')}

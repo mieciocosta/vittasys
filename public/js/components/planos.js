@@ -65,17 +65,40 @@ function modalNovoPlano(){showModal('Novo Plano Vacinal',async(body,close)=>{
   (templates||[]).forEach(t=>{
     const btn=h('div',{style:{padding:'12px',borderRadius:'10px',border:'2px solid var(--border)',cursor:'pointer',transition:'all .15s'},onClick:()=>{
       fd.plano_id=t.id;fd.nome_plano=t.nome;fd.idade_inicio=t.idade_inicio;fd.idade_fim=t.idade_fim;fd.valor_bruto=t.valor_tabela;
-      planGrid.querySelectorAll('div[data-plan]').forEach(d=>d.style.borderColor='var(--border)');
+      fd._valor_avista=t.valor_avista;fd._valor_cartao=t.valor_cartao;fd._parcelas=t.parcelas;fd._desc_pag=t.desc_pagamento;
+      planGrid.querySelectorAll('div[data-plan]').forEach(d=>{d.style.borderColor='var(--border)';d.style.background=''});
       btn.style.borderColor='var(--primary)';btn.style.background='var(--primary-bg)';
+      // Update valor bruto field if it exists
+      const vbInput=body.querySelector('#plan-valor-bruto');
+      if(vbInput)vbInput.value=t.valor_avista||t.valor_tabela;
     }});btn.setAttribute('data-plan','1');
-    btn.innerHTML=`<div style="font-weight:600;font-size:13px">${esc(t.nome)}</div><div style="font-size:12px;color:var(--text-3)">${t.vacinas?.length||0} vacinas · ${fmtMoeda(t.valor_tabela)}</div>`;
+    let priceHtml=`<span style="font-weight:700;color:#059669">${fmtMoeda(t.valor_avista||t.valor_tabela)}</span> à vista`;
+    if(t.valor_cartao)priceHtml+=` · <span style="color:#64748b">${fmtMoeda(t.valor_cartao)} cartão</span>`;
+    if(t.desc_pagamento)priceHtml+=` <span style="font-size:10px;color:#94a3b8">(${esc(t.desc_pagamento)})</span>`;
+    btn.innerHTML=`<div style="font-weight:600;font-size:13px">${esc(t.nome)}</div><div style="font-size:11px;margin-top:4px">${t.vacinas?.length||0} vacinas · ${priceHtml}</div>`;
     planGrid.appendChild(btn);
   });
   s2.appendChild(planGrid);body.appendChild(s2);
 
-  // Step 3: Vendor + Financials
-  const s3=h('div',{style:{marginTop:'16px'}});s3.appendChild(h('label',{className:'label'},'3. VENDEDOR E VALORES'));
+  // Step 3: Vendor + Financials + Payment method
+  const s3=h('div',{style:{marginTop:'16px'}});s3.appendChild(h('label',{className:'label'},'3. VENDEDOR, PAGAMENTO E VALORES'));
   const fg=h('div',{className:'form-grid'});
+
+  // Forma de pagamento
+  const fpDiv=h('div');fpDiv.appendChild(h('label',{className:'label'},'Forma de Pagamento'));
+  fpDiv.appendChild(buildSelect([['avista','💵 À Vista'],['cartao','💳 Cartão/Crédito']],'avista',v=>{
+    fd.forma_pagamento=v;
+    // Update valor bruto based on selection
+    const vbInput=body.querySelector('#plan-valor-bruto');
+    if(vbInput){
+      if(v==='cartao'&&fd._valor_cartao)vbInput.value=fd._valor_cartao;
+      else if(fd._valor_avista)vbInput.value=fd._valor_avista;
+      else vbInput.value=fd.valor_bruto||0;
+      fd.valor_bruto=parseFloat(vbInput.value)||0;
+    }
+  }));
+  fg.appendChild(fpDiv);
+
   // Vendedor
   const vd=h('div');vd.appendChild(h('label',{className:'label'},'Vendedor *'));
   vd.appendChild(buildSelect([['','Selecione...'],...vendedores.map(u=>[u.id,u.nome])],fd.vendedor_id||'',v=>{fd.vendedor_id=parseInt(v)}));
@@ -86,7 +109,7 @@ function modalNovoPlano(){showModal('Novo Plano Vacinal',async(body,close)=>{
   fg.appendChild(vc);
   // Valor bruto
   const vbDiv=h('div');vbDiv.appendChild(h('label',{className:'label'},'Valor Bruto R$'));
-  const vbInp=h('input',{className:'input',type:'number',placeholder:'0',value:fd.valor_bruto||''});vbInp.addEventListener('input',e=>{fd.valor_bruto=parseFloat(e.target.value)||0});vbDiv.appendChild(vbInp);fg.appendChild(vbDiv);
+  const vbInp=h('input',{className:'input',type:'number',placeholder:'0',value:fd.valor_bruto||'',id:'plan-valor-bruto'});vbInp.addEventListener('input',e=>{fd.valor_bruto=parseFloat(e.target.value)||0});vbDiv.appendChild(vbInp);fg.appendChild(vbDiv);
   // Desconto
   const dcDiv=h('div');dcDiv.appendChild(h('label',{className:'label'},'Desconto %'));
   const dcInp=h('input',{className:'input',type:'number',placeholder:'0',max:'100'});dcInp.addEventListener('input',e=>{fd.percentual_desconto=parseFloat(e.target.value)||0});dcDiv.appendChild(dcInp);fg.appendChild(dcDiv);

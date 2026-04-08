@@ -35,6 +35,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Dat
 
 // ═══ FRONTEND (static files) ═══
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // SPA catch-all: any non-API route serves index.html
 app.get('*', (req, res) => {

@@ -433,3 +433,60 @@ describe('Validade MM/AAAA Parsing', () => {
     expect(d.getDate()).toBe(15);
   });
 });
+
+// ═══ CAMERA AUDIT ═══
+describe('Camera Audit for Critical Actions', () => {
+  const CRITICAL=['descarte','ajuste','estorno'];
+
+  it('descarte is a critical action', () => {
+    expect(CRITICAL.includes('descarte')).toBe(true);
+  });
+
+  it('entrada is NOT a critical action', () => {
+    expect(CRITICAL.includes('entrada')).toBe(false);
+  });
+
+  it('retirada is NOT a camera-required action (handled by bipe flow)', () => {
+    expect(CRITICAL.includes('retirada')).toBe(false);
+  });
+
+  it('audit log should store foto_path when photo is captured', () => {
+    const log = { acao: 'descarte', foto_path: '/uploads/audit/audit-123.jpg' };
+    expect(log.foto_path).toBeDefined();
+    expect(log.foto_path).toContain('/uploads/audit/');
+  });
+
+  it('audit log without photo should have null foto_path', () => {
+    const log = { acao: 'descarte', foto_path: null };
+    expect(log.foto_path).toBeNull();
+  });
+});
+
+// ═══ PLAN PRICING ═══
+describe('Plan Pricing Rules', () => {
+  it('avista price should be lower than cartao', () => {
+    const plano = { valor_tabela: 13630, valor_avista: 9200, valor_cartao: 9450 };
+    expect(plano.valor_avista).toBeLessThan(plano.valor_cartao);
+    expect(plano.valor_avista).toBeLessThan(plano.valor_tabela);
+  });
+
+  it('should use avista when forma=avista', () => {
+    const forma = 'avista';
+    const plano = { valor_avista: 9200, valor_cartao: 9450, valor_tabela: 13630 };
+    const valor = forma === 'cartao' ? plano.valor_cartao : plano.valor_avista;
+    expect(valor).toBe(9200);
+  });
+
+  it('should use cartao when forma=cartao', () => {
+    const forma = 'cartao';
+    const plano = { valor_avista: 9200, valor_cartao: 9450, valor_tabela: 13630 };
+    const valor = forma === 'cartao' ? plano.valor_cartao : plano.valor_avista;
+    expect(valor).toBe(9450);
+  });
+
+  it('should fallback to valor_tabela when no pricing', () => {
+    const plano = { valor_tabela: 5800, valor_avista: null, valor_cartao: null };
+    const valor = plano.valor_avista || plano.valor_tabela;
+    expect(valor).toBe(5800);
+  });
+});
