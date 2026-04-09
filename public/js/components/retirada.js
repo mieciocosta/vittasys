@@ -391,7 +391,8 @@ async function renderRetirada(){
       if(r2?.success){
         let msg=r2.message;
         if(r2.estoque)msg+=` | Estoque: ${r2.estoque.antes}→${r2.estoque.depois}`;
-        Toast.show(msg);
+        if(r2.pendente_aprovacao)Toast.show(msg,'warning');
+        else Toast.show(msg);
 
         // ═══ SEND AUDIT EVIDENCE (photo + geo) ═══
         try{
@@ -410,6 +411,31 @@ async function renderRetirada(){
         }catch(ae){}
 
         confirmando=false;resetar();focusScanner();
+      }else if(r2?.code==='FORA_DO_PLANO'){
+        // ═══ VACINA FORA DO PLANO — PEDIR JUSTIFICATIVA ═══
+        confirmando=false;
+        if(btn){btn.disabled=false;btn.textContent='✓ Confirmar Retirada'}
+        showModal('⚠ Vacina fora do plano',async(body,close)=>{
+          body.appendChild(h('div',{style:'padding:12px;background:#fef2f2;border-radius:8px;border:1px solid #fca5a5;margin-bottom:16px'},
+            h('div',{style:'font-weight:700;color:#dc2626;font-size:14px'},`"${unidadeSel.vacina_nome}" não pertence ao plano do cliente`),
+            h('div',{style:'font-size:12px;color:#dc2626;margin-top:6px'},r2.error)));
+          body.appendChild(h('label',{className:'label',style:'color:#dc2626;margin-top:12px'},'Justificativa * (obrigatória)'));
+          const justInput=h('textarea',{className:'input',rows:'3',placeholder:'Ex: Troca autorizada, dose extra, emergência...',style:'resize:vertical'});
+          body.appendChild(justInput);
+          body.appendChild(h('div',{style:'font-size:11px;color:#64748b;margin-top:8px'},'⏳ Esta retirada será enviada para aprovação do master antes de ser concluída.'));
+          body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'Enviar para Aprovação',async()=>{
+            if(!justInput.value.trim()){Toast.show('Justificativa obrigatória','error');return}
+            // Retry with justification
+            const r3=await Api.retirada({
+              unidade_id:unidadeSel.id,cliente_id:clienteSel.id,
+              usuario_id:AppState.usuario.id,aplicador_id:aplicadorSel?.id,
+              tipo_cliente:tipoCliente,local_aplicacao:localAplicacao,
+              justificativa_fora_plano:justInput.value.trim()
+            });
+            if(r3?.success){Toast.show(r3.message,'warning');close();resetar();focusScanner()}
+            else Toast.show(r3?.error||'Erro','error');
+          },{style:{marginTop:'16px'}}));
+        },'480px');
       }else{
         Toast.show(r2?.error||'Erro na retirada','error');
         confirmando=false;

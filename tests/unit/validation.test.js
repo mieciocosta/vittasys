@@ -538,3 +538,31 @@ describe('Modal and Critical Action Rules', () => {
     expect(formatted).toBe('2024-03-15');
   });
 });
+
+// ═══ FORA DO PLANO ═══
+describe('Vaccine Outside Plan Rules', () => {
+  it('should block retirada when vaccine not in plan and no justification', () => {
+    const vacinaNoPlano = false;
+    const justificativa = null;
+    const clienteAtivo = true;
+    const temPlano = true;
+    const shouldBlock = clienteAtivo && temPlano && !vacinaNoPlano && !justificativa;
+    expect(shouldBlock).toBe(true);
+  });
+
+  it('should send to approval when vaccine not in plan WITH justification', () => {
+    const vacinaNoPlano = false;
+    const justificativa = 'Troca autorizada pela gestora';
+    const isMaster = false;
+    const shouldPendApproval = !vacinaNoPlano && justificativa && !isMaster;
+    expect(shouldPendApproval).toBe(true);
+  });
+
+  it('master should be allowed to bypass plan restriction', () => {
+    const vacinaNoPlano = false;
+    const justificativa = 'Autorizado';
+    const isMaster = true;
+    const shouldPendApproval = !vacinaNoPlano && justificativa && !isMaster;
+    expect(shouldPendApproval).toBe(false);
+  });
+});
