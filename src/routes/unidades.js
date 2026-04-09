@@ -46,31 +46,17 @@ r.post('/retirada',async(req,res,next)=>{try{
 
       // Get plan start date for month calculation
       for(const plano of planosAtivos){
-        // Find compatible doses using accent-safe matching
+        // Find compatible doses — STRICT matching by vacinaId ONLY
+        // Fuzzy name matching removed: caused false positives (Hepatite A ≠ Hepatite B)
         const dosesCompativeis=plano.doses.filter(d=>{
           if(d.status!=='pendente')return false;
-          if(d.vacinaId===v.id)return true;
-          const ns=norm(v.nome);const np=norm(d.vacina?.nome);
-          if(ns.length>3&&np.length>3){
-            if(ns.includes(np)||np.includes(ns))return true;
-            const w1=ns.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
-            const w2=np.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
-            for(const a of w1){for(const b of w2){if(a.includes(b)||b.includes(a))return true}}
-          }
-          return false;
+          return d.vacinaId===v.id;
         });
 
         if(dosesCompativeis.length===0)continue;
 
-        // Check dose limit — if all doses applied, ALLOW as "fora do plano" (don't block)
-        const allCompat=plano.doses.filter(d=>{
-          if(d.vacinaId===v.id)return true;
-          const ns=norm(v.nome);const np=norm(d.vacina?.nome);
-          if(ns.length>3&&np.length>3){if(ns.includes(np)||np.includes(ns))return true;
-            const w1=ns.split(/[\s\-\(\)]+/).filter(w=>w.length>3);const w2=np.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
-            for(const a of w1){for(const b of w2){if(a.includes(b)||b.includes(a))return true}}}
-          return false;
-        });
+        // Check dose limit — STRICT by vacinaId
+        const allCompat=plano.doses.filter(d=>d.vacinaId===v.id);
         const aplicadas=allCompat.filter(d=>d.status==='aplicada').length;
         if(aplicadas>=allCompat.length){
           // All doses applied — skip plan matching, allow retirada as "extra/fora do plano"

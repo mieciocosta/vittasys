@@ -119,20 +119,9 @@ r.post('/',async(req,res,next)=>{try{
           where:{clienteId:+b.cliente_id,statusContrato:'ativo'},
           include:{doses:{where:{status:'pendente'},include:{vacina:{select:{nome:true}}}}}
         });
-        // Try to match vaccine to a pending dose
+        // Try to match vaccine to a pending dose — STRICT by vacinaId only
         for(const plano of planosAtivos){
-          const match=plano.doses.find(d=>{
-            if(d.vacinaId===+(b.vacina_id||0))return true;
-            // Fuzzy match with accent normalization
-            const nv=norm(nomeVacina);const nd=norm(d.vacina?.nome);
-            if(nv.length>3&&nd.length>3){
-              if(nv.includes(nd)||nd.includes(nv))return true;
-              const w1=nv.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
-              const w2=nd.split(/[\s\-\(\)]+/).filter(w=>w.length>3);
-              for(const a of w1){for(const b2 of w2){if(a.includes(b2)||b2.includes(a))return true}}
-            }
-            return false;
-          });
+          const match=plano.doses.find(d=>d.vacinaId===+(b.vacina_id||0));
           if(match){
             await prisma.planoContratadoDose.update({where:{id:match.id},data:{
               status:'aplicada',dataAplicacao:new Date(),localAplicacao:b.local_aplicacao||null,movimentacaoId:mov.id

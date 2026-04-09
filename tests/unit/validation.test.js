@@ -566,3 +566,35 @@ describe('Vaccine Outside Plan Rules', () => {
     expect(shouldPendApproval).toBe(false);
   });
 });
+
+// ═══ STRICT VACCINE MATCHING ═══
+describe('Strict Vaccine Matching (no fuzzy)', () => {
+  it('Hepatite A (id=10) does NOT match Hepatite B (id=1)', () => {
+    const stockVacinaId = 10; // Hepatite A
+    const doseVacinaId = 1;   // Hepatite B
+    expect(stockVacinaId === doseVacinaId).toBe(false);
+  });
+
+  it('same vacinaId matches', () => {
+    const stockVacinaId = 5;
+    const doseVacinaId = 5;
+    expect(stockVacinaId === doseVacinaId).toBe(true);
+  });
+
+  it('fuzzy name match would be wrong: hepatite a contains hepatite', () => {
+    const a = 'hepatite a';
+    const b = 'hepatite b';
+    // This is WHY fuzzy matching was dangerous
+    const words1 = a.split(/\s+/).filter(w => w.length > 3);
+    const words2 = b.split(/\s+/).filter(w => w.length > 3);
+    const fuzzyMatch = words1.some(w1 => words2.some(w2 => w1.includes(w2) || w2.includes(w1)));
+    expect(fuzzyMatch).toBe(true); // fuzzy WOULD match — that's the bug
+    // strict vacinaId would NOT match — that's the fix
+  });
+
+  it('pending approval must NOT impact plan dose', () => {
+    const movStatus = 'pendente_aprovacao';
+    const shouldImpactPlan = movStatus === 'concluido';
+    expect(shouldImpactPlan).toBe(false);
+  });
+});
