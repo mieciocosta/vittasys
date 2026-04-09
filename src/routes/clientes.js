@@ -20,7 +20,7 @@ r.get('/',async(req,res,next)=>{try{
   if(tipo_cliente)where.tipoCliente=tipo_cliente;
   if(tipo_paciente)where.tipoPaciente=tipo_paciente;
   if(status)where.status=status;
-  if(search){const s=search.replace(/[\.\-]/g,'');where.OR=[{nome:{contains:search,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:search,mode:'insensitive'}},{responsavelNome:{contains:search,mode:'insensitive'}},{telefone:{contains:search,mode:'insensitive'}}]}
+  if(search){const s=search.replace(/[\.\-]/g,'');where.OR=[{nome:{contains:search,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:search,mode:'insensitive'}},{responsavelNome:{contains:search,mode:'insensitive'}},{pacienteNome:{contains:search,mode:'insensitive'}},{telefone:{contains:search,mode:'insensitive'}},{responsavelTelefone:{contains:search,mode:'insensitive'}}]}
   const sm={id:'id',nome:'nome',codigo:'codigoCliente',tipo:'tipoCliente',nascimento:'dataNascimento',status:'status'};
   const ob=sort&&sm[sort]?{[sm[sort]]:order==='DESC'?'desc':'asc'}:{id:'desc'};
   const[data,total]=await Promise.all([prisma.cliente.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{_count:{select:{planosContratados:true,movimentacoes:true}}}}),prisma.cliente.count({where})]);

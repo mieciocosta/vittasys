@@ -40,12 +40,16 @@ if(!data.data.length)tb.innerHTML='<tr><td colspan="9" class="empty-state">Nenhu
 else data.data.forEach(c=>{
   const tr=h('tr',{className:'clickable'});
   if(c.tipo_cliente==='ativo')tr.style.borderLeft='3px solid var(--primary)';
+  const isCrianca=c.tipo_paciente==='crianca'&&c.responsavel_nome;
   tr.innerHTML=`<td class="mono text-muted text-sm">#${c.id}</td>
     <td class="mono fw-600" style="color:var(--primary);cursor:pointer" onclick="AppState.verCliente(${c.id})">${esc(c.codigo_cliente||'-')}</td>
-    <td style="cursor:pointer" onclick="AppState.verCliente(${c.id})"><div class="fw-600">${esc(c.nome)}</div>${c.paciente_nome&&c.paciente_nome!==c.nome?`<div class="text-sm" style="color:var(--primary)">👶 ${esc(c.paciente_nome)}</div>`:''}${c.observacoes_clinicas?`<div class="text-sm" style="color:#d97706">⚠ ${esc(c.observacoes_clinicas.slice(0,30))}</div>`:''}</td>
-    <td class="text-sm">${c.paciente_nascimento?fmtIdade(c.paciente_nascimento):c.data_nascimento?fmtIdade(c.data_nascimento):'-'}</td>
+    <td style="cursor:pointer" onclick="AppState.verCliente(${c.id})">
+      ${isCrianca?`<div class="fw-600">👶 ${esc(c.nome)}</div><div class="text-sm" style="color:#64748b">Resp: ${esc(c.responsavel_nome)}</div>`
+      :`<div class="fw-600">${esc(c.nome)}</div>${c.paciente_nome&&c.paciente_nome!==c.nome?`<div class="text-sm" style="color:var(--primary)">👶 ${esc(c.paciente_nome)}</div>`:''}`}
+      ${c.observacoes_clinicas?`<div class="text-sm" style="color:#d97706">⚠ ${esc(c.observacoes_clinicas.slice(0,30))}</div>`:''}</td>
+    <td class="text-sm">${c.data_nascimento?fmtIdade(c.data_nascimento):'-'}</td>
     <td>${tipoClienteBadge(c.tipo_cliente)}</td>
-    <td class="text-sm">${esc(c.telefone||'-')}</td>
+    <td class="text-sm">${esc(c.telefone||c.responsavel_telefone||'-')}</td>
     <td class="mono fw-600" style="color:${(c.planos_ativos||0)>0?'#7c3aed':'#94a3b8'}">${c.planos_ativos||0}</td>
     <td><span class="badge ${c.status==='ativo'?'badge-green':'badge-gray'}">${c.status}</span></td>`;
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
