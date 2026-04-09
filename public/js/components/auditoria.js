@@ -112,7 +112,7 @@ async function renderAuditoria(){
       left.appendChild(h('span',{style:`padding:2px 8px;border-radius:4px;font-size:${isCrit?'11':'10'}px;font-weight:700;color:white;background:${color}`},e.acao.toUpperCase().replace(/_/g,' ')));
       if(e.entidade)left.appendChild(h('span',{className:'badge badge-gray',style:'font-size:10px'},e.entidade));
       if(e.entidade_id)left.appendChild(h('span',{className:'mono',style:'font-size:10px;color:#94a3b8'},`#${e.entidade_id}`));
-      if(e.foto)left.appendChild(h('span',{style:'font-size:10px'},'📸'));
+      if(e.has_foto)left.appendChild(h('span',{style:'font-size:10px'},'📸'));
       if(e.latitude)left.appendChild(h('span',{style:'font-size:10px'},'📍'));
       top.appendChild(left);
       // Toggle
@@ -161,12 +161,22 @@ async function renderAuditoria(){
         detail.appendChild(h('div',{style:'margin-top:6px;font-size:11px;color:#d97706;padding:4px 8px;background:#fffbeb;border-radius:4px'},gl[gs]||`Geo: ${gs}`))}
       }
 
-      // PHOTO
-      if(e.foto){
+      // PHOTO (lazy load from DB)
+      if(e.has_foto){
         const fd=h('div',{style:'margin-top:8px;padding:10px;background:#fef3c7;border-radius:8px;border:1px solid #fcd34d;display:flex;align-items:center;gap:12px'});
         fd.appendChild(h('span',{style:'font-size:12px;color:#92400e;font-weight:700'},'📸 Evidência'));
-        const th=h('img',{src:e.foto,style:'width:64px;height:64px;object-fit:cover;border-radius:8px;border:2px solid #fbbf24;cursor:pointer'});
-        th.addEventListener('click',ev2=>{ev2.stopPropagation();showModal('📸 Evidência — '+e.acao.toUpperCase(),(body)=>{body.appendChild(h('img',{src:e.foto,style:'width:100%;max-width:500px;border-radius:12px;display:block;margin:0 auto'}));body.appendChild(h('div',{style:'text-align:center;margin-top:12px;font-size:12px;color:var(--text-3)'},`${hora} · ${selUser.nome} · ${e.acao} · IP: ${e.ip||'—'}`));},'560px')});
+        const th=h('div',{style:'width:64px;height:64px;border-radius:8px;border:2px solid #fbbf24;background:#f8fafc;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:#94a3b8'});
+        th.textContent='Carregar';
+        th.addEventListener('click',async ev2=>{
+          ev2.stopPropagation();
+          const fotoData=await Api.get(`/auditoria/foto/${e.id}`);
+          if(fotoData?.foto){
+            showModal('📸 Evidência — '+e.acao.toUpperCase(),(body)=>{
+              body.appendChild(h('img',{src:fotoData.foto,style:'width:100%;max-width:500px;border-radius:12px;display:block;margin:0 auto'}));
+              body.appendChild(h('div',{style:'text-align:center;margin-top:12px;font-size:12px;color:var(--text-3)'},`${hora} · ${selUser.nome} · ${e.acao} · IP: ${e.ip||'—'}`));
+            },'560px');
+          }else{Toast.show('Foto não encontrada','error')}
+        });
         fd.appendChild(th);detail.appendChild(fd);
       }
 

@@ -92,7 +92,7 @@ model Cliente {
   dataNascimento        DateTime? @map("data_nascimento")
   sexo                  String?
   cpf                   String?
-  telefone              String?
+  telefone              String?  // celular do responsável
   email                 String?
   tipoPaciente          String   @default("adulto") @map("tipo_paciente")
   tipoCliente           String   @default("espontaneo") @map("tipo_cliente")
@@ -100,6 +100,11 @@ model Cliente {
   responsavelParentesco String?  @map("responsavel_parentesco")
   responsavelCpf        String?  @map("responsavel_cpf")
   responsavelTelefone   String?  @map("responsavel_telefone")
+  // Paciente (quem recebe a vacina — pode ser diferente do responsável)
+  pacienteNome          String?  @map("paciente_nome")
+  pacienteNascimento    DateTime? @map("paciente_nascimento")
+  pacienteSexo          String?  @map("paciente_sexo")
+  pacienteCpf           String?  @map("paciente_cpf")
   vendedorId            Int?     @map("vendedor_id")
   vacinadorId           Int?     @map("vacinador_id")
   status                String   @default("ativo")
@@ -211,7 +216,8 @@ model AuditLog {
   userAgent   String?  @map("user_agent")
   rota        String?
   sessaoId    String?  @map("sessao_id")
-  fotoPath    String?  @map("foto_path") // path to webcam photo evidence
+  fotoPath    String?  @map("foto_path")
+  fotoBase64  String?  @map("foto_base64") // base64 JPEG stored in DB (persists across deploys)
   criadoEm    DateTime @default(now()) @map("criado_em")
   @@index([usuarioId])
   @@index([acao])
