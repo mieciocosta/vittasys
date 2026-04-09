@@ -156,10 +156,14 @@ r.post('/:id/aprovar',async(req,res,next)=>{try{
 
   // Apply stock impact
   if(mov.loteId){
-    if(['descarte','ajuste'].includes(mov.tipo)){
+    if(['retirada','aplicacao','descarte','ajuste'].includes(mov.tipo)){
       const lote=await prisma.lote.findUnique({where:{id:mov.loteId}});
       if(lote&&lote.quantidadeDisponivel<mov.quantidade)return res.status(400).json({error:`Estoque insuficiente para aprovar: ${lote.quantidadeDisponivel} disponíveis`});
       await prisma.lote.update({where:{id:mov.loteId},data:{quantidadeDisponivel:{decrement:mov.quantidade}}});
+      // Mark unit as applied if retirada
+      if(['retirada','aplicacao'].includes(mov.tipo)&&mov.unidadeId){
+        await prisma.unidade.update({where:{id:mov.unidadeId},data:{status:'aplicada'}}).catch(()=>{});
+      }
     }else if(mov.tipo==='estorno'){
       await prisma.lote.update({where:{id:mov.loteId},data:{quantidadeDisponivel:{increment:mov.quantidade}}});
     }

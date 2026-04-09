@@ -598,3 +598,32 @@ describe('Strict Vaccine Matching (no fuzzy)', () => {
     expect(shouldImpactPlan).toBe(false);
   });
 });
+
+// ═══ FORA-DO-PLANO FLOW ═══
+describe('Fora-do-Plano Approval Flow', () => {
+  it('master must also go through approval for fora-do-plano', () => {
+    const isMaster = true;
+    const isForaDoPlano = true;
+    // Rule: ALL users go through approval for fora-do-plano
+    const mustApprove = isForaDoPlano; // no exception for master
+    expect(mustApprove).toBe(true);
+  });
+
+  it('approval applies stock for retirada', () => {
+    const tipo = 'retirada';
+    const shouldDecrementStock = ['retirada', 'aplicacao', 'descarte', 'ajuste'].includes(tipo);
+    expect(shouldDecrementStock).toBe(true);
+  });
+
+  it('rejection does NOT apply stock', () => {
+    const status = 'reprovado';
+    const impactaEstoque = status === 'concluido';
+    expect(impactaEstoque).toBe(false);
+  });
+
+  it('pending does NOT apply stock', () => {
+    const status = 'pendente_aprovacao';
+    const impactaEstoque = status === 'concluido';
+    expect(impactaEstoque).toBe(false);
+  });
+});

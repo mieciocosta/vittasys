@@ -150,7 +150,21 @@ const sr=h('div',{style:{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:
 [['Valor',fmtMoeda(pc.valor_final),'#1B4965'],['Pago',fmtMoeda(pc.total_pago),'#2BBCB3'],['Saldo',fmtMoeda(pc.saldo_pendente),'#d97706'],['Desconto',pc.percentual_desconto+'%','#7c3aed'],['Margem',pc.margem_lucro_percentual.toFixed(1)+'%','#059669']].forEach(([l,v,c])=>{sr.appendChild(h('div',{className:'fin-card',innerHTML:`<div class="fin-label">${l}</div><div class="fin-value" style="color:${c};font-size:20px">${v}</div>`}))});wrap.appendChild(sr);
 // Doses
 const dc=h('div',{className:'card',style:{marginBottom:'20px'}});dc.appendChild(h('h3',{style:{fontSize:'15px',fontWeight:'600',marginBottom:'14px'}},`Doses (${pc.doses?.length||0})`));
-(pc.doses||[]).forEach(d=>{const row=h('div',{style:{display:'flex',alignItems:'center',gap:'12px',padding:'8px 0',borderBottom:'1px solid #f1f5f9',fontSize:'13px'}});row.innerHTML=`<span class="badge ${d.status==='aplicada'?'badge-green':d.status==='pendente'?'badge-orange':'badge-gray'}">${d.status}</span><span class="fw-600">${esc(d.vacina_nome)}</span><span class="text-muted">Dose ${d.dose_numero}</span><span class="mono text-muted">${d.competencia||'-'}</span>${d.data_aplicacao?`<span class="text-sm text-muted">Em: ${fmtData(d.data_aplicacao)}</span>`:''}${d.local_aplicacao?`<span class="text-sm text-muted">${esc(d.local_aplicacao)}</span>`:''}`;dc.appendChild(row)});wrap.appendChild(dc);
+(pc.doses||[]).forEach(d=>{const row=h('div',{style:{display:'flex',alignItems:'center',gap:'12px',padding:'8px 0',borderBottom:'1px solid #f1f5f9',fontSize:'13px'}});row.innerHTML=`<span class="badge ${d.status==='aplicada'?'badge-green':d.status==='pendente'?'badge-orange':'badge-gray'}">${d.status}</span><span class="fw-600">${esc(d.vacina_nome)}</span><span class="text-muted">Dose ${d.dose_numero}</span><span class="mono text-muted">${d.competencia||'-'}</span>${d.data_aplicacao?`<span class="text-sm text-muted">Em: ${fmtData(d.data_aplicacao)}</span>`:''}${d.local_aplicacao?`<span class="text-sm text-muted">${esc(d.local_aplicacao)}</span>`:''}${d.tipo_excecao?`<span class="badge badge-orange" style="font-size:10px">${d.tipo_excecao}</span>`:''}`;dc.appendChild(row)});wrap.appendChild(dc);
+
+// ═══ EXCEÇÕES FORA DO PLANO ═══
+if(pc.excecoes_fora_plano?.length){
+  const ex=h('div',{className:'card',style:{marginBottom:'20px'}});
+  ex.appendChild(h('h3',{style:{fontSize:'15px',fontWeight:'600',marginBottom:'14px',color:'#d97706'}},`⚠ Exceções Fora do Plano (${pc.excecoes_fora_plano.length})`));
+  pc.excecoes_fora_plano.forEach(e=>{
+    const stColor=e.status==='concluido'?'badge-green':e.status==='pendente_aprovacao'?'badge-orange':'badge-red';
+    const stLabel=e.status==='concluido'?'Aprovada':e.status==='pendente_aprovacao'?'⏳ Pendente':'✗ Recusada';
+    const row=h('div',{style:{display:'flex',alignItems:'center',gap:'10px',padding:'8px 0',borderBottom:'1px solid #f1f5f9',fontSize:'13px'}});
+    row.innerHTML=`<span class="badge ${stColor}">${stLabel}</span><span class="fw-600">${esc(e.vacina)}</span><span class="mono text-muted">${fmtDataHora(e.data)}</span>${e.justificativa?`<span class="text-sm text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.justificativa)}</span>`:''}${e.motivo_reprovacao?`<span class="text-sm" style="color:#dc2626">${esc(e.motivo_reprovacao)}</span>`:''}`;
+    ex.appendChild(row);
+  });
+  wrap.appendChild(ex);
+}
 // Projeção
 if(pc.projecao_mensal?.length){const pm=h('div',{className:'card',style:{marginBottom:'20px'}});pm.appendChild(h('h3',{style:{fontSize:'15px',fontWeight:'600',marginBottom:'14px'}},'Projeção Mensal'));
 pc.projecao_mensal.forEach(p=>{const pct=p.previstas>0?Math.round(p.aplicadas/p.previstas*100):0;const row=h('div',{style:{display:'flex',alignItems:'center',gap:'12px',padding:'10px 0',borderBottom:'1px solid #f1f5f9'}});row.innerHTML=`<span class="mono fw-600" style="width:70px;color:var(--navy)">${p.competencia}</span><div style="flex:1"><div class="prog-bar" style="height:8px"><div class="prog-fill" style="width:${pct}%;background:${pct===100?'#059669':'var(--primary)'}"></div></div></div><span class="mono text-sm">${p.aplicadas}/${p.previstas}</span><span class="badge ${pct===100?'badge-green':'badge-orange'}">${pct}%</span>`;pm.appendChild(row)});wrap.appendChild(pm)}

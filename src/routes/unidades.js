@@ -107,36 +107,29 @@ r.post('/retirada',async(req,res,next)=>{try{
         break; // Only match first active plan
       }
 
-      // ═══ VACINA FORA DO PLANO — BLOQUEAR ═══
+      // ═══ VACINA FORA DO PLANO — SEMPRE REQUER APROVAÇÃO ═══
       if(!doseVinculada&&planosAtivos.length>0){
-        const userCheck2=await tx.usuario.findUnique({where:{id:+usuario_id},select:{perfil:true}});
-        const isMaster2=userCheck2?.perfil==='master';
-
         // Collect plan vaccine names for error message
         const vacinasPlano=[];
         planosAtivos.forEach(p=>p.doses.forEach(d=>{if(d.vacina?.nome&&!vacinasPlano.includes(d.vacina.nome))vacinasPlano.push(d.vacina.nome)}));
 
         if(justificativa_fora_plano){
-          // Operator provided justification — create as pending approval (don't apply stock yet)
-          if(!isMaster2){
-            // Create pending movement instead of applying
-            const mov=await tx.movimentacao.create({data:{
-              tipo:'retirada',unidadeId:+unidade_id,loteId:l.id,vacinaId:v.id,
-              clienteId:+cliente_id,usuarioId:+usuario_id,
-              aplicadoPor:aplicador_id?+aplicador_id:null,
-              tipoCliente:tipo_cliente||'ativo',tipoAtendimento:tipo_atendimento||'normal',
-              localAplicacao:local_aplicacao,quantidade:1,
-              codigoBarras:un.codigoBarras,numeroLote:l.numeroLote,nomeVacina:v.nome,
-              status:'pendente_aprovacao',
-              observacoes:`[FORA DO PLANO] ${justificativa_fora_plano}`,
-              requerAprovacao:true,justificativa:justificativa_fora_plano,
-              motivoPadrao:'vacina_fora_plano',impactaEstoque:false,
-            }});
-            return{movId:mov.id,vacNome:v.nome,cliNome:(await tx.cliente.findUnique({where:{id:+cliente_id},select:{nome:true}}))?.nome,pendente:true};
-          }
-          // Master — allow directly but flag it
+          // Create pending movement — NO stock impact, NO plan impact
+          // Even master must go through approval trail for fora-do-plano
+          const mov=await tx.movimentacao.create({data:{
+            tipo:'retirada',unidadeId:+unidade_id,loteId:l.id,vacinaId:v.id,
+            clienteId:+cliente_id,usuarioId:+usuario_id,
+            aplicadoPor:aplicador_id?+aplicador_id:null,
+            tipoCliente:tipo_cliente||'ativo',tipoAtendimento:tipo_atendimento||'normal',
+            localAplicacao:local_aplicacao,quantidade:1,
+            codigoBarras:un.codigoBarras,numeroLote:l.numeroLote,nomeVacina:v.nome,
+            status:'pendente_aprovacao',
+            observacoes:`[FORA DO PLANO] ${justificativa_fora_plano}`,
+            requerAprovacao:true,justificativa:justificativa_fora_plano,
+            motivoPadrao:'vacina_fora_plano',impactaEstoque:false,
+          }});
+          return{movId:mov.id,vacNome:v.nome,cliNome:(await tx.cliente.findUnique({where:{id:+cliente_id},select:{nome:true}}))?.nome,pendente:true};
         }else{
-          // No justification — block with specific error
           throw Object.assign(new Error(
             `Vacina "${v.nome}" não pertence ao plano do cliente. Vacinas do plano: ${vacinasPlano.join(', ')}. Para prosseguir, informe justificativa.`
           ),{status:400,code:'FORA_DO_PLANO',vacinas_plano:vacinasPlano});

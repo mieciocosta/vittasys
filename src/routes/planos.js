@@ -45,14 +45,23 @@ r.get('/',async(req,res,next)=>{try{
 }catch(e){next(e)}});
 
 r.get('/:id',async(req,res,next)=>{try{
-  const p=await prisma.planoContratado.findUnique({where:{id:+req.params.id},include:{cliente:{select:{nome:true,codigoCliente:true,dataNascimento:true,tipoPaciente:true,responsavelNome:true}},doses:{include:{vacina:true},orderBy:[{mesPrevisto:'asc'},{doseNumero:'asc'}]},pagamentos:{orderBy:{dataPagamento:'desc'}}}});
+  const p=await prisma.planoContratado.findUnique({where:{id:+req.params.id},include:{cliente:{select:{id:true,nome:true,codigoCliente:true,dataNascimento:true,tipoPaciente:true,responsavelNome:true}},doses:{include:{vacina:true},orderBy:[{mesPrevisto:'asc'},{doseNumero:'asc'}]},pagamentos:{orderBy:{dataPagamento:'desc'}}}});
   if(!p)return res.status(404).json({error:'Não encontrado'});
   const tp=p.pagamentos.reduce((s,pg)=>s+pg.valorPago,0);
+
+  // Fetch fora-do-plano movimentações for this client
+  const excecoes=await prisma.movimentacao.findMany({
+    where:{clienteId:p.cliente.id,motivoPadrao:'vacina_fora_plano'},
+    orderBy:{dataHora:'desc'},
+    select:{id:true,nomeVacina:true,status:true,dataHora:true,observacoes:true,justificativa:true,motivoReprovacao:true,aprovadoPor:true,aprovadoEm:true}
+  });
+
   res.json({...p,nome_plano:p.nomePlano,valor_final:p.valorFinal,percentual_desconto:p.percentualDesconto,margem_lucro_percentual:p.margemLucro,status_contrato:p.statusContrato,idade_inicio:p.idadeInicio,idade_fim:p.idadeFim,
     cliente_nome:p.cliente.nome,codigo_cliente:p.cliente.codigoCliente,vendedor_nome:'',
     total_pago:tp,saldo_pendente:p.valorFinal-tp,
-    doses:p.doses.map(d=>({...d,vacina_nome:d.vacina.nome,dose_numero:d.doseNumero,data_aplicacao:d.dataAplicacao,local_aplicacao:d.localAplicacao})),
+    doses:p.doses.map(d=>({...d,vacina_nome:d.vacina.nome,dose_numero:d.doseNumero,data_aplicacao:d.dataAplicacao,local_aplicacao:d.localAplicacao,tipo_excecao:d.tipoExcecao})),
     pagamentos:p.pagamentos.map(pg=>({...pg,valor_pago:pg.valorPago,data_pagamento:pg.dataPagamento,forma_pagamento:pg.formaPagamento,numero_parcela:pg.numeroParcela})),
+    excecoes_fora_plano:excecoes.map(e=>({id:e.id,vacina:e.nomeVacina,status:e.status,data:e.dataHora,justificativa:e.justificativa,motivo_reprovacao:e.motivoReprovacao})),
     projecao_mensal:[]});
 }catch(e){next(e)}});
 
