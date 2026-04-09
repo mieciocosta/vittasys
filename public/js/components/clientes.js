@@ -40,16 +40,20 @@ if(!data.data.length)tb.innerHTML='<tr><td colspan="9" class="empty-state">Nenhu
 else data.data.forEach(c=>{
   const tr=h('tr',{className:'clickable'});
   if(c.tipo_cliente==='ativo')tr.style.borderLeft='3px solid var(--primary)';
-  const isCrianca=c.tipo_paciente==='crianca'&&c.responsavel_nome;
+  const isChild=c.tipo_paciente==='crianca'||c.tipo_paciente==='bebe';
+  const respNome=c.responsavel_nome||'';
+  const pacNome=c.nome;
+  const celular=c.telefone||c.responsavel_telefone||'-';
   tr.innerHTML=`<td class="mono text-muted text-sm">#${c.id}</td>
     <td class="mono fw-600" style="color:var(--primary);cursor:pointer" onclick="AppState.verCliente(${c.id})">${esc(c.codigo_cliente||'-')}</td>
     <td style="cursor:pointer" onclick="AppState.verCliente(${c.id})">
-      ${isCrianca?`<div class="fw-600">👶 ${esc(c.nome)}</div><div class="text-sm" style="color:#64748b">Resp: ${esc(c.responsavel_nome)}</div>`
-      :`<div class="fw-600">${esc(c.nome)}</div>${c.paciente_nome&&c.paciente_nome!==c.nome?`<div class="text-sm" style="color:var(--primary)">👶 ${esc(c.paciente_nome)}</div>`:''}`}
-      ${c.observacoes_clinicas?`<div class="text-sm" style="color:#d97706">⚠ ${esc(c.observacoes_clinicas.slice(0,30))}</div>`:''}</td>
+      ${isChild&&respNome
+        ?`<div class="fw-600">👶 ${esc(pacNome)}</div><div class="text-sm" style="color:#64748b">👤 ${esc(respNome)}</div>`
+        :`<div class="fw-600">${esc(pacNome)}</div>`}
+      ${c.observacoes?`<div class="text-sm" style="color:#d97706;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📋 ${esc(c.observacoes.slice(0,40))}</div>`:''}</td>
     <td class="text-sm">${c.data_nascimento?fmtIdade(c.data_nascimento):'-'}</td>
     <td>${tipoClienteBadge(c.tipo_cliente)}</td>
-    <td class="text-sm">${esc(c.telefone||c.responsavel_telefone||'-')}</td>
+    <td class="text-sm">${esc(celular)}</td>
     <td class="mono fw-600" style="color:${(c.planos_ativos||0)>0?'#7c3aed':'#94a3b8'}">${c.planos_ativos||0}</td>
     <td><span class="badge ${c.status==='ativo'?'badge-green':'badge-gray'}">${c.status}</span></td>`;
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
@@ -132,47 +136,107 @@ await draw();return wrap;}
 
 function buildClienteForm(fd,editId,onDone){
   const fm=h('div',{className:'card slide-up',style:{marginBottom:'20px'}});
-  fm.appendChild(h('div',{className:'client-form-section'},
-    h('h4',null,'Dados do Cliente / Responsável Financeiro'),
-    h('div',{className:'client-form-grid'},
-      fld('Nome Completo *','nome',fd),fldDate('Data de Nascimento *','data_nascimento',fd),
-      fldSel('Sexo','sexo',[['','—'],['M','Masculino'],['F','Feminino']],fd),
-      fldMask('CPF *','cpf',maskCPF,fd),fldMask('Celular *','telefone',maskTel,fd),
-      fld('E-mail','email',fd,'email'),
-      fldSel('Parentesco','responsavel_parentesco',[['','—'],['mae','Mãe'],['pai','Pai'],['avo','Avó/Avô'],['tio','Tio/Tia'],['outro','Outro']],fd),
-      fldSel('Tipo Cliente','tipo_cliente',[['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],fd),
-      fldSel('Status','status',[['ativo','Ativo'],['inativo','Inativo'],['pendente','Pendente']],fd)
-    )
-  ));
-  // Paciente section (both create and edit)
-  const pacSec=h('div',{className:'client-form-section'});
-  pacSec.appendChild(h('h4',null,'Paciente (quem receberá as vacinas)'));
-  if(!editId){
+
+  // Detect if this is a child (baby/criança) record
+  const isChild=fd.tipo_paciente==='crianca'||fd.tipo_paciente==='bebe';
+  const hasResp=!!fd.responsavel_nome;
+
+  // ═══ BLOCO A: RESPONSÁVEL FINANCEIRO ═══
+  const respSec=h('div',{className:'client-form-section'});
+  respSec.appendChild(h('h4',null,'👤 Responsável Financeiro / Contratante'));
+
+  if(!editId&&!isChild){
     const chkWrap=h('div',{style:{marginBottom:'12px'}});
     const chk=h('label',{style:{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'13px'}});
-    const inp=h('input',{type:'checkbox'});inp.addEventListener('change',e=>{fd.paciente_e_proprio=e.target.checked;if(e.target.checked){fd.paciente_nome=fd.nome;fd.paciente_tipo='adulto'}});
-    chk.appendChild(inp);chk.appendChild(document.createTextNode('O paciente é o próprio cliente'));
-    chkWrap.appendChild(chk);pacSec.appendChild(chkWrap);
+    const inp=h('input',{type:'checkbox',checked:!hasResp&&!isChild});
+    inp.addEventListener('change',e=>{fd._resp_e_paciente=e.target.checked});
+    fd._resp_e_paciente=!hasResp&&!isChild;
+    chk.appendChild(inp);chk.appendChild(document.createTextNode('O responsável é o próprio paciente (adulto)'));
+    chkWrap.appendChild(chk);respSec.appendChild(chkWrap);
   }
+
+  // For child records OR when responsável is different:
+  // responsável fields use responsavel_nome, cpf (of responsible), telefone
+  const respGrid=h('div',{className:'client-form-grid'});
+
+  if(isChild||hasResp){
+    // Child: responsável is the PARENT
+    [fld('Nome do Responsável *','responsavel_nome',fd),
+     fldMask('CPF Responsável *','cpf',maskCPF,fd),
+     fldMask('Celular Responsável *','telefone',maskTel,fd),
+     fld('E-mail','email',fd,'email'),
+     fldSel('Parentesco *','responsavel_parentesco',[['','—'],['mae','Mãe'],['pai','Pai'],['avo','Avó/Avô'],['tio','Tio/Tia'],['outro','Outro']],fd),
+     fldSel('Tipo Cliente','tipo_cliente',[['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],fd),
+     fldSel('Status','status',[['ativo','Ativo'],['inativo','Inativo']],fd)
+    ].forEach(el=>respGrid.appendChild(el));
+  }else{
+    // Adult: responsável IS the paciente
+    [fld('Nome Completo *','nome',fd),
+     fldDate('Data de Nascimento *','data_nascimento',fd),
+     fldSel('Sexo','sexo',[['','—'],['M','Masculino'],['F','Feminino']],fd),
+     fldMask('CPF *','cpf',maskCPF,fd),
+     fldMask('Celular *','telefone',maskTel,fd),
+     fld('E-mail','email',fd,'email'),
+     fldSel('Tipo Cliente','tipo_cliente',[['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],fd),
+     fldSel('Status','status',[['ativo','Ativo'],['inativo','Inativo']],fd)
+    ].forEach(el=>respGrid.appendChild(el));
+  }
+  respSec.appendChild(respGrid);fm.appendChild(respSec);
+
+  // ═══ BLOCO B: PACIENTE ═══
+  const pacSec=h('div',{className:'client-form-section'});
+  pacSec.appendChild(h('h4',null,'👶 Paciente (quem receberá as vacinas)'));
+
   const pacGrid=h('div',{className:'client-form-grid'});
-  [fld('Nome do Paciente','paciente_nome',fd),fldDate('Nascimento Paciente','paciente_nascimento',fd),
-   fldSel('Sexo Paciente','paciente_sexo',[['','—'],['M','Masc'],['F','Fem']],fd),
-   fldMask('CPF Paciente','paciente_cpf',maskCPF,fd),
-   fldSel('Tipo Paciente','tipo_paciente',[['bebe','Bebê'],['crianca','Criança'],['adulto','Adulto']],fd),
-   fld('Obs. Clínicas Paciente','observacoes_clinicas',fd)
-  ].forEach(el=>pacGrid.appendChild(el));
+  if(isChild||hasResp){
+    // Child: paciente = baby. Uses `nome` and `data_nascimento` (which hold baby data)
+    [fld('Nome do Paciente *','nome',fd),
+     fldDate('Nascimento Paciente *','data_nascimento',fd),
+     fldSel('Sexo','sexo',[['','—'],['M','Masc'],['F','Fem']],fd),
+     fldSel('Tipo Paciente','tipo_paciente',[['bebe','Bebê'],['crianca','Criança']],fd),
+     fld('Obs. Clínicas','observacoes_clinicas',fd)
+    ].forEach(el=>pacGrid.appendChild(el));
+  }else{
+    // Adult: paciente info (optional, may be same person)
+    [fldSel('Tipo Paciente','tipo_paciente',[['adulto','Adulto'],['crianca','Criança'],['bebe','Bebê']],fd),
+     fld('Obs. Clínicas','observacoes_clinicas',fd)
+    ].forEach(el=>pacGrid.appendChild(el));
+  }
   pacSec.appendChild(pacGrid);fm.appendChild(pacSec);
+
+  // ═══ OBSERVAÇÕES ═══
   fm.appendChild(h('div',{className:'client-form-section'},
     h('h4',null,'Observações'),
-    h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px'}},fldArea('Gerais','observacoes',fd),fldArea('Clínicas','observacoes_clinicas',fd))
+    h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px'}},fldArea('Gerais','observacoes',fd))
   ));
+
+  // ═══ SUBMIT ═══
   fm.appendChild(iconBtn('btn btn-primary btn-lg',null,editId?'Salvar Alterações':'Cadastrar Cliente',async()=>{
-    if(!fd.nome||fd.nome.trim().length<3)return Toast.show('Nome é obrigatório (mínimo 3 caracteres)','error');
+    // Validations
+    if(isChild||hasResp||fd.responsavel_nome){
+      // Child flow: validate responsável
+      if(!fd.responsavel_nome||fd.responsavel_nome.trim().length<3)return Toast.show('Nome do responsável é obrigatório','error');
+      if(!fd.nome||fd.nome.trim().length<2)return Toast.show('Nome do paciente é obrigatório','error');
+      if(!fd.data_nascimento)return Toast.show('Data de nascimento do paciente é obrigatória','error');
+    }else{
+      // Adult flow
+      if(!fd.nome||fd.nome.trim().length<3)return Toast.show('Nome é obrigatório (mínimo 3 caracteres)','error');
+      if(!fd.data_nascimento)return Toast.show('Data de nascimento é obrigatória','error');
+      // Validate age >= 18 for adult/responsável
+      const nasc=new Date(fd.data_nascimento);const agora=new Date();
+      const idade=(agora-nasc)/(365.25*24*60*60*1000);
+      if(idade<18)return Toast.show('⚠ Responsável financeiro deve ter 18 anos ou mais. Use a seção de Paciente para menores.','error');
+    }
     if(!fd.cpf&&!editId)return Toast.show('CPF é obrigatório','error');
-    if(!fd.data_nascimento)return Toast.show('Data de nascimento é obrigatória','error');
     if(!fd.telefone&&!editId)return Toast.show('Celular é obrigatório','error');
-    if(fd.cpf&&fd.cpf.replace(/\D/g,'').length>=11&&!validarCPF(fd.cpf))return Toast.show('CPF inválido — verifique os dígitos','error');
-    if(fd.data_nascimento&&!validarNascimento(fd.data_nascimento))return Toast.show('Data de nascimento inválida','error');
+    if(fd.cpf&&fd.cpf.replace(/\D/g,'').length>=11&&!validarCPF(fd.cpf))return Toast.show('CPF inválido','error');
+
+    // Sync paciente_nome/nascimento for DB
+    if(isChild||hasResp||fd.responsavel_nome){
+      fd.paciente_nome=fd.nome;
+      fd.paciente_nascimento=fd.data_nascimento;
+    }
+
     if(editId){const r=await Api.atualizarCliente(editId,fd);if(r?.success){Toast.show('Atualizado!');onDone()}else Toast.show(r?.error||'Erro','error')}
     else{const r=await Api.criarCliente(fd);if(r?.success){Toast.show(`${fd.nome} cadastrado! ${r.codigo_cliente?'['+r.codigo_cliente+']':''}`);onDone()}else Toast.show(r?.error||'Erro','error')}
   }));
@@ -189,44 +253,27 @@ function fldArea(l,k,fd){const d=h('div');d.appendChild(h('label',{className:'la
 
 async function renderClienteDetalhe(){const wrap=h('div',{className:'fade-in'});
 const c=await Api.cliente(AppState.clienteDetalhe);if(!c){wrap.appendChild(h('div',{className:'empty-state'},'Não encontrado'));return wrap}
+const isChild=(c.tipo_paciente==='crianca'||c.tipo_paciente==='bebe')&&c.responsavel_nome;
+const celular=c.telefone||c.responsavel_telefone||'-';
 wrap.appendChild(h('div',{className:'page-header'},h('div',{className:'page-header-left'},
   iconBtn('btn btn-outline btn-sm',I.chevL,'Voltar para Clientes',()=>AppState.setModulo('clientes')),
-  h('h1',{className:'page-title',style:{marginTop:'10px'}},`${c.nome} ${c.codigo_cliente?'['+c.codigo_cliente+']':''}`),
-  h('p',{className:'page-subtitle',innerHTML:`${tipoClienteBadge(c.tipo_cliente)} · Cel: ${esc(c.telefone||'-')} · CPF: ${esc(c.cpf||'-')}`})
+  h('h1',{className:'page-title',style:{marginTop:'10px'}},isChild?`👶 ${c.nome}`:`${c.nome} ${c.codigo_cliente?'['+c.codigo_cliente+']':''}`),
+  h('p',{className:'page-subtitle',innerHTML:isChild?`${tipoClienteBadge(c.tipo_cliente)} · Resp: ${esc(c.responsavel_nome)} · Cel: ${esc(celular)}`:`${tipoClienteBadge(c.tipo_cliente)} · Cel: ${esc(celular)} · CPF: ${esc(c.cpf||'-')}`})
 )));
-
-// ═══ RESPONSÁVEL FINANCEIRO ═══
+// ═══ RESPONSÁVEL ═══
 const resp=h('div',{className:'card',style:{marginBottom:'16px'}});
-resp.innerHTML=`<h3 style="font-size:15px;font-weight:600;margin-bottom:14px">👤 Responsável Financeiro / Contratante</h3>
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px">
-<div><div class="label">Nome</div><div class="fw-600">${esc(c.nome)}</div></div>
-<div><div class="label">CPF</div><div>${esc(c.cpf||'-')}</div></div>
-<div><div class="label">Celular</div><div>${esc(c.telefone||'-')}</div></div>
-<div><div class="label">E-mail</div><div>${esc(c.email||'-')}</div></div>
-<div><div class="label">Nascimento</div><div>${c.data_nascimento?fmtData(c.data_nascimento):'-'}</div></div>
-<div><div class="label">Sexo</div><div>${c.sexo==='M'?'Masculino':c.sexo==='F'?'Feminino':'-'}</div></div>
-${c.responsavel_nome?`<div><div class="label">Responsável</div><div>${esc(c.responsavel_nome)}</div></div>`:''}
-${c.responsavel_parentesco?`<div><div class="label">Parentesco</div><div>${esc(c.responsavel_parentesco)}</div></div>`:''}
-</div>`;
+if(isChild){
+  const par=c.responsavel_parentesco==='mae'?'Mãe':c.responsavel_parentesco==='pai'?'Pai':c.responsavel_parentesco||'-';
+  resp.innerHTML=`<h3 style="font-size:15px;font-weight:600;margin-bottom:14px">👤 Responsável Financeiro</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"><div><div class="label">Nome</div><div class="fw-600">${esc(c.responsavel_nome)}</div></div><div><div class="label">Parentesco</div><div>${esc(par)}</div></div><div><div class="label">CPF</div><div>${esc(c.cpf||'-')}</div></div><div><div class="label">Celular</div><div>${esc(celular)}</div></div><div><div class="label">E-mail</div><div>${esc(c.email||'-')}</div></div></div>`;
+}else{
+  resp.innerHTML=`<h3 style="font-size:15px;font-weight:600;margin-bottom:14px">👤 Dados do Cliente</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"><div><div class="label">Nome</div><div class="fw-600">${esc(c.nome)}</div></div><div><div class="label">CPF</div><div>${esc(c.cpf||'-')}</div></div><div><div class="label">Celular</div><div>${esc(celular)}</div></div><div><div class="label">E-mail</div><div>${esc(c.email||'-')}</div></div><div><div class="label">Nascimento</div><div>${c.data_nascimento?fmtData(c.data_nascimento)+' ('+fmtIdade(c.data_nascimento)+')':'-'}</div></div><div><div class="label">Sexo</div><div>${c.sexo==='M'?'Masculino':c.sexo==='F'?'Feminino':'-'}</div></div><div><div class="label">Tipo</div><div>${tipoPacienteBadge(c.tipo_paciente)}</div></div><div><div class="label">Status</div><div><span class="badge ${c.status==='ativo'?'badge-green':'badge-gray'}">${c.status}</span></div></div></div>`;
+}
 wrap.appendChild(resp);
-
-// ═══ PACIENTE (quem recebe as vacinas) ═══
-const pac=h('div',{className:'card',style:{marginBottom:'16px'}});
-const pacNome=c.paciente_nome||c.nome;
-const pacNasc=c.paciente_nascimento||c.data_nascimento;
-const eProprio=!c.paciente_nome||c.paciente_nome===c.nome;
-pac.innerHTML=`<h3 style="font-size:15px;font-weight:600;margin-bottom:14px">👶 Paciente ${eProprio?'<span class="badge badge-gray" style="font-size:10px">Próprio cliente</span>':''}</h3>
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px">
-<div><div class="label">Nome</div><div class="fw-600">${esc(pacNome)}</div></div>
-<div><div class="label">Nascimento</div><div>${pacNasc?fmtData(pacNasc):'-'} ${pacNasc?`<span class="text-muted">(${fmtIdade(pacNasc)})</span>`:''}</div></div>
-<div><div class="label">Sexo</div><div>${(c.paciente_sexo||c.sexo)==='M'?'Masc':(c.paciente_sexo||c.sexo)==='F'?'Fem':'-'}</div></div>
-<div><div class="label">CPF</div><div>${esc(c.paciente_cpf||'-')}</div></div>
-<div><div class="label">Tipo</div><div>${tipoPacienteBadge(c.tipo_paciente)}</div></div>
-<div><div class="label">Status</div><div><span class="badge ${c.status==='ativo'?'badge-green':'badge-gray'}">${c.status}</span></div></div>
-${c.observacoes_clinicas?`<div style="grid-column:1/-1"><div class="label">Obs. Clínicas</div><div style="color:#d97706">⚠ ${esc(c.observacoes_clinicas)}</div></div>`:''}
-${c.observacoes?`<div style="grid-column:1/-1"><div class="label">Observações</div><div>${esc(c.observacoes)}</div></div>`:''}</div>`;
-wrap.appendChild(pac);
-
+// ═══ PACIENTE (child) ═══
+if(isChild){const pac=h('div',{className:'card',style:{marginBottom:'16px'}});
+pac.innerHTML=`<h3 style="font-size:15px;font-weight:600;margin-bottom:14px">👶 Paciente</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"><div><div class="label">Nome</div><div class="fw-600">${esc(c.nome)}</div></div><div><div class="label">Nascimento</div><div>${c.data_nascimento?fmtData(c.data_nascimento)+' ('+fmtIdade(c.data_nascimento)+')':'-'}</div></div><div><div class="label">Sexo</div><div>${c.sexo==='M'?'Masc':c.sexo==='F'?'Fem':'-'}</div></div><div><div class="label">Tipo</div><div>${tipoPacienteBadge(c.tipo_paciente)}</div></div><div><div class="label">Status</div><div><span class="badge ${c.status==='ativo'?'badge-green':'badge-gray'}">${c.status}</span></div></div>${c.observacoes_clinicas?`<div style="grid-column:1/-1"><div class="label">Obs. Clínicas</div><div style="color:#d97706">⚠ ${esc(c.observacoes_clinicas)}</div></div>`:''}</div>`;
+wrap.appendChild(pac)}
+if(c.observacoes){const ob=h('div',{className:'card',style:{marginBottom:'16px'}});ob.innerHTML=`<h3 style="font-size:15px;font-weight:600;margin-bottom:8px">📋 Observações</h3><div>${esc(c.observacoes)}</div>`;wrap.appendChild(ob)}
 // Legacy pacientes array (if exists)
 if(c.pacientes?.length){const pc=h('div',{className:'card',style:{marginBottom:'16px'}});pc.appendChild(h('h3',{style:{fontSize:'15px',fontWeight:'600',marginBottom:'14px'}},`Pacientes Adicionais (${c.pacientes.length})`));
 c.pacientes.forEach(p=>{const row=h('div',{style:{display:'flex',alignItems:'center',gap:'12px',padding:'10px 0',borderBottom:'1px solid #f1f5f9',fontSize:'13px'}});

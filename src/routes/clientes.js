@@ -53,7 +53,14 @@ r.post('/',async(req,res,next)=>{try{
   if(!b.nome||b.nome.trim().length<3)return res.status(400).json({error:'Nome é obrigatório (mínimo 3 caracteres)',campo:'nome'});
   if(!b.cpf)return res.status(400).json({error:'CPF é obrigatório',campo:'cpf'});
   if(!b.data_nascimento&&!b.dataNascimento)return res.status(400).json({error:'Data de nascimento é obrigatória',campo:'data_nascimento'});
-  if(!b.telefone)return res.status(400).json({error:'Telefone é obrigatório',campo:'telefone'});
+  if(!b.telefone)return res.status(400).json({error:'Celular é obrigatório',campo:'telefone'});
+
+  // Age validation: if no responsavel_nome, the person is both responsável and paciente — must be 18+
+  const nasc=new Date(b.data_nascimento||b.dataNascimento);
+  const idade=(new Date()-nasc)/(365.25*24*60*60*1000);
+  if(!b.responsavel_nome&&idade<18){
+    return res.status(400).json({error:'Responsável financeiro deve ter 18 anos ou mais. Para menores, preencha o campo Responsável.',campo:'data_nascimento'});
+  }
 
   // CPF validation
   const cpfClean=validarCPF(b.cpf);
