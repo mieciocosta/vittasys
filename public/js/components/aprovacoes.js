@@ -82,13 +82,19 @@ async function renderAprovacoes(){
     const obs=h('textarea',{className:'input',placeholder:'Observações da aprovação (opcional)',rows:'3',style:'resize:vertical'});
     body.appendChild(h('label',{className:'label'},'Observações'));body.appendChild(obs);
     body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',I.check,'Confirmar Aprovação',async()=>{
-      // Camera evidence for approval
-      const auditInfo={acao:'aprovar',entidade:'movimentacao',entidade_id:m.id,
-        usuario_id:AppState.usuario?.id,usuario_nome:AppState.usuario?.nome,perfil:'master',
-        detalhes:JSON.stringify({tipo:m.tipo,vacina:m.nome_vacina,decisao:'aprovado'})};
-      await capturaFotoAuditoria(auditInfo);
+      // ═══ EVIDENCE: camera + geo ═══
+      let fotoBlob=null,geoData={geo_status:'nao_capturado'};
+      try{
+        if(typeof captureAuditPhoto==='function')fotoBlob=await captureAuditPhoto(`APROVAR ${m.tipo.toUpperCase()} — ${m.nome_vacina||''}`);
+        if(typeof captureGeoForAudit==='function')geoData=await captureGeoForAudit();
+      }catch(ev){}
       const r=await Api.aprovarMovimentacao(m.id,{aprovador_id:AppState.usuario.id,observacoes:obs.value});
-      if(r?.success){Toast.show(r.message);close();draw()}else Toast.show(r?.error||'Erro','error')
+      if(r?.success){
+        try{sendAuditWithPhoto({acao:'aprovar',entidade:'movimentacao',entidadeId:m.id,
+          usuarioId:AppState.usuario?.id,usuarioNome:AppState.usuario?.nome,perfil:'master',
+          detalhes:JSON.stringify({tipo:m.tipo,vacina:m.nome_vacina,decisao:'aprovado',...geoData})},fotoBlob)}catch(ae){}
+        Toast.show(r.message);close();draw()
+      }else Toast.show(r?.error||'Erro','error')
     },{style:{marginTop:'16px'}}));
   },'480px')}
 
@@ -100,8 +106,16 @@ async function renderAprovacoes(){
     body.appendChild(h('label',{className:'label',style:'color:#dc2626'},'Motivo *'));body.appendChild(motivo);
     body.appendChild(iconBtn('btn btn-red btn-block btn-lg',I.x,'Confirmar Reprovação',async()=>{
       if(!motivo.value.trim())return Toast.show('Motivo obrigatório','error');
+      // ═══ EVIDENCE: geo for rejection ═══
+      let geoData={geo_status:'nao_capturado'};
+      try{if(typeof captureGeoForAudit==='function')geoData=await captureGeoForAudit()}catch(ev){}
       const r=await Api.reprovarMovimentacao(m.id,{aprovador_id:AppState.usuario.id,motivo:motivo.value.trim()});
-      if(r?.success){Toast.show(r.message);close();draw()}else Toast.show(r?.error||'Erro','error')
+      if(r?.success){
+        try{Api.auditoriaLog({acao:'reprovar',entidade:'movimentacao',entidadeId:m.id,
+          usuarioId:AppState.usuario?.id,usuarioNome:AppState.usuario?.nome,perfil:'master',
+          detalhes:JSON.stringify({tipo:m.tipo,motivo:motivo.value.trim(),...geoData})})}catch(ae){}
+        Toast.show(r.message);close();draw()
+      }else Toast.show(r?.error||'Erro','error')
     },{style:{marginTop:'16px'}}));
   },'480px')}
 

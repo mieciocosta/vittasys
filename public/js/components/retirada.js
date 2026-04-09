@@ -355,12 +355,25 @@ async function renderRetirada(){
     draw();
   }
   async function confirmar(){
-    if(confirmando)return; // Prevent double submit
+    if(confirmando)return;
     if(!unidadeSel||!clienteSel||!localAplicacao)return;
     confirmando=true;
-    // Disable button visually
     const btn=wrap.querySelector('.confirm-banner .btn-primary');
     if(btn){btn.disabled=true;btn.textContent='Processando...'}
+
+    // ═══ EVIDENCE CAPTURE FOR CRITICAL ACTION ═══
+    let fotoBlob=null,geoData={geo_status:'nao_capturado'};
+    try{
+      // 1. Camera (with operator awareness)
+      if(typeof captureAuditPhoto==='function'){
+        fotoBlob=await captureAuditPhoto(`RETIRADA — ${unidadeSel.vacina_nome||'Vacina'}`);
+      }
+      // 2. Geolocation
+      if(typeof captureGeoForAudit==='function'){
+        geoData=await captureGeoForAudit();
+      }
+    }catch(ev){}
+
     try{
       const r2=await Api.retirada({
         unidade_id:unidadeSel.id,
@@ -374,10 +387,24 @@ async function renderRetirada(){
         let msg=r2.message;
         if(r2.estoque)msg+=` | Estoque: ${r2.estoque.antes}→${r2.estoque.depois}`;
         Toast.show(msg);
-        // Reset and ready for next scan
-        confirmando=false;
-        resetar();
-        focusScanner();
+
+        // ═══ SEND AUDIT EVIDENCE (photo + geo) ═══
+        try{
+          const auditData={acao:'retirada',entidade:'movimentacao',
+            entidadeId:r2.movimentacao_id,
+            usuarioId:AppState.usuario.id,usuarioNome:AppState.usuario?.nome,
+            perfil:AppState.usuario?.perfil,
+            detalhes:JSON.stringify({
+              vacina:unidadeSel.vacina_nome,cliente:clienteSel.nome,
+              local:localAplicacao,estoque_antes:r2.estoque?.antes,estoque_depois:r2.estoque?.depois,
+              ...geoData
+            })};
+          if(typeof sendAuditWithPhoto==='function'){
+            sendAuditWithPhoto(auditData,fotoBlob);
+          }else{Api.auditoriaLog(auditData)}
+        }catch(ae){}
+
+        confirmando=false;resetar();focusScanner();
       }else{
         Toast.show(r2?.error||'Erro na retirada','error');
         confirmando=false;
