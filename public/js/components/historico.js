@@ -105,7 +105,9 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
     fd.lote_id=u.lote_id;fd.numero_lote=u.numero_lote;
     fd.codigo_barras=u.codigo_barras;fd.unidade_id=u.id;
     acList.style.display='none';scanInput.value='';
-    scanStatus.innerHTML=`<div style="font-size:12px;color:#059669;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">✓ ${esc(u.vacina_nome)} — Lote: ${esc(u.numero_lote)} — ${u.quantidade_disponivel} disp.</div>`;
+    scanStatus.innerHTML=`<div style="font-size:12px;color:#059669;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">✓ ${esc(u.vacina_nome)} — Lote: ${esc(u.numero_lote)} — ${u.quantidade_disponivel} disp. <span style="cursor:pointer;color:var(--primary);text-decoration:underline;margin-left:8px" onclick="this.closest('.fade-in').querySelectorAll('.ac-hideable').forEach(el=>el.style.display='');this.parentElement.innerHTML=''">✎ Alterar</span></div>`;
+    // Hide redundant selects
+    body.querySelectorAll('.ac-hideable').forEach(el=>el.style.display='none');
     scanInput.focus();
   }
 
@@ -148,14 +150,14 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
   });
   dCli.appendChild(cliInput);dCli.appendChild(cliResult);gr.appendChild(dCli);
 
-  // Vacina (obrigatório)
-  const dVac=h('div');dVac.appendChild(h('label',{className:'label',style:{color:'var(--red)'}},'Vacina * (obrigatório)'));
+  // Vacina (obrigatório — hidden when autocomplete fills it)
+  const dVac=h('div',{className:'ac-hideable'});dVac.appendChild(h('label',{className:'label',style:{color:'var(--red)'}},'Vacina * (obrigatório)'));
   dVac.appendChild(buildSelect([['','— Selecione a vacina —'],...vacs.map(v=>[v.id+'|'+v.nome,v.nome+' ('+v.fabricante+')'])],fd.vacina_id||'',v=>{
     const parts=v.split('|');fd.vacina_id=parseInt(parts[0]);fd.nome_vacina=parts[1]||''}));
   gr.appendChild(dVac);
 
-  // Lote
-  const dLote=h('div');dLote.appendChild(h('label',{className:'label'},'Lote'));
+  // Lote (hidden when autocomplete fills it)
+  const dLote=h('div',{className:'ac-hideable'});dLote.appendChild(h('label',{className:'label'},'Lote'));
   dLote.appendChild(buildSelect([['','— Opcional —'],...lotes.data.filter(l=>l.status==='disponivel').map(l=>[l.id+'|'+l.numero_lote,`${l.vacina_nome} — ${l.numero_lote} (${l.quantidade_disponivel} disp.)`])],fd.lote_id||'',v=>{
     const parts=v.split('|');fd.lote_id=parseInt(parts[0]);fd.numero_lote=parts[1]||''}));
   gr.appendChild(dLote);
@@ -219,12 +221,17 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
     if(!fd.nome_vacina&&!fd.vacina_id)return Toast.show('Selecione a vacina','error');
     if(['retirada','aplicacao'].includes(fd.tipo)&&!fd.local_aplicacao)return Toast.show('Local de aplicação obrigatório para retirada','error');
 
-    // ═══ CAMERA FOR CRITICAL ACTIONS ═══
+    // ═══ FOTO OBRIGATÓRIA PARA AÇÕES CRÍTICAS ═══
     const tiposCriticos=['descarte','ajuste','estorno'];
     let fotoBlob=null;
-    if(tiposCriticos.includes(fd.tipo)&&typeof captureAuditPhoto==='function'){
-      fotoBlob=await captureAuditPhoto(`${fd.tipo.toUpperCase()} — ${fd.nome_vacina||'Vacina'}`);
-      // Photo is optional — operation continues even without it
+    if(tiposCriticos.includes(fd.tipo)){
+      if(typeof captureAuditPhoto==='function'){
+        fotoBlob=await captureAuditPhoto(`${fd.tipo.toUpperCase()} — ${fd.nome_vacina||'Vacina'}`);
+      }
+      if(!fotoBlob){
+        Toast.show('⚠ Foto obrigatória para ações críticas. Ação cancelada.','error');
+        return; // BLOCK action
+      }
     }
 
     const r=await Api.criarMovimentacao(fd);

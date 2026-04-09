@@ -82,12 +82,12 @@ async function renderAprovacoes(){
     const obs=h('textarea',{className:'input',placeholder:'Observações da aprovação (opcional)',rows:'3',style:'resize:vertical'});
     body.appendChild(h('label',{className:'label'},'Observações'));body.appendChild(obs);
     body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',I.check,'Confirmar Aprovação',async()=>{
-      // ═══ EVIDENCE: camera + geo ═══
       let fotoBlob=null,geoData={geo_status:'nao_capturado'};
       try{
         if(typeof captureAuditPhoto==='function')fotoBlob=await captureAuditPhoto(`APROVAR ${m.tipo.toUpperCase()} — ${m.nome_vacina||''}`);
         if(typeof captureGeoForAudit==='function')geoData=await captureGeoForAudit();
       }catch(ev){}
+      if(!fotoBlob){Toast.show('⚠ Foto obrigatória para aprovação','error');return}
       const r=await Api.aprovarMovimentacao(m.id,{aprovador_id:AppState.usuario.id,observacoes:obs.value});
       if(r?.success){
         try{sendAuditWithPhoto({acao:'aprovar',entidade:'movimentacao',entidadeId:m.id,

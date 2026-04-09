@@ -361,18 +361,23 @@ async function renderRetirada(){
     const btn=wrap.querySelector('.confirm-banner .btn-primary');
     if(btn){btn.disabled=true;btn.textContent='Processando...'}
 
-    // ═══ EVIDENCE CAPTURE FOR CRITICAL ACTION ═══
+    // ═══ FOTO OBRIGATÓRIA PARA RETIRADA ═══
     let fotoBlob=null,geoData={geo_status:'nao_capturado'};
     try{
-      // 1. Camera (with operator awareness)
       if(typeof captureAuditPhoto==='function'){
         fotoBlob=await captureAuditPhoto(`RETIRADA — ${unidadeSel.vacina_nome||'Vacina'}`);
       }
-      // 2. Geolocation
       if(typeof captureGeoForAudit==='function'){
         geoData=await captureGeoForAudit();
       }
     }catch(ev){}
+
+    if(!fotoBlob){
+      Toast.show('⚠ Foto obrigatória para retirada. Ação cancelada.','error');
+      confirmando=false;
+      if(btn){btn.disabled=false;btn.textContent='✓ Confirmar Retirada'}
+      return; // BLOCK
+    }
 
     try{
       const r2=await Api.retirada({

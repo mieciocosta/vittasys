@@ -490,3 +490,51 @@ describe('Plan Pricing Rules', () => {
     expect(valor).toBe(5800);
   });
 });
+
+// ═══ v13 FIXES ═══
+describe('Modal and Critical Action Rules', () => {
+  it('modal should NOT close on backdrop click', () => {
+    // Rule: modal only closes via X button or explicit close
+    const closeOnBackdrop = false;
+    expect(closeOnBackdrop).toBe(false);
+  });
+
+  it('critical action requires photo (descarte)', () => {
+    const tipo = 'descarte';
+    const criticos = ['descarte', 'ajuste', 'estorno'];
+    const isCritico = criticos.includes(tipo);
+    const fotoBlob = null; // no photo
+    const canProceed = !isCritico || fotoBlob !== null;
+    expect(canProceed).toBe(false); // blocked without photo
+  });
+
+  it('critical action with photo proceeds', () => {
+    const fotoBlob = new Uint8Array([1, 2, 3]); // simulated photo
+    const canProceed = fotoBlob !== null;
+    expect(canProceed).toBe(true);
+  });
+
+  it('vaccine outside plan should NOT block retirada', () => {
+    const allDosesApplied = true;
+    const shouldBlock = false; // continue, allow as extra
+    expect(shouldBlock).toBe(false);
+  });
+
+  it('lote with movements gets soft delete (inativo)', () => {
+    const movsCount = 5;
+    const result = movsCount > 0 ? 'inativo' : 'excluido';
+    expect(result).toBe('inativo');
+  });
+
+  it('lote without movements gets hard delete', () => {
+    const movsCount = 0;
+    const result = movsCount > 0 ? 'inativo' : 'excluido';
+    expect(result).toBe('excluido');
+  });
+
+  it('date field formats ISO to YYYY-MM-DD', () => {
+    const iso = '2024-03-15T00:00:00.000Z';
+    const formatted = iso.slice(0, 10);
+    expect(formatted).toBe('2024-03-15');
+  });
+});

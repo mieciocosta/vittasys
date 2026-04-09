@@ -22,19 +22,20 @@ async function draw(){wrap.innerHTML='';
   if(!data||!data.data){wrap.appendChild(h('div',{className:'empty-state'},'Erro ao carregar estoque'));return}
 
   const tw=h('div',{className:'table-wrap'});
-  const t=buildSortableTable([
-    ['ID','id'],['Vacina','vacina_nome'],['Fabricante','fabricante'],['Lote','numero_lote'],
+  const isMaster=AppState.usuario?.perfil==='master';
+  const cols=[['ID','id'],['Vacina','vacina_nome'],['Fabricante','fabricante'],['Lote','numero_lote'],
     ['Estoque','quantidade_disponivel'],['Unid.',''],['Validade','validade'],['Local',''],
-    ['Custo','valor_unitario_custo'],['Status','status']
-  ],f,draw);
+    ['Custo','valor_unitario_custo'],['Status','status']];
+  if(isMaster)cols.push(['Ações','']);
+  const t=buildSortableTable(cols,f,draw);
 
   const tb=document.createElement('tbody');
-  if(!data.data.length){tb.innerHTML='<tr><td colspan="10" class="empty-state">Nenhum lote encontrado</td></tr>'}
+  if(!data.data.length){tb.innerHTML='<tr><td colspan="11" class="empty-state">Nenhum lote encontrado</td></tr>'}
   else data.data.forEach(l=>{
     const dias=l.dias_para_vencer;const st=statusVenc(dias);
     const pct=l.quantidade_total>0?Math.round(l.quantidade_disponivel/l.quantidade_total*100):0;
     const bc=l.quantidade_disponivel<5?'#dc2626':l.quantidade_disponivel<15?'#d97706':'#2BBCB3';
-    const sm2={disponivel:'badge-green',reservado:'badge-primary',esgotado:'badge-gray',vencido:'badge-red'};
+    const sm2={disponivel:'badge-green',reservado:'badge-primary',esgotado:'badge-gray',vencido:'badge-red',inativo:'badge-gray'};
     const tr=h('tr');
     if(dias<=30&&dias>=0)tr.style.background='#fffbeb';
     if(dias<0)tr.style.background='#fef2f2';
@@ -48,6 +49,40 @@ async function draw(){wrap.innerHTML='';
       <td class="text-sm">${esc(l.local_armazenamento||'-')}</td>
       <td class="mono text-sm">${l.valor_unitario_custo?fmtMoeda(l.valor_unitario_custo):'-'}</td>
       <td><span class="badge ${sm2[l.status]||'badge-gray'}">${l.status}</span></td>`;
+    // Master actions
+    if(isMaster){
+      const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
+      actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'✏️',async e=>{
+        e.stopPropagation();
+        showModal(`Editar Lote #${l.id}`,async(body,close)=>{
+          const fd={numero_lote:l.numero_lote,fabricante:l.fabricante,local_armazenamento:l.local_armazenamento,valor_unitario_custo:l.valor_unitario_custo,status:l.status};
+          const gr=h('div',{className:'form-grid'});
+          [['numero_lote','Lote'],['fabricante','Fabricante'],['local_armazenamento','Local']].forEach(([k,lab])=>{
+            const d=h('div');d.appendChild(h('label',{className:'label'},lab));
+            const inp=h('input',{className:'input',value:fd[k]||''});inp.addEventListener('input',ev=>{fd[k]=ev.target.value});
+            d.appendChild(inp);gr.appendChild(d);
+          });
+          const dSt=h('div');dSt.appendChild(h('label',{className:'label'},'Status'));
+          dSt.appendChild(buildSelect([['disponivel','Disponível'],['reservado','Reservado'],['esgotado','Esgotado'],['inativo','Inativo']],fd.status||'',v=>{fd.status=v}));
+          gr.appendChild(dSt);
+          body.appendChild(gr);
+          body.appendChild(iconBtn('btn btn-primary btn-block',null,'Salvar',async()=>{
+            const r=await Api.atualizarLote(l.id,fd);
+            if(r?.success){Toast.show('Lote atualizado');close();draw()}else Toast.show(r?.error||'Erro','error');
+          },{style:{marginTop:'16px'}}));
+        },'480px');
+      },{style:{marginRight:'4px'}}));
+      actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'🗑',async e=>{
+        e.stopPropagation();
+        const msg=l.quantidade_disponivel>0?
+          `Lote #${l.id} tem ${l.quantidade_disponivel} unidades. Será INATIVADO (histórico preservado). Confirmar?`:
+          `Excluir lote #${l.id} permanentemente?`;
+        if(!confirm(msg))return;
+        const r=await Api.excluirLote(l.id);
+        if(r?.success){Toast.show(r.message);draw()}else Toast.show(r?.error||'Erro','error');
+      }));
+      tr.appendChild(actTd);
+    }
     tb.appendChild(tr);
   });
   t.appendChild(tb);tw.appendChild(t);

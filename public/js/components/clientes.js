@@ -160,11 +160,9 @@ function buildClienteForm(fd,editId,onDone){
   ));
   fm.appendChild(iconBtn('btn btn-primary btn-lg',null,editId?'Salvar Alterações':'Cadastrar Cliente',async()=>{
     if(!fd.nome||fd.nome.trim().length<3)return Toast.show('Nome é obrigatório (mínimo 3 caracteres)','error');
-    if(!editId){
-      if(!fd.cpf)return Toast.show('CPF é obrigatório','error');
-      if(!fd.data_nascimento)return Toast.show('Data de nascimento é obrigatória','error');
-      if(!fd.telefone)return Toast.show('Telefone é obrigatório','error');
-    }
+    if(!fd.cpf&&!editId)return Toast.show('CPF é obrigatório','error');
+    if(!fd.data_nascimento)return Toast.show('Data de nascimento é obrigatória','error');
+    if(!fd.telefone&&!editId)return Toast.show('Telefone é obrigatório','error');
     if(fd.cpf&&fd.cpf.replace(/\D/g,'').length>=11&&!validarCPF(fd.cpf))return Toast.show('CPF inválido — verifique os dígitos','error');
     if(fd.data_nascimento&&!validarNascimento(fd.data_nascimento))return Toast.show('Data de nascimento inválida','error');
     if(editId){const r=await Api.atualizarCliente(editId,fd);if(r?.success){Toast.show('Atualizado!');onDone()}else Toast.show(r?.error||'Erro','error')}
@@ -173,7 +171,10 @@ function buildClienteForm(fd,editId,onDone){
   return fm;
 }
 function fld(l,k,fd,type){const d=h('div');d.appendChild(h('label',{className:'label'},l));const i=h('input',{className:'input',type:type||'text',value:fd[k]||'',maxLength:'200'});i.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(i);return d}
-function fldDate(l,k,fd){const d=h('div');d.appendChild(h('label',{className:'label'},l));const i=h('input',{className:'input',type:'date',value:fd[k]||''});i.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(i);return d}
+function fldDate(l,k,fd){const d=h('div');d.appendChild(h('label',{className:'label'},l));
+  // Format ISO date to YYYY-MM-DD for input type=date
+  let val=fd[k]||'';if(val&&val.length>10)val=val.slice(0,10);
+  const i=h('input',{className:'input',type:'date',value:val});i.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(i);return d}
 function fldSel(l,k,opts,fd){const d=h('div');d.appendChild(h('label',{className:'label'},l));d.appendChild(buildSelect(opts,fd[k]||'',v=>{fd[k]=v}));return d}
 function fldMask(l,k,maskFn,fd){const d=h('div');d.appendChild(h('label',{className:'label'},l));d.appendChild(inputComMascara('input','',maskFn,v=>{fd[k]=v},fd[k]||''));return d}
 function fldArea(l,k,fd){const d=h('div');d.appendChild(h('label',{className:'label'},l));const ta=h('textarea',{className:'input',style:{minHeight:'60px',resize:'vertical'}});ta.value=fd[k]||'';ta.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(ta);return d}

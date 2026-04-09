@@ -164,4 +164,40 @@ r.post('/cadastro-barras',async(req,res,next)=>{try{
   res.json({success:true,message:`✓ ${vacina.nome} — Lote ${lote.numeroLote} — ${qty} unidade(s)`,vacina_id:vacina.id,lote_id:lote.id,movimentacao_id:mov.id});
 }catch(e){console.error('cadastro-barras:',e);res.status(500).json({error:'Erro ao cadastrar: '+(e.meta?.cause||e.message)})}});
 
+// ═══ EDIT LOTE (master) ═══
+r.put('/:id',async(req,res,next)=>{try{
+  const b=req.body;const id=+req.params.id;
+  const data={};
+  if(b.numero_lote)data.numeroLote=b.numero_lote;
+  if(b.fabricante)data.fabricante=b.fabricante;
+  if(b.validade)data.validade=parseValidade(b.validade);
+  if(b.local_armazenamento)data.localArmazenamento=b.local_armazenamento;
+  if(b.valor_unitario_custo!=null)data.valorUnitarioCusto=+b.valor_unitario_custo;
+  if(b.status)data.status=b.status;
+  if(!Object.keys(data).length)return res.json({success:true});
+  await prisma.lote.update({where:{id},data});
+  res.json({success:true});
+}catch(e){next(e)}});
+
+// ═══ DELETE LOTE (master — safe) ═══
+r.delete('/:id',async(req,res,next)=>{try{
+  const id=+req.params.id;
+  const lote=await prisma.lote.findUnique({where:{id},include:{_count:{select:{movimentacoes:true,unidades:true}}}});
+  if(!lote)return res.status(404).json({error:'Lote não encontrado'});
+
+  const movsCount=lote._count.movimentacoes||0;
+  const unitsUsed=await prisma.unidade.count({where:{loteId:id,status:{not:'disponivel'}}});
+
+  if(movsCount>0||unitsUsed>0){
+    // Soft delete — inactivate (has history)
+    await prisma.lote.update({where:{id},data:{status:'inativo'}});
+    res.json({success:true,message:`Lote inativado (${movsCount} movimentações vinculadas). Histórico preservado.`,tipo:'inativado'});
+  }else{
+    // Hard delete — no history, safe to remove
+    await prisma.unidade.deleteMany({where:{loteId:id}});
+    await prisma.lote.delete({where:{id}});
+    res.json({success:true,message:'Lote excluído permanentemente (sem vínculos)',tipo:'excluido'});
+  }
+}catch(e){next(e)}});
+
 module.exports=r;

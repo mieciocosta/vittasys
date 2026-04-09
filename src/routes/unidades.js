@@ -62,7 +62,7 @@ r.post('/retirada',async(req,res,next)=>{try{
 
         if(dosesCompativeis.length===0)continue;
 
-        // Check dose limit
+        // Check dose limit — if all doses applied, ALLOW as "fora do plano" (don't block)
         const allCompat=plano.doses.filter(d=>{
           if(d.vacinaId===v.id)return true;
           const ns=norm(v.nome);const np=norm(d.vacina?.nome);
@@ -73,7 +73,8 @@ r.post('/retirada',async(req,res,next)=>{try{
         });
         const aplicadas=allCompat.filter(d=>d.status==='aplicada').length;
         if(aplicadas>=allCompat.length){
-          throw Object.assign(new Error(`Limite de doses atingido: ${v.nome} — ${aplicadas}/${allCompat.length} no plano "${plano.nomePlano}"`),{status:400});
+          // All doses applied — skip plan matching, allow retirada as "extra/fora do plano"
+          continue;
         }
 
         // ═══ SELECT CORRECT DOSE BY COMPETÊNCIA ═══

@@ -4,6 +4,7 @@ const Api={
   async post(p,b={}){try{const r=await fetch(`${API}${p}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return await r.json()}catch(e){return{error:e.message}}},
   async postFile(p,formData){try{const r=await fetch(`${API}${p}`,{method:'POST',body:formData});return await r.json()}catch(e){return{error:e.message}}},
   async put(p,b={}){try{const r=await fetch(`${API}${p}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return await r.json()}catch(e){return{error:e.message}}},
+  async delete(p){try{const r=await fetch(`${API}${p}`,{method:'DELETE'});return await r.json()}catch(e){return{error:e.message}}},
   async del(p){try{const r=await fetch(`${API}${p}`,{method:'DELETE'});return await r.json()}catch(e){return{error:e.message}}},
 
   dashboard(){return this.get('/dashboard')},
@@ -16,6 +17,8 @@ const Api={
   buscarPorBarcode(code){return this.get(`/vacinas/barcode/${encodeURIComponent(code)}`)},
 
   lotes(p){return this.get('/lotes',p)},
+  atualizarLote(id,b){return this.put(`/lotes/${id}`,b)},
+  excluirLote(id){return this.delete(`/lotes/${id}`)},
   criarLote(b){return this.post('/lotes',b)},
   cadastroBarras(b){return this.post('/lotes/cadastro-barras',b)},
 
