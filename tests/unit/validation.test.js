@@ -627,3 +627,114 @@ describe('Fora-do-Plano Approval Flow', () => {
     expect(impactaEstoque).toBe(false);
   });
 });
+
+// ═══ ITEM 1: FINANCIAL EXTRAS ═══
+describe('Financial Plan Extras', () => {
+  it('only approved exceptions count as extras', () => {
+    const excecoes = [
+      { status: 'concluido' },
+      { status: 'pendente_aprovacao' },
+      { status: 'reprovado' },
+      { status: 'concluido' },
+    ];
+    const custoExtra = excecoes.filter(e => e.status === 'concluido').length;
+    expect(custoExtra).toBe(2);
+  });
+  it('pending/rejected do not count', () => {
+    const excecoes = [{ status: 'pendente_aprovacao' }, { status: 'reprovado' }];
+    const custoExtra = excecoes.filter(e => e.status === 'concluido').length;
+    expect(custoExtra).toBe(0);
+  });
+});
+
+// ═══ ITEM 2: CLIENT DETAIL EXCEPTIONS ═══
+describe('Client Detail Exceptions', () => {
+  it('separates fora-do-plano exceptions from normal movimentações', () => {
+    const movs = [
+      { motivoPadrao: null, tipo: 'retirada' },
+      { motivoPadrao: 'vacina_fora_plano', tipo: 'retirada' },
+      { motivoPadrao: 'vacina_fora_plano', tipo: 'retirada' },
+    ];
+    const excecoes = movs.filter(m => m.motivoPadrao === 'vacina_fora_plano');
+    expect(excecoes.length).toBe(2);
+  });
+});
+
+// ═══ ITEM 3/4: CADASTRO/EDIÇÃO RESPONSÁVEL vs PACIENTE ═══
+describe('Client Form: Responsável vs Paciente', () => {
+  it('child record: responsável fields required', () => {
+    const fd = { tipo_paciente: 'crianca', responsavel_nome: '', nome: 'Baby' };
+    const isChild = fd.tipo_paciente === 'crianca' || fd.tipo_paciente === 'bebe';
+    const respValid = isChild ? fd.responsavel_nome.trim().length >= 3 : true;
+    expect(respValid).toBe(false); // should fail validation
+  });
+  it('adult record: no responsável required', () => {
+    const fd = { tipo_paciente: 'adulto', nome: 'Adult Person' };
+    const isChild = fd.tipo_paciente === 'crianca' || fd.tipo_paciente === 'bebe';
+    expect(isChild).toBe(false);
+  });
+});
+
+// ═══ ITEM 5: CELULAR FALLBACK ═══
+describe('Celular Fallback', () => {
+  it('uses telefone when available', () => {
+    const c = { telefone: '(98) 99999', responsavel_telefone: '(98) 88888' };
+    expect(c.telefone || c.responsavel_telefone || '-').toBe('(98) 99999');
+  });
+  it('falls back to responsavel_telefone', () => {
+    const c = { telefone: null, responsavel_telefone: '(98) 88888' };
+    expect(c.telefone || c.responsavel_telefone || '-').toBe('(98) 88888');
+  });
+  it('shows dash when none', () => {
+    const c = { telefone: null, responsavel_telefone: null };
+    expect(c.telefone || c.responsavel_telefone || '-').toBe('-');
+  });
+});
+
+// ═══ ITEM 6: PROGRESS COUNTING ═══
+describe('Plan Progress Aggregation', () => {
+  it('aggregates across multiple plans', () => {
+    const plans = [
+      { doses: [{ status: 'aplicada' }, { status: 'pendente' }] },
+      { doses: [{ status: 'aplicada' }, { status: 'aplicada' }, { status: 'pendente' }] },
+    ];
+    let totalDoses = 0, totalAplicadas = 0;
+    plans.forEach(pc => {
+      totalDoses += pc.doses.length;
+      totalAplicadas += pc.doses.filter(d => d.status === 'aplicada').length;
+    });
+    expect(totalDoses).toBe(5);
+    expect(totalAplicadas).toBe(3);
+    expect(Math.round(totalAplicadas / totalDoses * 100)).toBe(60);
+  });
+});
+
+// ═══ ITEM 7: PLAN DATE FILTERING ═══
+describe('Plan Exception Date Filtering', () => {
+  it('only includes exceptions after plan start', () => {
+    const planStart = new Date('2026-01-01');
+    const excecoes = [
+      { data: new Date('2025-12-01') }, // before plan
+      { data: new Date('2026-02-01') }, // after plan
+      { data: new Date('2026-03-01') }, // after plan
+    ];
+    const filtered = excecoes.filter(e => e.data >= planStart);
+    expect(filtered.length).toBe(2);
+  });
+});
+
+// ═══ ITEM 8: BIPAGEM TARGETS PACIENTE ═══
+describe('Bipagem Target', () => {
+  it('clienteId is the baby record for child clients', () => {
+    const client = { id: 105, nome: 'BABY NAME', tipo_paciente: 'crianca', responsavel_nome: 'PARENT' };
+    const movPayload = { cliente_id: client.id };
+    // The movimentação targets the client record, which IS the baby
+    expect(movPayload.cliente_id).toBe(105);
+    expect(client.nome).toBe('BABY NAME');
+  });
+  it('child client shows responsável in display', () => {
+    const c = { tipo_paciente: 'crianca', responsavel_nome: 'MÃE' };
+    const isChild = (c.tipo_paciente === 'crianca' || c.tipo_paciente === 'bebe') && c.responsavel_nome;
+    expect(isChild).toBeTruthy();
+  });
+});

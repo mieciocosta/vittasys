@@ -178,8 +178,16 @@ async function renderRetirada(){
           h('div',{style:{fontWeight:'600',color:'#d97706',fontSize:'13px'}},`⚠ Estoque baixo: ${unidadeSel.quantidade_disponivel} unidades restantes`)));
       }
       cf.appendChild(h('h2',{style:{textAlign:'center',fontSize:'17px',fontWeight:'700',margin:'12px 0'}},'Confirmar Retirada'));
-      // Patient name LARGE
-      cf.appendChild(h('div',{style:{textAlign:'center',fontSize:'22px',fontWeight:'800',color:'var(--primary)',marginBottom:'16px'}},esc(clienteSel.nome)));
+      // Patient name LARGE — show responsável if child
+      const isChild=(clienteSel.tipo_paciente==='crianca'||clienteSel.tipo_paciente==='bebe')&&clienteSel.responsavel_nome;
+      if(isChild){
+        cf.appendChild(h('div',{style:{textAlign:'center',marginBottom:'16px'}},
+          h('div',{style:{fontSize:'22px',fontWeight:'800',color:'var(--primary)'}},'👶 '+esc(clienteSel.nome)),
+          h('div',{style:{fontSize:'13px',color:'#64748b',marginTop:'4px'}},'👤 Resp: '+esc(clienteSel.responsavel_nome))
+        ));
+      }else{
+        cf.appendChild(h('div',{style:{textAlign:'center',fontSize:'22px',fontWeight:'800',color:'var(--primary)',marginBottom:'16px'}},esc(clienteSel.nome)));
+      }
       const grid=h('div',{className:'confirm-grid'});
       grid.innerHTML=`<div><div class="cg-label">VACINA</div><div class="cg-value">${esc(unidadeSel.vacina_nome)}</div><div class="cg-sub">Lote: ${esc(unidadeSel.numero_lote)} · CB: ${esc(unidadeSel.codigo_barras.slice(-10))}</div></div>
         <div><div class="cg-label">ESTOQUE APÓS</div><div class="cg-value" style="color:${unidadeSel.quantidade_disponivel<=1?'#dc2626':'inherit'}">${Math.max(0,unidadeSel.quantidade_disponivel-1)} doses</div></div>
@@ -275,7 +283,7 @@ async function renderRetirada(){
         else clientePlanos=[];
         etapa='local';draw();
       }});
-      it.innerHTML=`<div style="width:36px;height:36px;border-radius:50%;background:${c.tipo_cliente==='ativo'?'var(--primary-bg)':'#f1f5f9'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${c.nome.split(' ').map(n=>n[0]).join('').slice(0,2)}</div><div style="flex:1"><div style="font-weight:600;font-size:13px">${esc(c.nome)} ${c.codigo_cliente?'<span class="mono text-muted">['+esc(c.codigo_cliente)+']</span>':''}</div><div style="font-size:12px;color:#94a3b8">${tipoClienteBadge(c.tipo_cliente)}</div></div>`;
+      it.innerHTML=`<div style="width:36px;height:36px;border-radius:50%;background:${c.tipo_cliente==='ativo'?'var(--primary-bg)':'#f1f5f9'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${c.nome.split(' ').map(n=>n[0]).join('').slice(0,2)}</div><div style="flex:1"><div style="font-weight:600;font-size:13px">${(c.tipo_paciente==='crianca'||c.tipo_paciente==='bebe')?'👶 ':''}${esc(c.nome)} ${c.codigo_cliente?'<span class="mono text-muted">['+esc(c.codigo_cliente)+']</span>':''}</div>${c.responsavel_nome?`<div style="font-size:11px;color:#64748b">👤 ${esc(c.responsavel_nome)}</div>`:''}<div style="font-size:12px;color:#94a3b8">${tipoClienteBadge(c.tipo_cliente)}</div></div>`;
       ld.appendChild(it);
     });
   }

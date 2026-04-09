@@ -287,7 +287,24 @@ row.innerHTML=`<div style="display:flex;justify-content:space-between;align-item
 <div style="display:flex;align-items:center;gap:8px"><div class="prog-bar" style="flex:1"><div class="prog-fill" style="width:${prog}%;background:var(--primary)"></div></div><span class="mono text-sm">${prog}%</span><span class="text-sm text-muted">Pago: ${fmtMoeda(p.total_pago)} · Saldo: ${fmtMoeda(p.saldo_pendente)}</span></div>`;
 plc.appendChild(row)});wrap.appendChild(plc)}
 
+// ═══ EXCEÇÕES FORA DO PLANO ═══
+if(c.excecoes_fora_plano?.length){
+  const exc=h('div',{className:'card',style:{marginBottom:'16px'}});
+  exc.appendChild(h('h3',{style:{fontSize:'15px',fontWeight:'600',marginBottom:'14px',color:'#d97706'}},`⚠ Exceções Fora do Plano (${c.excecoes_fora_plano.length})`));
+  c.excecoes_fora_plano.forEach(e=>{
+    const stBadge=e.status==='concluido'?'badge-green':e.status==='pendente_aprovacao'?'badge-orange':'badge-red';
+    const stLabel=e.status==='concluido'?'Aprovada':e.status==='pendente_aprovacao'?'⏳ Pendente':'✗ Recusada';
+    const row=h('div',{style:{display:'flex',alignItems:'center',gap:'10px',padding:'8px 0',borderBottom:'1px solid #f1f5f9',fontSize:'13px'}});
+    row.innerHTML=`<span class="mono text-sm">${fmtDataHora(e.data)}</span><span class="badge ${stBadge}">${stLabel}</span><span class="fw-600">${esc(e.vacina||'-')}</span>${e.justificativa?`<span class="text-sm text-muted">${esc(e.justificativa)}</span>`:''}${e.motivo_reprovacao?`<span class="text-sm" style="color:#dc2626">${esc(e.motivo_reprovacao)}</span>`:''}`;
+    exc.appendChild(row);
+  });
+  wrap.appendChild(exc);
+}
+
 if(c.movimentacoes?.length){const mc=h('div',{className:'card'});mc.appendChild(h('h3',{style:{fontSize:'15px',fontWeight:'600',marginBottom:'14px'}},`Histórico de Vacinação (${c.movimentacoes.length})`));
 c.movimentacoes.slice(0,20).forEach(m=>{const row=h('div',{style:{display:'flex',alignItems:'center',gap:'10px',padding:'8px 0',borderBottom:'1px solid #f1f5f9',fontSize:'13px'}});
-row.innerHTML=`<span class="mono text-sm">${fmtDataHora(m.data_hora)}</span><span class="badge ${m.tipo==='retirada'?'badge-orange':'badge-green'}">${m.tipo}</span><span class="fw-600">${esc(m.nome_vacina||'-')}</span><span class="text-muted mono">${esc(m.numero_lote||'-')}</span>${m.local_aplicacao?`<span class="text-sm text-muted">${esc(m.local_aplicacao)}</span>`:''}`;mc.appendChild(row)});wrap.appendChild(mc)}
+const stBadge=m.status==='pendente_aprovacao'?'badge-orange':m.status==='reprovado'?'badge-red':m.tipo==='retirada'?'badge-orange':'badge-green';
+const stLabel=m.status==='pendente_aprovacao'?'⏳ Pendente':m.status==='reprovado'?'✗ Reprovado':m.tipo;
+const foraPlano=m.motivo_padrao==='vacina_fora_plano'?'<span class="badge badge-orange" style="font-size:10px">Fora do plano</span>':'';
+row.innerHTML=`<span class="mono text-sm">${fmtDataHora(m.data_hora)}</span><span class="badge ${stBadge}">${stLabel}</span><span class="fw-600">${esc(m.nome_vacina||'-')}</span>${foraPlano}<span class="text-muted mono">${esc(m.numero_lote||'-')}</span>${m.local_aplicacao?`<span class="text-sm text-muted">${esc(m.local_aplicacao)}</span>`:''}`;mc.appendChild(row)});wrap.appendChild(mc)}
 return wrap;}

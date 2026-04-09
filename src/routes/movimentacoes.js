@@ -26,10 +26,18 @@ r.get('/',async(req,res,next)=>{try{
   res.json({data:data.map(m=>{
     let plano_progresso=null;
     if(m.cliente?.tipoCliente==='ativo'&&m.cliente?.planosContratados?.length>0){
-      const pc=m.cliente.planosContratados[0];const td=pc.doses.length;const ap=pc.doses.filter(d=>d.status==='aplicada').length;
-      plano_progresso={nome:pc.nomePlano,aplicadas:ap,total:td,pct:td>0?Math.round(ap/td*100):0};
+      // Aggregate across ALL active plans
+      let totalDoses=0,totalAplicadas=0;let planoNome='';
+      m.cliente.planosContratados.forEach(pc=>{
+        totalDoses+=pc.doses.length;
+        totalAplicadas+=pc.doses.filter(d=>d.status==='aplicada').length;
+        if(!planoNome)planoNome=pc.nomePlano;
+      });
+      if(m.cliente.planosContratados.length>1)planoNome+=` (+${m.cliente.planosContratados.length-1})`;
+      plano_progresso={nome:planoNome,aplicadas:totalAplicadas,total:totalDoses,pct:totalDoses>0?Math.round(totalAplicadas/totalDoses*100):0};
     }
-    return{id:m.id,tipo:m.tipo,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,codigo_barras:m.codigoBarras,quantidade:m.quantidade,local_aplicacao:m.localAplicacao,tipo_cliente:m.tipoCliente||m.cliente?.tipoCliente,tipo_atendimento:m.tipoAtendimento,status:m.status,observacoes:m.observacoes,cliente_id:m.clienteId,cliente_nome:m.cliente?.nome,codigo_cliente:m.cliente?.codigoCliente,usuario_id:m.usuarioId,unidade_id:m.unidadeId,plano_progresso,
+    const isForaPlano=m.motivoPadrao==='vacina_fora_plano';
+    return{id:m.id,tipo:m.tipo,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,codigo_barras:m.codigoBarras,quantidade:m.quantidade,local_aplicacao:m.localAplicacao,tipo_cliente:m.tipoCliente||m.cliente?.tipoCliente,tipo_atendimento:m.tipoAtendimento,status:m.status,observacoes:m.observacoes,cliente_id:m.clienteId,cliente_nome:m.cliente?.nome,codigo_cliente:m.cliente?.codigoCliente,usuario_id:m.usuarioId,unidade_id:m.unidadeId,plano_progresso,fora_do_plano:isForaPlano,
       requer_aprovacao:m.requerAprovacao,justificativa:m.justificativa,motivo_padrao:m.motivoPadrao,aprovado_por:m.aprovadoPor,aprovado_em:m.aprovadoEm,motivo_reprovacao:m.motivoReprovacao};
   }),pagination:{page:+page,limit:+limit,total,pages:Math.ceil(total/+limit)}});
 }catch(e){next(e)}});

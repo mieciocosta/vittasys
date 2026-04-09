@@ -49,11 +49,13 @@ r.get('/:id',async(req,res,next)=>{try{
   if(!p)return res.status(404).json({error:'Não encontrado'});
   const tp=p.pagamentos.reduce((s,pg)=>s+pg.valorPago,0);
 
-  // Fetch fora-do-plano movimentações for this client
+  // Fetch fora-do-plano movimentações ONLY for this plan's period
+  const planStart=p.dataInicioPlano||p.criadoEm||p.dataVenda;
   const excecoes=await prisma.movimentacao.findMany({
-    where:{clienteId:p.cliente.id,motivoPadrao:'vacina_fora_plano'},
+    where:{clienteId:p.cliente.id,motivoPadrao:'vacina_fora_plano',
+      dataHora:{gte:planStart}}, // Only exceptions after this plan was created
     orderBy:{dataHora:'desc'},
-    select:{id:true,nomeVacina:true,status:true,dataHora:true,observacoes:true,justificativa:true,motivoReprovacao:true,aprovadoPor:true,aprovadoEm:true}
+    select:{id:true,nomeVacina:true,status:true,dataHora:true,observacoes:true,justificativa:true,motivoReprovacao:true,aprovadoPor:true,aprovadoEm:true,quantidade:true}
   });
 
   res.json({...p,nome_plano:p.nomePlano,valor_final:p.valorFinal,percentual_desconto:p.percentualDesconto,margem_lucro_percentual:p.margemLucro,status_contrato:p.statusContrato,idade_inicio:p.idadeInicio,idade_fim:p.idadeFim,
