@@ -135,112 +135,120 @@ function modalImportarIA(){showModal('Cadastro Inteligente com IA',async(body,cl
 await draw();return wrap;}
 
 function buildClienteForm(fd,editId,onDone){
-  const fm=h('div',{className:'card slide-up',style:{marginBottom:'20px'}});
+  const container=h('div');
 
-  // Detect if this is a child (baby/criança) record
-  const isChild=fd.tipo_paciente==='crianca'||fd.tipo_paciente==='bebe';
-  const hasResp=!!fd.responsavel_nome;
+  function renderForm(){
+    container.innerHTML='';
+    const fm=h('div',{className:'card slide-up',style:{marginBottom:'20px'}});
+    const isChild=fd.tipo_paciente==='crianca'||fd.tipo_paciente==='bebe';
+    const hasResp=!!fd.responsavel_nome;
+    const modoFilho=isChild||hasResp||fd._modo_filho===true;
 
-  // ═══ BLOCO A: RESPONSÁVEL FINANCEIRO ═══
-  const respSec=h('div',{className:'client-form-section'});
-  respSec.appendChild(h('h4',null,'👤 Responsável Financeiro / Contratante'));
+    // ═══ TOGGLE: ADULTO vs CRIANÇA ═══
+    const toggleSec=h('div',{style:{padding:'16px 0',borderBottom:'1px solid #e2e8f0',marginBottom:'16px'}});
+    const toggleLabel=h('label',{style:{display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',fontWeight:'600'}});
+    const toggleInp=h('input',{type:'checkbox',checked:!modoFilho});
+    toggleInp.addEventListener('change',e=>{
+      fd._modo_filho=!e.target.checked;
+      if(e.target.checked){
+        // Adult: clear child-specific fields
+        fd.responsavel_nome='';fd.responsavel_parentesco='';
+        fd.tipo_paciente='adulto';
+      }else{
+        fd.tipo_paciente='crianca';
+      }
+      renderForm(); // REBUILD
+    });
+    toggleLabel.appendChild(toggleInp);
+    toggleLabel.appendChild(document.createTextNode(modoFilho?'Desmarcado: cadastro de criança com responsável':'✓ Paciente é o próprio responsável financeiro (adulto)'));
+    toggleSec.appendChild(toggleLabel);
+    if(!modoFilho){
+      toggleSec.appendChild(h('div',{style:{fontSize:'11px',color:'#94a3b8',marginTop:'4px',paddingLeft:'28px'}},'Desmarque para cadastrar criança/bebê com responsável diferente'));
+    }
+    fm.appendChild(toggleSec);
 
-  if(!editId&&!isChild){
-    const chkWrap=h('div',{style:{marginBottom:'12px'}});
-    const chk=h('label',{style:{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'13px'}});
-    const inp=h('input',{type:'checkbox',checked:!hasResp&&!isChild});
-    inp.addEventListener('change',e=>{fd._resp_e_paciente=e.target.checked});
-    fd._resp_e_paciente=!hasResp&&!isChild;
-    chk.appendChild(inp);chk.appendChild(document.createTextNode('O responsável é o próprio paciente (adulto)'));
-    chkWrap.appendChild(chk);respSec.appendChild(chkWrap);
-  }
+    if(modoFilho){
+      // ═══ MODO CRIANÇA: Responsável + Paciente separados ═══
+      const respSec=h('div',{className:'client-form-section'});
+      respSec.appendChild(h('h4',null,'👤 Responsável Financeiro / Contratante'));
+      const respGrid=h('div',{className:'client-form-grid'});
+      [fld('Nome do Responsável *','responsavel_nome',fd),
+       fldMask('CPF Responsável *','cpf',maskCPF,fd),
+       fldMask('Celular Responsável *','telefone',maskTel,fd),
+       fld('E-mail','email',fd,'email'),
+       fldSel('Parentesco *','responsavel_parentesco',[['','— Selecione —'],['mae','Mãe'],['pai','Pai'],['avo','Avó/Avô'],['tio','Tio/Tia'],['outro','Outro']],fd),
+       fldSel('Tipo Cliente','tipo_cliente',[['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],fd),
+       fldSel('Status','status',[['ativo','Ativo'],['inativo','Inativo']],fd)
+      ].forEach(el=>respGrid.appendChild(el));
+      respSec.appendChild(respGrid);fm.appendChild(respSec);
 
-  // For child records OR when responsável is different:
-  // responsável fields use responsavel_nome, cpf (of responsible), telefone
-  const respGrid=h('div',{className:'client-form-grid'});
-
-  if(isChild||hasResp){
-    // Child: responsável is the PARENT
-    [fld('Nome do Responsável *','responsavel_nome',fd),
-     fldMask('CPF Responsável *','cpf',maskCPF,fd),
-     fldMask('Celular Responsável *','telefone',maskTel,fd),
-     fld('E-mail','email',fd,'email'),
-     fldSel('Parentesco *','responsavel_parentesco',[['','—'],['mae','Mãe'],['pai','Pai'],['avo','Avó/Avô'],['tio','Tio/Tia'],['outro','Outro']],fd),
-     fldSel('Tipo Cliente','tipo_cliente',[['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],fd),
-     fldSel('Status','status',[['ativo','Ativo'],['inativo','Inativo']],fd)
-    ].forEach(el=>respGrid.appendChild(el));
-  }else{
-    // Adult: responsável IS the paciente
-    [fld('Nome Completo *','nome',fd),
-     fldDate('Data de Nascimento *','data_nascimento',fd),
-     fldSel('Sexo','sexo',[['','—'],['M','Masculino'],['F','Feminino']],fd),
-     fldMask('CPF *','cpf',maskCPF,fd),
-     fldMask('Celular *','telefone',maskTel,fd),
-     fld('E-mail','email',fd,'email'),
-     fldSel('Tipo Cliente','tipo_cliente',[['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],fd),
-     fldSel('Status','status',[['ativo','Ativo'],['inativo','Inativo']],fd)
-    ].forEach(el=>respGrid.appendChild(el));
-  }
-  respSec.appendChild(respGrid);fm.appendChild(respSec);
-
-  // ═══ BLOCO B: PACIENTE ═══
-  const pacSec=h('div',{className:'client-form-section'});
-  pacSec.appendChild(h('h4',null,'👶 Paciente (quem receberá as vacinas)'));
-
-  const pacGrid=h('div',{className:'client-form-grid'});
-  if(isChild||hasResp){
-    // Child: paciente = baby. Uses `nome` and `data_nascimento` (which hold baby data)
-    [fld('Nome do Paciente *','nome',fd),
-     fldDate('Nascimento Paciente *','data_nascimento',fd),
-     fldSel('Sexo','sexo',[['','—'],['M','Masc'],['F','Fem']],fd),
-     fldSel('Tipo Paciente','tipo_paciente',[['bebe','Bebê'],['crianca','Criança']],fd),
-     fld('Obs. Clínicas','observacoes_clinicas',fd)
-    ].forEach(el=>pacGrid.appendChild(el));
-  }else{
-    // Adult: paciente info (optional, may be same person)
-    [fldSel('Tipo Paciente','tipo_paciente',[['adulto','Adulto'],['crianca','Criança'],['bebe','Bebê']],fd),
-     fld('Obs. Clínicas','observacoes_clinicas',fd)
-    ].forEach(el=>pacGrid.appendChild(el));
-  }
-  pacSec.appendChild(pacGrid);fm.appendChild(pacSec);
-
-  // ═══ OBSERVAÇÕES ═══
-  fm.appendChild(h('div',{className:'client-form-section'},
-    h('h4',null,'Observações'),
-    h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px'}},fldArea('Gerais','observacoes',fd))
-  ));
-
-  // ═══ SUBMIT ═══
-  fm.appendChild(iconBtn('btn btn-primary btn-lg',null,editId?'Salvar Alterações':'Cadastrar Cliente',async()=>{
-    // Validations
-    if(isChild||hasResp||fd.responsavel_nome){
-      // Child flow: validate responsável
-      if(!fd.responsavel_nome||fd.responsavel_nome.trim().length<3)return Toast.show('Nome do responsável é obrigatório','error');
-      if(!fd.nome||fd.nome.trim().length<2)return Toast.show('Nome do paciente é obrigatório','error');
-      if(!fd.data_nascimento)return Toast.show('Data de nascimento do paciente é obrigatória','error');
+      const pacSec=h('div',{className:'client-form-section'});
+      pacSec.appendChild(h('h4',null,'👶 Paciente (quem receberá as vacinas)'));
+      const pacGrid=h('div',{className:'client-form-grid'});
+      [fld('Nome do Paciente *','nome',fd),
+       fldDate('Nascimento *','data_nascimento',fd),
+       fldSel('Sexo','sexo',[['','—'],['M','Masculino'],['F','Feminino']],fd),
+       fldSel('Tipo Paciente','tipo_paciente',[['crianca','Criança'],['bebe','Bebê']],fd),
+       fld('Obs. Clínicas','observacoes_clinicas',fd)
+      ].forEach(el=>pacGrid.appendChild(el));
+      pacSec.appendChild(pacGrid);fm.appendChild(pacSec);
     }else{
-      // Adult flow
-      if(!fd.nome||fd.nome.trim().length<3)return Toast.show('Nome é obrigatório (mínimo 3 caracteres)','error');
-      if(!fd.data_nascimento)return Toast.show('Data de nascimento é obrigatória','error');
-      // Validate age >= 18 for adult/responsável
-      const nasc=new Date(fd.data_nascimento);const agora=new Date();
-      const idade=(agora-nasc)/(365.25*24*60*60*1000);
-      if(idade<18)return Toast.show('⚠ Responsável financeiro deve ter 18 anos ou mais. Use a seção de Paciente para menores.','error');
+      // ═══ MODO ADULTO: Formulário unificado ═══
+      const sec=h('div',{className:'client-form-section'});
+      sec.appendChild(h('h4',null,'👤 Dados do Cliente'));
+      const grid=h('div',{className:'client-form-grid'});
+      [fld('Nome Completo *','nome',fd),
+       fldDate('Data de Nascimento *','data_nascimento',fd),
+       fldSel('Sexo','sexo',[['','—'],['M','Masculino'],['F','Feminino']],fd),
+       fldMask('CPF *','cpf',maskCPF,fd),
+       fldMask('Celular *','telefone',maskTel,fd),
+       fld('E-mail','email',fd,'email'),
+       fldSel('Tipo Cliente','tipo_cliente',[['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],fd),
+       fldSel('Status','status',[['ativo','Ativo'],['inativo','Inativo']],fd),
+       fld('Obs. Clínicas','observacoes_clinicas',fd)
+      ].forEach(el=>grid.appendChild(el));
+      sec.appendChild(grid);fm.appendChild(sec);
     }
-    if(!fd.cpf&&!editId)return Toast.show('CPF é obrigatório','error');
-    if(!fd.telefone&&!editId)return Toast.show('Celular é obrigatório','error');
-    if(fd.cpf&&fd.cpf.replace(/\D/g,'').length>=11&&!validarCPF(fd.cpf))return Toast.show('CPF inválido','error');
 
-    // Sync paciente_nome/nascimento for DB
-    if(isChild||hasResp||fd.responsavel_nome){
-      fd.paciente_nome=fd.nome;
-      fd.paciente_nascimento=fd.data_nascimento;
-    }
+    // ═══ OBSERVAÇÕES ═══
+    fm.appendChild(h('div',{className:'client-form-section'},
+      h('h4',null,'Observações'),
+      fldArea('Gerais','observacoes',fd)
+    ));
 
-    if(editId){const r=await Api.atualizarCliente(editId,fd);if(r?.success){Toast.show('Atualizado!');onDone()}else Toast.show(r?.error||'Erro','error')}
-    else{const r=await Api.criarCliente(fd);if(r?.success){Toast.show(`${fd.nome} cadastrado! ${r.codigo_cliente?'['+r.codigo_cliente+']':''}`);onDone()}else Toast.show(r?.error||'Erro','error')}
-  }));
-  return fm;
+    // ═══ SUBMIT ═══
+    fm.appendChild(iconBtn('btn btn-primary btn-lg btn-block',null,editId?'Salvar Alterações':'Cadastrar Cliente',async()=>{
+      if(modoFilho){
+        if(!fd.responsavel_nome||fd.responsavel_nome.trim().length<3)return Toast.show('Nome do responsável é obrigatório (mín. 3 chars)','error');
+        if(!fd.nome||fd.nome.trim().length<2)return Toast.show('Nome do paciente é obrigatório','error');
+        if(!fd.data_nascimento)return Toast.show('Nascimento do paciente é obrigatório','error');
+        if(!fd.cpf&&!editId)return Toast.show('CPF do responsável é obrigatório','error');
+        if(!fd.telefone&&!editId)return Toast.show('Celular do responsável é obrigatório','error');
+        if(!fd.responsavel_parentesco)return Toast.show('Parentesco é obrigatório','error');
+        // Sync paciente fields for DB
+        fd.paciente_nome=fd.nome;
+        fd.paciente_nascimento=fd.data_nascimento;
+        fd.paciente_sexo=fd.sexo;
+      }else{
+        if(!fd.nome||fd.nome.trim().length<3)return Toast.show('Nome é obrigatório (mínimo 3 caracteres)','error');
+        if(!fd.data_nascimento)return Toast.show('Data de nascimento é obrigatória','error');
+        if(!fd.cpf&&!editId)return Toast.show('CPF é obrigatório','error');
+        if(!fd.telefone&&!editId)return Toast.show('Celular é obrigatório','error');
+        const nasc=new Date(fd.data_nascimento);const idade=(new Date()-nasc)/(365.25*24*60*60*1000);
+        if(idade<18)return Toast.show('⚠ Responsável deve ter 18+ anos. Desmarque o checkbox para cadastrar criança.','error');
+        fd.tipo_paciente='adulto';
+      }
+      if(fd.cpf&&fd.cpf.replace(/\D/g,'').length>=11&&!validarCPF(fd.cpf))return Toast.show('CPF inválido','error');
+
+      if(editId){const r=await Api.atualizarCliente(editId,fd);if(r?.success){Toast.show('Atualizado!');onDone()}else Toast.show(r?.error||'Erro','error')}
+      else{const r=await Api.criarCliente(fd);if(r?.success){Toast.show(`${fd.nome} cadastrado! ${r.codigo_cliente?'['+r.codigo_cliente+']':''}`);onDone()}else Toast.show(r?.error||'Erro','error')}
+    },{style:{marginTop:'16px'}}));
+
+    container.appendChild(fm);
+  }
+
+  renderForm();
+  return container;
 }
 function fld(l,k,fd,type){const d=h('div');d.appendChild(h('label',{className:'label'},l));const i=h('input',{className:'input',type:type||'text',value:fd[k]||'',maxLength:'200'});i.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(i);return d}
 function fldDate(l,k,fd){const d=h('div');d.appendChild(h('label',{className:'label'},l));
