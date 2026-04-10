@@ -17,6 +17,7 @@ const Api={
   buscarPorBarcode(code){return this.get(`/vacinas/barcode/${encodeURIComponent(code)}`)},
 
   lotes(p){return this.get('/lotes',p)},
+  loteDetalhe(id){return this.get(`/lotes/${id}`)},
   atualizarLote(id,b){return this.put(`/lotes/${id}`,b)},
   excluirLote(id){return this.delete(`/lotes/${id}`)},
   criarLote(b){return this.post('/lotes',b)},

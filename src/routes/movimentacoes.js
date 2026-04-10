@@ -52,7 +52,7 @@ r.get('/pendentes',async(req,res,next)=>{try{
   const data=await prisma.movimentacao.findMany({
     where:{status:'pendente_aprovacao'},
     orderBy:{dataHora:'desc'},
-    include:{cliente:{select:{nome:true,codigoCliente:true}}}
+    include:{cliente:{select:{nome:true,codigoCliente:true,responsavelNome:true,tipoPaciente:true}}}
   });
   const usuario_ids=[...new Set(data.map(m=>m.usuarioId))];
   const usuarios=await prisma.usuario.findMany({where:{id:{in:usuario_ids}},select:{id:true,nome:true,cargo:true}});
@@ -62,6 +62,7 @@ r.get('/pendentes',async(req,res,next)=>{try{
     codigo_barras:m.codigoBarras,quantidade:m.quantidade,status:m.status,
     justificativa:m.justificativa,motivo_padrao:m.motivoPadrao,observacoes:m.observacoes,
     cliente_nome:m.cliente?.nome,codigo_cliente:m.cliente?.codigoCliente,
+    responsavel_nome:m.cliente?.responsavelNome||null,tipo_paciente:m.cliente?.tipoPaciente||null,
     solicitante_nome:umap[m.usuarioId]?.nome,solicitante_cargo:umap[m.usuarioId]?.cargo,
     local_aplicacao:m.localAplicacao,
   })));
@@ -172,13 +173,18 @@ r.post('/:id/aprovar',async(req,res,next)=>{try{
     if(['retirada','aplicacao','descarte','ajuste'].includes(mov.tipo)){
       const lote=await prisma.lote.findUnique({where:{id:mov.loteId}});
       if(lote&&lote.quantidadeDisponivel<mov.quantidade)return res.status(400).json({error:`Estoque insuficiente para aprovar: ${lote.quantidadeDisponivel} disponíveis`});
-      await prisma.lote.update({where:{id:mov.loteId},data:{quantidadeDisponivel:{decrement:mov.quantidade}}});
+      const updateData={quantidadeDisponivel:{decrement:mov.quantidade}};
+      if(['retirada','aplicacao'].includes(mov.tipo))updateData.quantidadeAplicada={increment:mov.quantidade};
+      await prisma.lote.update({where:{id:mov.loteId},data:updateData});
+      // Check if esgotado
+      const updLote=await prisma.lote.findUnique({where:{id:mov.loteId}});
+      if(updLote&&updLote.quantidadeDisponivel<=0)await prisma.lote.update({where:{id:mov.loteId},data:{status:'esgotado'}});
       // Mark unit as applied if retirada
       if(['retirada','aplicacao'].includes(mov.tipo)&&mov.unidadeId){
         await prisma.unidade.update({where:{id:mov.unidadeId},data:{status:'aplicada'}}).catch(()=>{});
       }
     }else if(mov.tipo==='estorno'){
-      await prisma.lote.update({where:{id:mov.loteId},data:{quantidadeDisponivel:{increment:mov.quantidade}}});
+      await prisma.lote.update({where:{id:mov.loteId},data:{quantidadeDisponivel:{increment:mov.quantidade},quantidadeAplicada:{decrement:mov.quantidade}}});
     }
   }
 

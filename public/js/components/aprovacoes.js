@@ -21,7 +21,7 @@ async function renderAprovacoes(){
     const stats=h('div',{style:{display:'flex',gap:'12px',marginBottom:'20px'}});
     const byType={};data.forEach(m=>{byType[m.tipo]=(byType[m.tipo]||0)+1});
     Object.entries(byType).forEach(([t,c])=>{
-      const colors={descarte:'#dc2626',ajuste:'#d97706',estorno:'#7c3aed'};
+      const colors={descarte:'#dc2626',ajuste:'#d97706',estorno:'#7c3aed',retirada:'#f97316'};
       stats.appendChild(h('div',{style:{padding:'12px 20px',background:colors[t]+'15',borderRadius:'10px',borderLeft:`4px solid ${colors[t]||'var(--primary)'}`,flex:'1'}},
         h('div',{style:{fontSize:'24px',fontWeight:'800',color:colors[t]||'var(--primary)'}},String(c)),
         h('div',{style:{fontSize:'12px',fontWeight:'600',textTransform:'uppercase',color:colors[t]||'var(--text-3)'}},t)));
@@ -30,7 +30,7 @@ async function renderAprovacoes(){
 
     // List
     data.forEach(m=>{
-      const tm={descarte:['Descarte','#dc2626'],ajuste:['Ajuste','#d97706'],estorno:['Estorno','#7c3aed']};
+      const tm={descarte:['Descarte','#dc2626'],ajuste:['Ajuste','#d97706'],estorno:['Estorno','#7c3aed'],retirada:['Retirada (Fora do Plano)','#f97316']};
       const[tl,tc]=tm[m.tipo]||[m.tipo,'#64748b'];
 
       const card=h('div',{style:{background:'var(--card-bg)',borderRadius:'12px',padding:'20px',marginBottom:'12px',border:'1px solid var(--border)',borderLeft:`4px solid ${tc}`}});
@@ -53,7 +53,7 @@ async function renderAprovacoes(){
       grid.appendChild(field('Lote',m.numero_lote));
       grid.appendChild(field('Cód. Barras',m.codigo_barras));
       grid.appendChild(field('Quantidade',String(m.quantidade)));
-      grid.appendChild(field('Paciente',m.cliente_nome));
+      grid.appendChild(field('Paciente',m.cliente_nome+(m.responsavel_nome?` (Resp: ${m.responsavel_nome})`:'')));
       grid.appendChild(field('Local',m.local_aplicacao));
       card.appendChild(grid);
 

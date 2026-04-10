@@ -164,6 +164,51 @@ r.post('/cadastro-barras',async(req,res,next)=>{try{
   res.json({success:true,message:`✓ ${vacina.nome} — Lote ${lote.numeroLote} — ${qty} unidade(s)`,vacina_id:vacina.id,lote_id:lote.id,movimentacao_id:mov.id});
 }catch(e){console.error('cadastro-barras:',e);res.status(500).json({error:'Erro ao cadastrar: '+(e.meta?.cause||e.message)})}});
 
+// ═══ LOTE DETAIL ═══
+r.get('/:id',async(req,res,next)=>{try{
+  const id=+req.params.id;
+  const l=await prisma.lote.findUnique({where:{id},include:{
+    vacina:{select:{id:true,nome:true,codigo:true,fabricante:true,viaAdministracao:true}},
+    unidades:{orderBy:{id:'asc'},take:50,select:{id:true,codigoBarras:true,status:true,criadoEm:true}},
+    movimentacoes:{orderBy:{dataHora:'desc'},take:20,select:{id:true,tipo:true,dataHora:true,nomeVacina:true,quantidade:true,status:true,clienteId:true,observacoes:true,motivoPadrao:true,planoContratadoId:true},include:{cliente:{select:{nome:true,responsavelNome:true,codigoCliente:true}}}},
+    _count:{select:{unidades:true,movimentacoes:true}}
+  }});
+  if(!l)return res.status(404).json({error:'Lote não encontrado'});
+
+  // Count units by status
+  const unitStats=await prisma.unidade.groupBy({by:['status'],where:{loteId:id},_count:true});
+  const uMap={};unitStats.forEach(u=>{uMap[u.status]=u._count});
+
+  // Get reserved info (units that are in movimentações pendentes)
+  const reservas=await prisma.movimentacao.findMany({
+    where:{loteId:id,status:'pendente_aprovacao'},
+    select:{id:true,nomeVacina:true,clienteId:true,dataHora:true,observacoes:true,usuarioId:true,
+      cliente:{select:{nome:true,responsavelNome:true,codigoCliente:true}}}
+  });
+
+  const now=new Date();
+  res.json({
+    id:l.id,vacina_id:l.vacinaId,vacina_nome:l.vacina.nome,vacina_codigo:l.vacina.codigo,
+    fabricante:l.fabricante,numero_lote:l.numeroLote,
+    quantidade_total:l.quantidadeTotal,quantidade_disponivel:l.quantidadeDisponivel,
+    quantidade_aplicada:l.quantidadeAplicada,quantidade_reservada:l.quantidadeReservada,
+    validade:l.validade,dias_para_vencer:Math.ceil((l.validade-now)/864e5),
+    local_armazenamento:l.localArmazenamento,valor_unitario_custo:l.valorUnitarioCusto,
+    status:l.status,criado_em:l.criadoEm,
+    unidades_por_status:uMap,
+    total_unidades:l._count.unidades,total_movimentacoes:l._count.movimentacoes,
+    ultimas_movimentacoes:l.movimentacoes.map(m=>({
+      id:m.id,tipo:m.tipo,data:m.dataHora,quantidade:m.quantidade,status:m.status,
+      cliente:m.cliente?.nome||null,responsavel:m.cliente?.responsavelNome||null,
+      codigo_cliente:m.cliente?.codigoCliente||null,obs:m.observacoes
+    })),
+    reservas_pendentes:reservas.map(r2=>({
+      id:r2.id,cliente:r2.cliente?.nome||null,responsavel:r2.cliente?.responsavelNome||null,
+      codigo_cliente:r2.cliente?.codigoCliente||null,data:r2.dataHora,obs:r2.observacoes
+    }))
+  });
+}catch(e){next(e)}});
+
 // ═══ EDIT LOTE (master) ═══
 r.put('/:id',async(req,res,next)=>{try{
   const b=req.body;const id=+req.params.id;

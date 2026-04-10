@@ -23,24 +23,24 @@ async function draw(){wrap.innerHTML='';
 
   const tw=h('div',{className:'table-wrap'});
   const isMaster=AppState.usuario?.perfil==='master';
-  const cols=[['ID','id'],['Vacina','vacina_nome'],['Fabricante','fabricante'],['Lote','numero_lote'],
+  const cols=[['Vacina','vacina_nome'],['Fabricante','fabricante'],['Lote','numero_lote'],
     ['Estoque','quantidade_disponivel'],['Unid.',''],['Validade','validade'],['Local',''],
     ['Custo','valor_unitario_custo'],['Status','status']];
   if(isMaster)cols.push(['Ações','']);
   const t=buildSortableTable(cols,f,draw);
 
   const tb=document.createElement('tbody');
-  if(!data.data.length){tb.innerHTML='<tr><td colspan="11" class="empty-state">Nenhum lote encontrado</td></tr>'}
+  if(!data.data.length){tb.innerHTML='<tr><td colspan="10" class="empty-state">Nenhum lote encontrado</td></tr>'}
   else data.data.forEach(l=>{
     const dias=l.dias_para_vencer;const st=statusVenc(dias);
     const pct=l.quantidade_total>0?Math.round(l.quantidade_disponivel/l.quantidade_total*100):0;
     const bc=l.quantidade_disponivel<5?'#dc2626':l.quantidade_disponivel<15?'#d97706':'#2BBCB3';
     const sm2={disponivel:'badge-green',reservado:'badge-primary',esgotado:'badge-gray',vencido:'badge-red',inativo:'badge-gray'};
-    const tr=h('tr');
+    const tr=h('tr',{style:{cursor:'pointer'},onClick:()=>modalDetalheLote(l.id)});
     if(dias<=30&&dias>=0)tr.style.background='#fffbeb';
     if(dias<0)tr.style.background='#fef2f2';
-    tr.innerHTML=`<td class="mono text-muted text-sm">#${l.id}</td>
-      <td class="fw-600">${esc(l.vacina_nome)}<div class="text-sm text-muted">ID: ${l.vacina_id}</div></td>
+    tr.innerHTML=`
+      <td class="fw-600">${esc(l.vacina_nome)}<div class="text-sm text-muted">${esc(l.vacina_codigo||'')}</div></td>
       <td class="text-muted">${esc(l.fabricante)}</td>
       <td class="mono">${esc(l.numero_lote)}</td>
       <td><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div><span class="mono fw-600">${l.quantidade_disponivel}/${l.quantidade_total}</span></div></td>
@@ -54,23 +54,33 @@ async function draw(){wrap.innerHTML='';
       const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
       actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'✏️',async e=>{
         e.stopPropagation();
-        showModal(`Editar Lote #${l.id}`,async(body,close)=>{
-          const fd={numero_lote:l.numero_lote,fabricante:l.fabricante,local_armazenamento:l.local_armazenamento,valor_unitario_custo:l.valor_unitario_custo,status:l.status};
+        showModal(`Editar Lote #${l.id} — ${esc(l.vacina_nome)}`,async(body,close)=>{
+          const fd={numero_lote:l.numero_lote,fabricante:l.fabricante,local_armazenamento:l.local_armazenamento,valor_unitario_custo:l.valor_unitario_custo||0,status:l.status};
+          // Read-only info
+          body.appendChild(h('div',{style:{padding:'10px 12px',background:'var(--bg-subtle)',borderRadius:'8px',marginBottom:'16px',fontSize:'12px',color:'var(--text-3)'}},
+            `Vacina: ${esc(l.vacina_nome)} · Validade: ${fmtData(l.validade)} · Estoque: ${l.quantidade_disponivel}/${l.quantidade_total}`));
           const gr=h('div',{className:'form-grid'});
-          [['numero_lote','Lote'],['fabricante','Fabricante'],['local_armazenamento','Local']].forEach(([k,lab])=>{
+          [['numero_lote','Nº do Lote'],['fabricante','Fabricante'],['local_armazenamento','Local de Armazenamento']].forEach(([k,lab])=>{
             const d=h('div');d.appendChild(h('label',{className:'label'},lab));
             const inp=h('input',{className:'input',value:fd[k]||''});inp.addEventListener('input',ev=>{fd[k]=ev.target.value});
             d.appendChild(inp);gr.appendChild(d);
           });
+          // Custo unitário
+          const dCusto=h('div');dCusto.appendChild(h('label',{className:'label'},'Custo Unitário (R$)'));
+          const cInp=h('input',{className:'input',type:'number',step:'0.01',value:fd.valor_unitario_custo||''});
+          cInp.addEventListener('input',ev=>{fd.valor_unitario_custo=parseFloat(ev.target.value)||0});
+          dCusto.appendChild(cInp);gr.appendChild(dCusto);
+          // Status
           const dSt=h('div');dSt.appendChild(h('label',{className:'label'},'Status'));
           dSt.appendChild(buildSelect([['disponivel','Disponível'],['reservado','Reservado'],['esgotado','Esgotado'],['inativo','Inativo']],fd.status||'',v=>{fd.status=v}));
           gr.appendChild(dSt);
           body.appendChild(gr);
+          body.appendChild(h('div',{style:{fontSize:'11px',color:'#94a3b8',marginTop:'8px'}},'⚠ Vacina e validade não podem ser alterados para preservar rastreabilidade'));
           body.appendChild(iconBtn('btn btn-primary btn-block',null,'Salvar',async()=>{
             const r=await Api.atualizarLote(l.id,fd);
             if(r?.success){Toast.show('Lote atualizado');close();draw()}else Toast.show(r?.error||'Erro','error');
           },{style:{marginTop:'16px'}}));
-        },'480px');
+        },'520px');
       },{style:{marginRight:'4px'}}));
       actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'🗑',async e=>{
         e.stopPropagation();
@@ -89,6 +99,70 @@ async function draw(){wrap.innerHTML='';
   tw.appendChild(buildPagination(data.pagination,p=>{f.page=p;draw()}));
   wrap.appendChild(tw);
 }
+
+// ═══ DETALHE DO LOTE ═══
+function modalDetalheLote(id){showModal('Detalhamento do Lote',async(body,close)=>{
+  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-3)">Carregando...</div>';
+  const l=await Api.loteDetalhe(id);
+  if(!l||l.error){body.innerHTML=`<div style="color:var(--red)">${esc(l?.error||'Erro')}</div>`;return}
+  body.innerHTML='';
+
+  const st=statusVenc(l.dias_para_vencer);
+  const sm2={disponivel:'badge-green',reservado:'badge-primary',esgotado:'badge-gray',vencido:'badge-red',inativo:'badge-gray'};
+
+  // Header
+  body.appendChild(h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}},
+    h('div',null,
+      h('div',{style:{fontSize:'18px',fontWeight:'700',color:'var(--navy)'}},esc(l.vacina_nome)),
+      h('div',{style:{fontSize:'12px',color:'var(--text-3)'}},`Código: ${esc(l.vacina_codigo||'-')} · Lote: ${esc(l.numero_lote)}`)
+    ),
+    h('span',{className:`badge ${sm2[l.status]||'badge-gray'}`,style:'font-size:13px'},l.status)
+  ));
+
+  // Info grid
+  const grid=h('div',{style:'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px'});
+  const fld=(label,value,color)=>{const d=h('div',{style:'padding:10px;background:var(--bg-subtle);border-radius:8px'});d.innerHTML=`<div style="font-size:10px;color:var(--text-4);text-transform:uppercase;font-weight:600">${label}</div><div style="font-size:15px;font-weight:700;color:${color||'var(--text-1)'};margin-top:2px">${value}</div>`;return d};
+  grid.appendChild(fld('Estoque',`${l.quantidade_disponivel} / ${l.quantidade_total}`,'#2BBCB3'));
+  grid.appendChild(fld('Aplicadas',String(l.quantidade_aplicada||0),'var(--primary)'));
+  grid.appendChild(fld('Validade',`${fmtData(l.validade)}`,l.dias_para_vencer<0?'#dc2626':l.dias_para_vencer<30?'#d97706':'#059669'));
+  grid.appendChild(fld('Fabricante',esc(l.fabricante)));
+  grid.appendChild(fld('Local',esc(l.local_armazenamento||'-')));
+  grid.appendChild(fld('Custo Unit.',l.valor_unitario_custo?fmtMoeda(l.valor_unitario_custo):'-'));
+  body.appendChild(grid);
+
+  // Unit status breakdown
+  if(l.unidades_por_status){
+    const us=l.unidades_por_status;
+    const usDiv=h('div',{style:'display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap'});
+    Object.entries(us).forEach(([st2,cnt])=>{
+      const cls=st2==='disponivel'?'badge-green':st2==='aplicada'?'badge-primary':'badge-gray';
+      usDiv.appendChild(h('span',{className:`badge ${cls}`,style:'font-size:11px'},`${st2}: ${cnt}`));
+    });
+    body.appendChild(h('div',{style:'font-size:11px;font-weight:600;color:var(--text-4);text-transform:uppercase;margin-bottom:4px'},'Unidades por Status'));
+    body.appendChild(usDiv);
+  }
+
+  // Reservas pendentes
+  if(l.reservas_pendentes?.length){
+    body.appendChild(h('div',{style:'font-size:11px;font-weight:600;color:#d97706;text-transform:uppercase;margin:12px 0 6px'},'⏳ Reservas Pendentes de Aprovação'));
+    l.reservas_pendentes.forEach(r2=>{
+      const row=h('div',{style:'padding:8px;background:#fef3c7;border-radius:8px;margin-bottom:4px;font-size:12px'});
+      row.innerHTML=`<span class="fw-600">${esc(r2.cliente||'-')}</span>${r2.responsavel?` <span class="text-muted">(Resp: ${esc(r2.responsavel)})</span>`:''} ${r2.codigo_cliente?'['+esc(r2.codigo_cliente)+']':''} · <span class="mono">${fmtDataHora(r2.data)}</span>`;
+      body.appendChild(row);
+    });
+  }
+
+  // Últimas movimentações
+  if(l.ultimas_movimentacoes?.length){
+    body.appendChild(h('div',{style:'font-size:11px;font-weight:600;color:var(--text-4);text-transform:uppercase;margin:16px 0 6px;border-top:1px solid var(--border);padding-top:12px'},`Últimas Movimentações (${l.total_movimentacoes})`));
+    l.ultimas_movimentacoes.forEach(m=>{
+      const tc2={retirada:'badge-orange',entrada:'badge-green',descarte:'badge-red',ajuste:'badge-gray',estorno:'badge-primary'};
+      const row=h('div',{style:'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px'});
+      row.innerHTML=`<span class="mono text-muted">${fmtDataHora(m.data)}</span><span class="badge ${tc2[m.tipo]||'badge-gray'}" style="font-size:10px">${m.tipo}</span><span class="fw-600">${m.quantidade}x</span>${m.cliente?`<span>${esc(m.cliente)}${m.responsavel?' <span class="text-muted">('+esc(m.responsavel)+')</span>':''}</span>`:''}<span class="badge ${m.status==='concluido'?'badge-green':m.status==='pendente_aprovacao'?'badge-orange':'badge-red'}" style="font-size:9px">${m.status}</span>`;
+      body.appendChild(row);
+    });
+  }
+},'620px')}
 
 // ═══ CADASTRO POR CÓDIGO DE BARRAS (NOVO) ═══
 function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(body,close)=>{
