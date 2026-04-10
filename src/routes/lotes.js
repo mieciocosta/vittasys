@@ -170,7 +170,8 @@ r.get('/:id',async(req,res,next)=>{try{
   const l=await prisma.lote.findUnique({where:{id},include:{
     vacina:{select:{id:true,nome:true,codigo:true,fabricante:true,viaAdministracao:true}},
     unidades:{orderBy:{id:'asc'},take:50,select:{id:true,codigoBarras:true,status:true,criadoEm:true}},
-    movimentacoes:{orderBy:{dataHora:'desc'},take:20,select:{id:true,tipo:true,dataHora:true,nomeVacina:true,quantidade:true,status:true,clienteId:true,observacoes:true,motivoPadrao:true,planoContratadoId:true},include:{cliente:{select:{nome:true,responsavelNome:true,codigoCliente:true}}}},
+    movimentacoes:{orderBy:{dataHora:'desc'},take:20,include:{
+      cliente:{select:{nome:true,responsavelNome:true,codigoCliente:true}}}},
     _count:{select:{unidades:true,movimentacoes:true}}
   }});
   if(!l)return res.status(404).json({error:'Lote não encontrado'});
@@ -200,7 +201,8 @@ r.get('/:id',async(req,res,next)=>{try{
     ultimas_movimentacoes:l.movimentacoes.map(m=>({
       id:m.id,tipo:m.tipo,data:m.dataHora,quantidade:m.quantidade,status:m.status,
       cliente:m.cliente?.nome||null,responsavel:m.cliente?.responsavelNome||null,
-      codigo_cliente:m.cliente?.codigoCliente||null,obs:m.observacoes
+      codigo_cliente:m.cliente?.codigoCliente||null,obs:m.observacoes,
+      nome_vacina:m.nomeVacina,motivo_padrao:m.motivoPadrao
     })),
     reservas_pendentes:reservas.map(r2=>({
       id:r2.id,cliente:r2.cliente?.nome||null,responsavel:r2.cliente?.responsavelNome||null,

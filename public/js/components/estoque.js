@@ -72,9 +72,13 @@ async function draw(){wrap.innerHTML='';
           dCusto.appendChild(cInp);gr.appendChild(dCusto);
           // Status
           const dSt=h('div');dSt.appendChild(h('label',{className:'label'},'Status'));
-          dSt.appendChild(buildSelect([['disponivel','Disponível'],['reservado','Reservado'],['esgotado','Esgotado'],['inativo','Inativo']],fd.status||'',v=>{fd.status=v}));
+          dSt.appendChild(buildSelect([['disponivel','Disponível'],['esgotado','Esgotado'],['inativo','Inativo']],fd.status||'',v=>{fd.status=v}));
           gr.appendChild(dSt);
           body.appendChild(gr);
+          if(l.status==='reservado'){
+            body.appendChild(h('div',{style:{padding:'10px',background:'#fef3c7',borderRadius:'8px',marginTop:'8px',fontSize:'12px',color:'#92400e'}},
+              '⚠ Este lote está reservado. Para liberar, clique no lote para ver as reservas pendentes e aprove/reprove na tela de Aprovações.'));
+          }
           body.appendChild(h('div',{style:{fontSize:'11px',color:'#94a3b8',marginTop:'8px'}},'⚠ Vacina e validade não podem ser alterados para preservar rastreabilidade'));
           body.appendChild(iconBtn('btn btn-primary btn-block',null,'Salvar',async()=>{
             const r=await Api.atualizarLote(l.id,fd);
@@ -158,7 +162,7 @@ function modalDetalheLote(id){showModal('Detalhamento do Lote',async(body,close)
     l.ultimas_movimentacoes.forEach(m=>{
       const tc2={retirada:'badge-orange',entrada:'badge-green',descarte:'badge-red',ajuste:'badge-gray',estorno:'badge-primary'};
       const row=h('div',{style:'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px'});
-      row.innerHTML=`<span class="mono text-muted">${fmtDataHora(m.data)}</span><span class="badge ${tc2[m.tipo]||'badge-gray'}" style="font-size:10px">${m.tipo}</span><span class="fw-600">${m.quantidade}x</span>${m.cliente?`<span>${esc(m.cliente)}${m.responsavel?' <span class="text-muted">('+esc(m.responsavel)+')</span>':''}</span>`:''}<span class="badge ${m.status==='concluido'?'badge-green':m.status==='pendente_aprovacao'?'badge-orange':'badge-red'}" style="font-size:9px">${m.status}</span>`;
+      row.innerHTML=`<span class="mono text-muted">${fmtDataHora(m.data)}</span><span class="badge ${tc2[m.tipo]||'badge-gray'}" style="font-size:10px">${m.tipo}</span>${m.motivo_padrao==='vacina_fora_plano'?'<span class="badge badge-orange" style="font-size:9px">Fora plano</span>':''}<span class="fw-600">${m.quantidade}x</span>${m.cliente?`<span>${esc(m.cliente)}${m.responsavel?' <span class="text-muted">('+esc(m.responsavel)+')</span>':''}</span>`:''}<span class="badge ${m.status==='concluido'?'badge-green':m.status==='pendente_aprovacao'?'badge-orange':'badge-red'}" style="font-size:9px">${m.status}</span>`;
       body.appendChild(row);
     });
   }
