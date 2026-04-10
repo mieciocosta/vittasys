@@ -1,5 +1,5 @@
 const{Router}=require('express');const r=Router();const prisma=require('../config/database');
-const VALID=['codigoCliente','nome','dataNascimento','sexo','cpf','telefone','email','tipoPaciente','tipoCliente','responsavelNome','responsavelParentesco','responsavelCpf','responsavelTelefone','vendedorId','vacinadorId','status','observacoes','observacoesClinicas'];
+const VALID=['codigoCliente','nome','dataNascimento','sexo','cpf','telefone','email','tipoPaciente','tipoCliente','responsavelNome','responsavelParentesco','responsavelCpf','responsavelTelefone','pacienteNome','pacienteNascimento','pacienteSexo','pacienteCpf','vendedorId','vacinadorId','status','observacoes','observacoesClinicas'];
 const fieldMap={codigo_cliente:'codigoCliente',data_nascimento:'dataNascimento',tipo_paciente:'tipoPaciente',tipo_cliente:'tipoCliente',responsavel_nome:'responsavelNome',responsavel_parentesco:'responsavelParentesco',responsavel_cpf:'responsavelCpf',responsavel_telefone:'responsavelTelefone',vendedor_id:'vendedorId',vacinador_id:'vacinadorId',observacoes_clinicas:'observacoesClinicas',paciente_nome:'pacienteNome',paciente_nascimento:'pacienteNascimento',paciente_sexo:'pacienteSexo',paciente_cpf:'pacienteCpf'};
 
 function mapIn(b){const d={};Object.entries(b).forEach(([k,v])=>{const pk=fieldMap[k]||k;if(VALID.includes(pk)){if(['vendedorId','vacinadorId'].includes(pk)&&v)d[pk]=+v;else if(pk==='dataNascimento'&&v)d[pk]=new Date(v);else d[pk]=v}});return d}
@@ -81,7 +81,16 @@ r.post('/',async(req,res,next)=>{try{
 }catch(e){if(e.code==='P2002')return res.status(409).json({error:'CPF já cadastrado',campo:'cpf'});next(e)}});
 
 r.put('/:id',async(req,res,next)=>{try{
-  const d=mapIn(req.body);
+  const b=req.body;
+  const d=mapIn(b);
+
+  // Age validation: responsável must be 18+
+  if(d.dataNascimento&&!d.responsavelNome){
+    const nasc=new Date(d.dataNascimento);
+    const idade=(new Date()-nasc)/(365.25*24*60*60*1000);
+    if(idade<18)return res.status(400).json({error:'Responsável financeiro deve ter 18 anos ou mais',campo:'data_nascimento'});
+  }
+
   // If CPF changed, validate + check unique
   if(d.cpf){
     const cpfClean=validarCPF(d.cpf);
