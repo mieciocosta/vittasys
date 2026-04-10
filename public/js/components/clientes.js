@@ -137,40 +137,51 @@ await draw();return wrap;}
 function buildClienteForm(fd,editId,onDone){
   const container=h('div');
 
+  // Detect initial mode
+  if(!fd._tipo_cadastro){
+    if(fd.tipo_paciente==='crianca'||fd.tipo_paciente==='bebe'||fd.responsavel_nome)fd._tipo_cadastro='crianca';
+    else fd._tipo_cadastro='adulto';
+  }
+
   function renderForm(){
     container.innerHTML='';
     const fm=h('div',{className:'card slide-up',style:{marginBottom:'20px'}});
-    const isChild=fd.tipo_paciente==='crianca'||fd.tipo_paciente==='bebe';
-    const hasResp=!!fd.responsavel_nome;
-    const modoFilho=isChild||hasResp||fd._modo_filho===true;
+    const modo=fd._tipo_cadastro;
 
-    // ═══ TOGGLE: ADULTO vs CRIANÇA ═══
-    const toggleSec=h('div',{style:{padding:'16px 0',borderBottom:'1px solid #e2e8f0',marginBottom:'16px'}});
-    const toggleLabel=h('label',{style:{display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontSize:'14px',fontWeight:'600'}});
-    const toggleInp=h('input',{type:'checkbox',checked:!modoFilho});
-    toggleInp.addEventListener('change',e=>{
-      fd._modo_filho=!e.target.checked;
-      if(e.target.checked){
-        // Adult: clear child-specific fields
-        fd.responsavel_nome='';fd.responsavel_parentesco='';
-        fd.tipo_paciente='adulto';
-      }else{
-        fd.tipo_paciente='crianca';
-      }
-      renderForm(); // REBUILD
+    // ═══ SELETOR DE TIPO — Botões visuais ═══
+    const selSec=h('div',{style:{marginBottom:'20px'}});
+    selSec.appendChild(h('div',{style:{fontSize:'13px',fontWeight:'600',color:'var(--text-3)',marginBottom:'10px',textTransform:'uppercase',letterSpacing:'0.5px'}},'Tipo de cadastro'));
+    const btnGrid=h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px'}});
+
+    [['adulto','👤','Adulto','Paciente é o próprio contratante'],
+     ['crianca','👶','Criança / Bebê','Com responsável financeiro'],
+     ['idoso','🧓','Idoso','Com responsável financeiro']
+    ].forEach(([tipo,icon,label,desc])=>{
+      const isActive=modo===tipo||(modo==='crianca'&&tipo==='crianca')||(modo==='bebe'&&tipo==='crianca');
+      const btn=h('button',{
+        className:`applicator-card${isActive?' active':''}`,
+        style:{padding:'16px 12px',textAlign:'center',border:isActive?'2px solid var(--primary)':'2px solid var(--border)',background:isActive?'var(--primary-bg)':'var(--bg-card)'},
+        onClick:()=>{
+          fd._tipo_cadastro=tipo;
+          if(tipo==='adulto'){fd.tipo_paciente='adulto';fd.responsavel_nome='';fd.responsavel_parentesco=''}
+          else if(tipo==='crianca'){fd.tipo_paciente='crianca'}
+          else{fd.tipo_paciente='adulto'} // idoso is still 'adulto' type but with responsavel
+          renderForm();
+        }
+      });
+      btn.appendChild(h('div',{style:{fontSize:'24px',marginBottom:'4px'}},icon));
+      btn.appendChild(h('div',{style:{fontWeight:'700',fontSize:'14px',color:isActive?'var(--primary)':'var(--text-1)'}},label));
+      btn.appendChild(h('div',{style:{fontSize:'11px',color:'var(--text-3)',marginTop:'2px'}},desc));
+      btnGrid.appendChild(btn);
     });
-    toggleLabel.appendChild(toggleInp);
-    toggleLabel.appendChild(document.createTextNode(modoFilho?'Desmarcado: cadastro de criança com responsável':'✓ Paciente é o próprio responsável financeiro (adulto)'));
-    toggleSec.appendChild(toggleLabel);
-    if(!modoFilho){
-      toggleSec.appendChild(h('div',{style:{fontSize:'11px',color:'#94a3b8',marginTop:'4px',paddingLeft:'28px'}},'Desmarque para cadastrar criança/bebê com responsável diferente'));
-    }
-    fm.appendChild(toggleSec);
+    selSec.appendChild(btnGrid);fm.appendChild(selSec);
 
-    if(modoFilho){
-      // ═══ MODO CRIANÇA: Responsável + Paciente separados ═══
+    const needsResp=modo==='crianca'||modo==='idoso';
+
+    if(needsResp){
+      // ═══ RESPONSÁVEL FINANCEIRO ═══
       const respSec=h('div',{className:'client-form-section'});
-      respSec.appendChild(h('h4',null,'👤 Responsável Financeiro / Contratante'));
+      respSec.appendChild(h('h4',{style:{color:'var(--navy)'}},'👤 Responsável Financeiro / Contratante'));
       const respGrid=h('div',{className:'client-form-grid'});
       [fld('Nome do Responsável *','responsavel_nome',fd),
        fldMask('CPF Responsável *','cpf',maskCPF,fd),
@@ -182,20 +193,22 @@ function buildClienteForm(fd,editId,onDone){
       ].forEach(el=>respGrid.appendChild(el));
       respSec.appendChild(respGrid);fm.appendChild(respSec);
 
+      // ═══ PACIENTE ═══
       const pacSec=h('div',{className:'client-form-section'});
-      pacSec.appendChild(h('h4',null,'👶 Paciente (quem receberá as vacinas)'));
+      pacSec.appendChild(h('h4',{style:{color:'var(--primary)'}},(modo==='crianca'?'👶':'🧓')+' Paciente (quem receberá as vacinas)'));
       const pacGrid=h('div',{className:'client-form-grid'});
+      const tipoOpts=modo==='crianca'?[['crianca','Criança'],['bebe','Bebê']]:[['adulto','Adulto'],['idoso','Idoso']];
       [fld('Nome do Paciente *','nome',fd),
-       fldDate('Nascimento *','data_nascimento',fd),
+       fldDate('Data de Nascimento *','data_nascimento',fd),
        fldSel('Sexo','sexo',[['','—'],['M','Masculino'],['F','Feminino']],fd),
-       fldSel('Tipo Paciente','tipo_paciente',[['crianca','Criança'],['bebe','Bebê']],fd),
+       fldSel('Tipo Paciente','tipo_paciente',tipoOpts,fd),
        fld('Obs. Clínicas','observacoes_clinicas',fd)
       ].forEach(el=>pacGrid.appendChild(el));
       pacSec.appendChild(pacGrid);fm.appendChild(pacSec);
     }else{
-      // ═══ MODO ADULTO: Formulário unificado ═══
+      // ═══ ADULTO — Formulário unificado ═══
       const sec=h('div',{className:'client-form-section'});
-      sec.appendChild(h('h4',null,'👤 Dados do Cliente'));
+      sec.appendChild(h('h4',{style:{color:'var(--navy)'}},'👤 Dados do Cliente'));
       const grid=h('div',{className:'client-form-grid'});
       [fld('Nome Completo *','nome',fd),
        fldDate('Data de Nascimento *','data_nascimento',fd),
@@ -218,24 +231,21 @@ function buildClienteForm(fd,editId,onDone){
 
     // ═══ SUBMIT ═══
     fm.appendChild(iconBtn('btn btn-primary btn-lg btn-block',null,editId?'Salvar Alterações':'Cadastrar Cliente',async()=>{
-      if(modoFilho){
-        if(!fd.responsavel_nome||fd.responsavel_nome.trim().length<3)return Toast.show('Nome do responsável é obrigatório (mín. 3 chars)','error');
+      if(needsResp){
+        if(!fd.responsavel_nome||fd.responsavel_nome.trim().length<3)return Toast.show('Nome do responsável é obrigatório','error');
         if(!fd.nome||fd.nome.trim().length<2)return Toast.show('Nome do paciente é obrigatório','error');
         if(!fd.data_nascimento)return Toast.show('Nascimento do paciente é obrigatório','error');
         if(!fd.cpf&&!editId)return Toast.show('CPF do responsável é obrigatório','error');
         if(!fd.telefone&&!editId)return Toast.show('Celular do responsável é obrigatório','error');
         if(!fd.responsavel_parentesco)return Toast.show('Parentesco é obrigatório','error');
-        // Sync paciente fields for DB
-        fd.paciente_nome=fd.nome;
-        fd.paciente_nascimento=fd.data_nascimento;
-        fd.paciente_sexo=fd.sexo;
+        fd.paciente_nome=fd.nome;fd.paciente_nascimento=fd.data_nascimento;fd.paciente_sexo=fd.sexo;
       }else{
         if(!fd.nome||fd.nome.trim().length<3)return Toast.show('Nome é obrigatório (mínimo 3 caracteres)','error');
         if(!fd.data_nascimento)return Toast.show('Data de nascimento é obrigatória','error');
         if(!fd.cpf&&!editId)return Toast.show('CPF é obrigatório','error');
         if(!fd.telefone&&!editId)return Toast.show('Celular é obrigatório','error');
         const nasc=new Date(fd.data_nascimento);const idade=(new Date()-nasc)/(365.25*24*60*60*1000);
-        if(idade<18)return Toast.show('⚠ Responsável deve ter 18+ anos. Desmarque o checkbox para cadastrar criança.','error');
+        if(idade<18)return Toast.show('⚠ Responsável deve ter 18+ anos. Selecione "Criança/Bebê" para menores.','error');
         fd.tipo_paciente='adulto';
       }
       if(fd.cpf&&fd.cpf.replace(/\D/g,'').length>=11&&!validarCPF(fd.cpf))return Toast.show('CPF inválido','error');
