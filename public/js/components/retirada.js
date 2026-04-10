@@ -6,6 +6,7 @@ async function renderRetirada(){
   let unidadeSel=null;
   let clienteSel=null;
   let clientePlanos=null;
+  let planoSel=null; // Selected plan for ativo clients
   let aplicadorSel=null;
   let buscaCliente='';
   let clientesResult=[];
@@ -133,14 +134,31 @@ async function renderRetirada(){
       const lc=h('div',{className:'card slide-up',style:{marginBottom:'20px'}});
       lc.appendChild(iconBtn('btn btn-outline btn-sm',I.chevL,'Voltar',()=>{etapa='cliente';draw()}));
       lc.appendChild(h('div',{className:'label',style:{margin:'12px 0',color:'var(--red)'}},'LOCAL DE APLICAÇÃO * (obrigatório)'));
-      // Plan info
+      // Plan info + SELECTION
       if(clienteSel&&clientePlanos){
         const ap=(clientePlanos||[]).filter(p=>p.status_contrato==='ativo');
         if(ap.length>0){
           const pc=h('div',{style:{marginBottom:'16px',padding:'12px',background:'var(--primary-bg)',borderRadius:'10px',borderLeft:'4px solid var(--primary)'}});
           pc.appendChild(h('div',{className:'label',style:{marginBottom:'6px'}},`PLANO: ${clienteSel.nome.toUpperCase()}`));
-          ap.forEach(p=>{const prog=p.doses_total>0?Math.round((p.doses_aplicadas||0)/p.doses_total*100):0;
-            pc.innerHTML+=`<div style="margin-bottom:6px"><span class="fw-600">${esc(p.nome_plano)}</span> <span class="badge badge-green">${p.status_contrato}</span><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="prog-bar" style="flex:1"><div class="prog-fill" style="width:${prog}%"></div></div><span class="mono text-sm">${p.doses_aplicadas||0}/${p.doses_total||0}</span></div></div>`});
+          if(ap.length>1&&!planoSel){
+            // Multiple plans — REQUIRE selection
+            pc.appendChild(h('div',{style:{fontSize:'13px',color:'#d97706',fontWeight:'600',marginBottom:'8px'}},'⚠ Selecione o plano para este lançamento:'));
+            ap.forEach(p=>{const prog=p.doses_total>0?Math.round((p.doses_aplicadas||0)/p.doses_total*100):0;
+              const btn=h('button',{className:'applicator-card',style:{textAlign:'left',padding:'12px',marginBottom:'6px',width:'100%'},onClick:()=>{planoSel=p;draw()}});
+              btn.innerHTML=`<div class="fw-600">${esc(p.nome_plano)} <span class="badge badge-green">${p.status_contrato}</span></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="prog-bar" style="flex:1"><div class="prog-fill" style="width:${prog}%"></div></div><span class="mono text-sm">${p.doses_aplicadas||0}/${p.doses_total||0}</span></div>`;
+              pc.appendChild(btn)});
+            lc.appendChild(pc);
+            // Block local selection until plan is selected
+            lc.appendChild(h('div',{style:{textAlign:'center',padding:'20px',color:'#94a3b8',fontSize:'13px'}},'Selecione o plano acima para continuar'));
+            wrap.appendChild(lc);
+            return wrap; // STOP — don't show local buttons until plan selected
+          }else{
+            // Single plan or already selected
+            const sel=planoSel||ap[0];
+            if(!planoSel)planoSel=sel;
+            const prog=sel.doses_total>0?Math.round((sel.doses_aplicadas||0)/sel.doses_total*100):0;
+            pc.innerHTML+=`<div style="margin-bottom:6px"><span class="fw-600">${esc(sel.nome_plano)}</span> <span class="badge badge-green">${sel.status_contrato}</span>${ap.length>1?` <span style="cursor:pointer;color:var(--primary);font-size:11px;text-decoration:underline" onclick="this.closest('.card')&&(window._vittaResetPlano=true)">(trocar plano)</span>`:''}<div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="prog-bar" style="flex:1"><div class="prog-fill" style="width:${prog}%"></div></div><span class="mono text-sm">${sel.doses_aplicadas||0}/${sel.doses_total||0}</span></div></div>`;
+          }
           lc.appendChild(pc);
         }
       }
@@ -192,7 +210,8 @@ async function renderRetirada(){
       grid.innerHTML=`<div><div class="cg-label">VACINA</div><div class="cg-value">${esc(unidadeSel.vacina_nome)}</div><div class="cg-sub">Lote: ${esc(unidadeSel.numero_lote)} · CB: ${esc(unidadeSel.codigo_barras.slice(-10))}</div></div>
         <div><div class="cg-label">ESTOQUE APÓS</div><div class="cg-value" style="color:${unidadeSel.quantidade_disponivel<=1?'#dc2626':'inherit'}">${Math.max(0,unidadeSel.quantidade_disponivel-1)} doses</div></div>
         <div><div class="cg-label">LOCAL</div><div class="cg-value">${esc(localAplicacao)}</div></div>
-        <div><div class="cg-label">APLICADOR</div><div class="cg-value">${aplicadorSel?esc(aplicadorSel.nome):'Sem aplicação'}</div></div>`;
+        <div><div class="cg-label">APLICADOR</div><div class="cg-value">${aplicadorSel?esc(aplicadorSel.nome):'Sem aplicação'}</div></div>
+        ${planoSel?`<div style="grid-column:1/-1"><div class="cg-label">PLANO VINCULADO</div><div class="cg-value" style="color:var(--primary)">${esc(planoSel.nome_plano)} (${planoSel.doses_aplicadas||0}/${planoSel.doses_total||0})</div></div>`:''}`;
       cf.appendChild(grid);
       const acts=h('div',{style:{display:'flex',gap:'12px',marginTop:'16px'}});
       acts.appendChild(iconBtn('btn btn-outline btn-lg',I.x,'Cancelar',()=>{resetar();focusScanner()},{style:{flex:'1'}}));
@@ -357,7 +376,7 @@ async function renderRetirada(){
   }
   function resetar(){
     etapa='scan';query='';resultados=[];unidadeSel=null;clienteSel=null;
-    clientePlanos=null;aplicadorSel=null;buscaCliente='';
+    clientePlanos=null;planoSel=null;aplicadorSel=null;buscaCliente='';
     clientesResult=[];localAplicacao='';confirmando=false;
     recentPage=0;
     draw();
@@ -394,8 +413,17 @@ async function renderRetirada(){
         usuario_id:AppState.usuario.id,
         aplicador_id:aplicadorSel?.id,
         tipo_cliente:tipoCliente,
-        local_aplicacao:localAplicacao
+        local_aplicacao:localAplicacao,
+        plano_contratado_id:planoSel?.id||null
       });
+      if(r2?.code==='SELECIONAR_PLANO'){
+        // Backend requires plan selection — go back to local step
+        confirmando=false;
+        if(btn){btn.disabled=false;btn.textContent='✓ Confirmar Retirada'}
+        planoSel=null;etapa='local';draw();
+        Toast.show('Selecione o plano antes de continuar','warning');
+        return;
+      }
       if(r2?.success){
         let msg=r2.message;
         if(r2.estoque)msg+=` | Estoque: ${r2.estoque.antes}→${r2.estoque.depois}`;
@@ -438,7 +466,8 @@ async function renderRetirada(){
               unidade_id:unidadeSel.id,cliente_id:clienteSel.id,
               usuario_id:AppState.usuario.id,aplicador_id:aplicadorSel?.id,
               tipo_cliente:tipoCliente,local_aplicacao:localAplicacao,
-              justificativa_fora_plano:justInput.value.trim()
+              justificativa_fora_plano:justInput.value.trim(),
+              plano_contratado_id:planoSel?.id||null
             });
             if(r3?.success){Toast.show(r3.message,'warning');close();resetar();focusScanner()}
             else Toast.show(r3?.error||'Erro','error');

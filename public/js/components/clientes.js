@@ -324,5 +324,6 @@ c.movimentacoes.slice(0,20).forEach(m=>{const row=h('div',{style:{display:'flex'
 const stBadge=m.status==='pendente_aprovacao'?'badge-orange':m.status==='reprovado'?'badge-red':m.tipo==='retirada'?'badge-orange':'badge-green';
 const stLabel=m.status==='pendente_aprovacao'?'⏳ Pendente':m.status==='reprovado'?'✗ Reprovado':m.tipo;
 const foraPlano=m.motivo_padrao==='vacina_fora_plano'?'<span class="badge badge-orange" style="font-size:10px">Fora do plano</span>':'';
-row.innerHTML=`<span class="mono text-sm">${fmtDataHora(m.data_hora)}</span><span class="badge ${stBadge}">${stLabel}</span><span class="fw-600">${esc(m.nome_vacina||'-')}</span>${foraPlano}<span class="text-muted mono">${esc(m.numero_lote||'-')}</span>${m.local_aplicacao?`<span class="text-sm text-muted">${esc(m.local_aplicacao)}</span>`:''}`;mc.appendChild(row)});wrap.appendChild(mc)}
+const planoTag=m.plano_nome?`<span class="badge badge-primary" style="font-size:10px">${esc(m.plano_nome)}</span>`:'';
+row.innerHTML=`<span class="mono text-sm">${fmtDataHora(m.data_hora)}</span><span class="badge ${stBadge}">${stLabel}</span><span class="fw-600">${esc(m.nome_vacina||'-')}</span>${foraPlano}${planoTag}<span class="text-muted mono">${esc(m.numero_lote||'-')}</span>${m.local_aplicacao?`<span class="text-sm text-muted">${esc(m.local_aplicacao)}</span>`:''}`;mc.appendChild(row)});wrap.appendChild(mc)}
 return wrap;}

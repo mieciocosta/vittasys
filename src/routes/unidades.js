@@ -24,7 +24,7 @@ r.put('/barcode/:id',async(req,res,next)=>{try{
 
 // ═══ RETIRADA COM VALIDAÇÃO DE LIMITE DE DOSES ═══
 r.post('/retirada',async(req,res,next)=>{try{
-  const{unidade_id,cliente_id,usuario_id,aplicador_id,tipo_cliente,tipo_atendimento,local_aplicacao,observacoes,justificativa_fora_plano}=req.body;
+  const{unidade_id,cliente_id,usuario_id,aplicador_id,tipo_cliente,tipo_atendimento,local_aplicacao,observacoes,justificativa_fora_plano,plano_contratado_id}=req.body;
   if(!unidade_id||!cliente_id||!usuario_id)return res.status(400).json({error:'Campos obrigatórios faltando'});
   if(!local_aplicacao)return res.status(400).json({error:'Local de aplicação obrigatório'});
 
@@ -38,11 +38,20 @@ r.post('/retirada',async(req,res,next)=>{try{
     const clienteDB=await tx.cliente.findUnique({where:{id:+cliente_id},select:{tipoCliente:true}});
     const isAtivo=clienteDB?.tipoCliente==='ativo'||tipo_cliente==='ativo';
     let doseVinculada=null;
+    let planoSelecionadoId=plano_contratado_id?+plano_contratado_id:null;
     if(isAtivo){
       const planosAtivos=await tx.planoContratado.findMany({
-        where:{clienteId:+cliente_id,statusContrato:'ativo'},
+        where:{clienteId:+cliente_id,statusContrato:'ativo',
+          ...(planoSelecionadoId?{id:planoSelecionadoId}:{})},
         include:{doses:{include:{vacina:{select:{id:true,nome:true,codigo:true}}},orderBy:[{mesPrevisto:'asc'},{doseNumero:'asc'}]}}
       });
+
+      // If multiple plans and none selected, require selection
+      if(!planoSelecionadoId&&planosAtivos.length>1){
+        throw Object.assign(new Error('Cliente possui múltiplos planos ativos. Selecione o plano antes de continuar.'),
+          {status:400,code:'SELECIONAR_PLANO',planos:planosAtivos.map(p=>({id:p.id,nome:p.nomePlano,doses_total:p.doses.length,doses_aplicadas:p.doses.filter(d=>d.status==='aplicada').length}))});
+      }
+      if(planosAtivos.length===1)planoSelecionadoId=planosAtivos[0].id;
 
       // Get plan start date for month calculation
       for(const plano of planosAtivos){
@@ -127,6 +136,7 @@ r.post('/retirada',async(req,res,next)=>{try{
             observacoes:`[FORA DO PLANO] ${justificativa_fora_plano}`,
             requerAprovacao:true,justificativa:justificativa_fora_plano,
             motivoPadrao:'vacina_fora_plano',impactaEstoque:false,
+            planoContratadoId:planoSelecionadoId||null,
           }});
           return{movId:mov.id,vacNome:v.nome,cliNome:(await tx.cliente.findUnique({where:{id:+cliente_id},select:{nome:true}}))?.nome,pendente:true};
         }else{
@@ -142,7 +152,7 @@ r.post('/retirada',async(req,res,next)=>{try{
     const updLote=await tx.lote.findUnique({where:{id:l.id}});
     if(updLote.quantidadeDisponivel<=0)await tx.lote.update({where:{id:l.id},data:{status:'esgotado'}});
 
-    const mov=await tx.movimentacao.create({data:{tipo:'retirada',unidadeId:+unidade_id,loteId:l.id,vacinaId:v.id,clienteId:+cliente_id,usuarioId:+usuario_id,aplicadoPor:aplicador_id?+aplicador_id:null,tipoCliente:tipo_cliente||'espontaneo',tipoAtendimento:tipo_atendimento||'normal',localAplicacao:local_aplicacao,quantidade:1,codigoBarras:un.codigoBarras,numeroLote:l.numeroLote,nomeVacina:v.nome,status:'concluido',observacoes:observacoes||null}});
+    const mov=await tx.movimentacao.create({data:{tipo:'retirada',unidadeId:+unidade_id,loteId:l.id,vacinaId:v.id,clienteId:+cliente_id,usuarioId:+usuario_id,aplicadoPor:aplicador_id?+aplicador_id:null,tipoCliente:tipo_cliente||'espontaneo',tipoAtendimento:tipo_atendimento||'normal',localAplicacao:local_aplicacao,quantidade:1,codigoBarras:un.codigoBarras,numeroLote:l.numeroLote,nomeVacina:v.nome,status:'concluido',observacoes:observacoes||null,planoContratadoId:planoSelecionadoId||null}});
     // Link dose to movimentacao for traceability
     if(doseVinculada){await tx.planoContratadoDose.update({where:{id:doseVinculada.id},data:{movimentacaoId:mov.id}})}
     const cli=await tx.cliente.findUnique({where:{id:+cliente_id},select:{nome:true}});
@@ -156,7 +166,7 @@ r.post('/retirada',async(req,res,next)=>{try{
   }
   // Audit log
   try{const{logAudit,getRealIP}=require('./auditoria');logAudit({acao:'retirada',entidade:'movimentacao',entidadeId:result.movId,usuarioId:+usuario_id,detalhes:{vacina:result.vacNome,cliente:result.cliNome,estoque_antes:result.antes,estoque_depois:result.depois},ip:getRealIP(req),userAgent:req.get('user-agent')})}catch(e){}
-}catch(e){if(e.status)return res.status(e.status).json({error:e.message,code:e.code||null});next(e)}});
+}catch(e){if(e.status)return res.status(e.status).json({error:e.message,code:e.code||null,planos:e.planos||null});next(e)}});
 
 r.get('/recentes',async(req,res,next)=>{try{
   const r2=await prisma.retiradaRecente.findMany({orderBy:{dataHora:'desc'},take:15});

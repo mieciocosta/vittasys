@@ -36,11 +36,13 @@ r.get('/busca',async(req,res,next)=>{try{
 }catch(e){next(e)}});
 
 r.get('/:id',async(req,res,next)=>{try{
-  const c=await prisma.cliente.findUnique({where:{id:+req.params.id},include:{planosContratados:{include:{doses:{include:{vacina:true}},pagamentos:true}},movimentacoes:{orderBy:{dataHora:'desc'},take:30}}});
+  const c=await prisma.cliente.findUnique({where:{id:+req.params.id},include:{planosContratados:{include:{doses:{include:{vacina:true}},pagamentos:true}},movimentacoes:{orderBy:{dataHora:'desc'},take:30,select:{id:true,tipo:true,dataHora:true,nomeVacina:true,numeroLote:true,localAplicacao:true,status:true,motivoPadrao:true,justificativa:true,motivoReprovacao:true,aprovadoEm:true,planoContratadoId:true,codigoBarras:true}}}});
   if(!c)return res.status(404).json({error:'Não encontrado'});
   const o=mapOut(c);
   o.planos=c.planosContratados.map(p=>({...p,nome_plano:p.nomePlano,valor_final:p.valorFinal,status_contrato:p.statusContrato,total_pago:p.pagamentos.reduce((s,pg)=>s+pg.valorPago,0),saldo_pendente:p.valorFinal-p.pagamentos.reduce((s,pg)=>s+pg.valorPago,0),doses_aplicadas:p.doses.filter(d=>d.status==='aplicada').length,doses_total:p.doses.length,doses:p.doses.map(d=>({...d,vacina_nome:d.vacina.nome,dose_numero:d.doseNumero,data_aplicacao:d.dataAplicacao,local_aplicacao:d.localAplicacao}))}));
-  o.movimentacoes=c.movimentacoes.map(m=>({...m,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,local_aplicacao:m.localAplicacao,motivo_padrao:m.motivoPadrao,justificativa:m.justificativa,motivo_reprovacao:m.motivoReprovacao,aprovado_em:m.aprovadoEm}));
+  // Build plan name lookup
+  const planoNames={};c.planosContratados.forEach(p=>{planoNames[p.id]=p.nomePlano});
+  o.movimentacoes=c.movimentacoes.map(m=>({...m,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,local_aplicacao:m.localAplicacao,motivo_padrao:m.motivoPadrao,justificativa:m.justificativa,motivo_reprovacao:m.motivoReprovacao,aprovado_em:m.aprovadoEm,plano_nome:planoNames[m.planoContratadoId]||null,codigo_barras:m.codigoBarras}));
   // Separate fora-do-plano exceptions for visibility
   o.excecoes_fora_plano=c.movimentacoes.filter(m=>m.motivoPadrao==='vacina_fora_plano').map(m=>({id:m.id,vacina:m.nomeVacina,status:m.status,data:m.dataHora,justificativa:m.justificativa,motivo_reprovacao:m.motivoReprovacao,aprovado_em:m.aprovadoEm}));
   o.planos_ativos=o.planos.filter(p=>p.status_contrato==='ativo').length;

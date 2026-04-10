@@ -271,6 +271,7 @@ model Movimentacao {
   motivoReprovacao    String?  @map("motivo_reprovacao")
   impactaEstoque      Boolean  @default(true) @map("impacta_estoque")
   estoqueAplicadoEm   DateTime? @map("estoque_aplicado_em")
+  planoContratadoId   Int?     @map("plano_contratado_id")
   atualizadoEm        DateTime @default(now()) @updatedAt @map("atualizado_em")
   // Relations
   unidade             Unidade? @relation(fields: [unidadeId], references: [id])
