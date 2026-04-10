@@ -111,10 +111,9 @@ function modalDetalheLote(id){showModal('Detalhamento do Lote',async(body,close)
   if(!l||l.error){body.innerHTML=`<div style="color:var(--red)">${esc(l?.error||'Erro')}</div>`;return}
   body.innerHTML='';
 
-  const st=statusVenc(l.dias_para_vencer);
   const sm2={disponivel:'badge-green',reservado:'badge-primary',esgotado:'badge-gray',vencido:'badge-red',inativo:'badge-gray'};
 
-  // Header
+  // ═══ HEADER ═══
   body.appendChild(h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}},
     h('div',null,
       h('div',{style:{fontSize:'18px',fontWeight:'700',color:'var(--navy)'}},esc(l.vacina_nome)),
@@ -123,50 +122,70 @@ function modalDetalheLote(id){showModal('Detalhamento do Lote',async(body,close)
     h('span',{className:`badge ${sm2[l.status]||'badge-gray'}`,style:'font-size:13px'},l.status)
   ));
 
-  // Info grid
-  const grid=h('div',{style:'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px'});
-  const fld=(label,value,color)=>{const d=h('div',{style:'padding:10px;background:var(--bg-subtle);border-radius:8px'});d.innerHTML=`<div style="font-size:10px;color:var(--text-4);text-transform:uppercase;font-weight:600">${label}</div><div style="font-size:15px;font-weight:700;color:${color||'var(--text-1)'};margin-top:2px">${value}</div>`;return d};
-  grid.appendChild(fld('Estoque',`${l.quantidade_disponivel} / ${l.quantidade_total}`,'#2BBCB3'));
+  // ═══ CARDS DE ESTOQUE ═══
+  const grid=h('div',{style:'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px'});
+  const fld=(label,value,color)=>{const d=h('div',{style:'padding:10px;background:var(--bg-subtle);border-radius:8px'});d.innerHTML=`<div style="font-size:10px;color:var(--text-4);text-transform:uppercase;font-weight:600">${label}</div><div style="font-size:16px;font-weight:700;color:${color||'var(--text-1)'};margin-top:2px">${value}</div>`;return d};
+  grid.appendChild(fld('Disponível',`${l.quantidade_disponivel} / ${l.quantidade_total}`,l.quantidade_disponivel<5?'#dc2626':'#2BBCB3'));
   grid.appendChild(fld('Aplicadas',String(l.quantidade_aplicada||0),'var(--primary)'));
-  grid.appendChild(fld('Validade',`${fmtData(l.validade)}`,l.dias_para_vencer<0?'#dc2626':l.dias_para_vencer<30?'#d97706':'#059669'));
+  grid.appendChild(fld('Validade',fmtData(l.validade),l.dias_para_vencer<0?'#dc2626':l.dias_para_vencer<30?'#d97706':'#059669'));
   grid.appendChild(fld('Fabricante',esc(l.fabricante)));
   grid.appendChild(fld('Local',esc(l.local_armazenamento||'-')));
   grid.appendChild(fld('Custo Unit.',l.valor_unitario_custo?fmtMoeda(l.valor_unitario_custo):'-'));
   body.appendChild(grid);
 
-  // Unit status breakdown
-  if(l.unidades_por_status){
-    const us=l.unidades_por_status;
-    const usDiv=h('div',{style:'display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap'});
-    Object.entries(us).forEach(([st2,cnt])=>{
-      const cls=st2==='disponivel'?'badge-green':st2==='aplicada'?'badge-primary':'badge-gray';
-      usDiv.appendChild(h('span',{className:`badge ${cls}`,style:'font-size:11px'},`${st2}: ${cnt}`));
+  // ═══ DEMANDA: Pacientes que precisam desta vacina ═══
+  if(l.demanda_planos?.length){
+    const sec=h('div',{style:'margin-bottom:16px;border:1px solid #bfdbfe;border-radius:10px;overflow:hidden'});
+    sec.appendChild(h('div',{style:'padding:10px 14px;background:#eff6ff;font-size:12px;font-weight:700;color:#1e40af'},'📋 Demanda — Pacientes aguardando esta vacina ('+l.demanda_planos.length+' doses pendentes)'));
+    const tb=h('div',{style:'max-height:200px;overflow-y:auto'});
+    l.demanda_planos.forEach(d=>{
+      const isChild=d.tipo_paciente==='crianca'||d.tipo_paciente==='bebe';
+      const row=h('div',{style:'display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #f1f5f9;font-size:12px'});
+      row.innerHTML=`
+        <span class="fw-600" style="min-width:160px">${isChild?'👶 ':''}${esc(d.paciente)}</span>
+        ${d.responsavel?`<span class="text-muted" style="font-size:11px">👤 ${esc(d.responsavel)}</span>`:''}
+        <span class="mono text-muted" style="font-size:10px">${esc(d.codigo_cliente||'')}</span>
+        <span class="badge badge-primary" style="font-size:9px">Dose ${d.dose_numero}</span>
+        <span class="text-muted" style="font-size:10px">${esc(d.plano||'')}</span>
+        ${d.competencia?`<span class="mono text-muted" style="font-size:10px">Prev: ${d.competencia}</span>`:''}`;
+      tb.appendChild(row);
     });
-    body.appendChild(h('div',{style:'font-size:11px;font-weight:600;color:var(--text-4);text-transform:uppercase;margin-bottom:4px'},'Unidades por Status'));
-    body.appendChild(usDiv);
+    sec.appendChild(tb);body.appendChild(sec);
   }
 
-  // Reservas pendentes
-  if(l.reservas_pendentes?.length){
-    body.appendChild(h('div',{style:'font-size:11px;font-weight:600;color:#d97706;text-transform:uppercase;margin:12px 0 6px'},'⏳ Reservas Pendentes de Aprovação'));
-    l.reservas_pendentes.forEach(r2=>{
-      const row=h('div',{style:'padding:8px;background:#fef3c7;border-radius:8px;margin-bottom:4px;font-size:12px'});
-      row.innerHTML=`<span class="fw-600">${esc(r2.cliente||'-')}</span>${r2.responsavel?` <span class="text-muted">(Resp: ${esc(r2.responsavel)})</span>`:''} ${r2.codigo_cliente?'['+esc(r2.codigo_cliente)+']':''} · <span class="mono">${fmtDataHora(r2.data)}</span>`;
-      body.appendChild(row);
+  // ═══ PENDENTES DE APROVAÇÃO (fora do plano aguardando master) ═══
+  if(l.pendentes_aprovacao?.length){
+    const sec=h('div',{style:'margin-bottom:16px;border:1px solid #fcd34d;border-radius:10px;overflow:hidden'});
+    sec.appendChild(h('div',{style:'padding:10px 14px;background:#fef3c7;font-size:12px;font-weight:700;color:#92400e'},'⏳ Pendentes de Aprovação — '+l.pendentes_aprovacao.length+' solicitações'));
+    l.pendentes_aprovacao.forEach(p=>{
+      const row=h('div',{style:'padding:8px 14px;border-bottom:1px solid #f1f5f9;font-size:12px'});
+      row.innerHTML=`
+        <div><span class="fw-600">${esc(p.paciente||'-')}</span>${p.responsavel?` <span class="text-muted">(Resp: ${esc(p.responsavel)})</span>`:''} ${p.codigo_cliente?'['+esc(p.codigo_cliente)+']':''}</div>
+        <div class="text-muted" style="font-size:11px;margin-top:2px">Solicitado por: ${esc(p.solicitante||'-')} (${esc(p.solicitante_cargo||'-')}) · ${fmtDataHora(p.data)}</div>
+        ${p.justificativa?`<div style="font-size:11px;color:#d97706;margin-top:2px">Justificativa: ${esc(p.justificativa)}</div>`:''}`;
+      sec.appendChild(row);
     });
+    body.appendChild(sec);
   }
 
-  // Últimas movimentações
-  if(l.ultimas_movimentacoes?.length){
-    body.appendChild(h('div',{style:'font-size:11px;font-weight:600;color:var(--text-4);text-transform:uppercase;margin:16px 0 6px;border-top:1px solid var(--border);padding-top:12px'},`Últimas Movimentações (${l.total_movimentacoes})`));
-    l.ultimas_movimentacoes.forEach(m=>{
+  // ═══ HISTÓRICO DE MOVIMENTAÇÕES ═══
+  if(l.movimentacoes?.length){
+    const sec=h('div',{style:'border-top:1px solid var(--border);padding-top:12px'});
+    sec.appendChild(h('div',{style:'font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:8px'},`📦 Movimentações (${l.total_movimentacoes})`));
+    l.movimentacoes.forEach(m=>{
       const tc2={retirada:'badge-orange',entrada:'badge-green',descarte:'badge-red',ajuste:'badge-gray',estorno:'badge-primary'};
-      const row=h('div',{style:'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px'});
-      row.innerHTML=`<span class="mono text-muted">${fmtDataHora(m.data)}</span><span class="badge ${tc2[m.tipo]||'badge-gray'}" style="font-size:10px">${m.tipo}</span>${m.motivo_padrao==='vacina_fora_plano'?'<span class="badge badge-orange" style="font-size:9px">Fora plano</span>':''}<span class="fw-600">${m.quantidade}x</span>${m.cliente?`<span>${esc(m.cliente)}${m.responsavel?' <span class="text-muted">('+esc(m.responsavel)+')</span>':''}</span>`:''}<span class="badge ${m.status==='concluido'?'badge-green':m.status==='pendente_aprovacao'?'badge-orange':'badge-red'}" style="font-size:9px">${m.status}</span>`;
-      body.appendChild(row);
+      const stc={concluido:'badge-green',pendente_aprovacao:'badge-orange',reprovado:'badge-red'};
+      const row=h('div',{style:'display:grid;grid-template-columns:auto auto 1fr auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:11px'});
+      row.innerHTML=`
+        <span class="mono text-muted">${fmtDataHora(m.data)}</span>
+        <span class="badge ${tc2[m.tipo]||'badge-gray'}" style="font-size:10px">${m.tipo}${m.motivo_padrao==='vacina_fora_plano'?' ⚠':''}</span>
+        <span>${m.paciente?`<strong>${esc(m.paciente)}</strong>${m.responsavel?' <span class="text-muted">('+esc(m.responsavel)+')</span>':''}`:''} ${m.operador?`<span class="text-muted">por ${esc(m.operador)}</span>`:''} ${m.local?`· ${esc(m.local)}`:''}</span>
+        <span class="badge ${stc[m.status]||'badge-gray'}" style="font-size:9px">${m.status==='concluido'?'✓':m.status==='pendente_aprovacao'?'⏳':'✗'}</span>`;
+      sec.appendChild(row);
     });
+    body.appendChild(sec);
   }
-},'620px')}
+},'680px')}
 
 // ═══ CADASTRO POR CÓDIGO DE BARRAS (NOVO) ═══
 function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(body,close)=>{

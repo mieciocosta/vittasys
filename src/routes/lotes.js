@@ -170,8 +170,8 @@ r.get('/:id',async(req,res,next)=>{try{
   const l=await prisma.lote.findUnique({where:{id},include:{
     vacina:{select:{id:true,nome:true,codigo:true,fabricante:true,viaAdministracao:true}},
     unidades:{orderBy:{id:'asc'},take:50,select:{id:true,codigoBarras:true,status:true,criadoEm:true}},
-    movimentacoes:{orderBy:{dataHora:'desc'},take:20,include:{
-      cliente:{select:{nome:true,responsavelNome:true,codigoCliente:true}}}},
+    movimentacoes:{orderBy:{dataHora:'desc'},take:30,include:{
+      cliente:{select:{id:true,nome:true,responsavelNome:true,codigoCliente:true,tipoPaciente:true}}}},
     _count:{select:{unidades:true,movimentacoes:true}}
   }});
   if(!l)return res.status(404).json({error:'Lote não encontrado'});
@@ -180,34 +180,62 @@ r.get('/:id',async(req,res,next)=>{try{
   const unitStats=await prisma.unidade.groupBy({by:['status'],where:{loteId:id},_count:true});
   const uMap={};unitStats.forEach(u=>{uMap[u.status]=u._count});
 
-  // Get reserved info (units that are in movimentações pendentes)
-  const reservas=await prisma.movimentacao.findMany({
-    where:{loteId:id,status:'pendente_aprovacao'},
-    select:{id:true,nomeVacina:true,clienteId:true,dataHora:true,observacoes:true,usuarioId:true,
-      cliente:{select:{nome:true,responsavelNome:true,codigoCliente:true}}}
+  // Get operator names for movimentações
+  const userIds=[...new Set(l.movimentacoes.map(m=>m.usuarioId).filter(Boolean))];
+  const users=userIds.length?await prisma.usuario.findMany({where:{id:{in:userIds}},select:{id:true,nome:true,cargo:true}}):[];
+  const userMap={};users.forEach(u=>{userMap[u.id]=u});
+
+  // ═══ RESERVAS: Pacientes com doses PENDENTES desta vacina em seus planos ═══
+  const dosesReservadas=await prisma.planoContratadoDose.findMany({
+    where:{vacinaId:l.vacinaId,status:'pendente'},
+    include:{
+      planoContratado:{include:{cliente:{select:{id:true,nome:true,responsavelNome:true,codigoCliente:true,tipoPaciente:true}}}},
+      vacina:{select:{nome:true}}
+    },
+    orderBy:{mesPrevisto:'asc'},
+    take:50
   });
+
+  // Movimentações pendentes de aprovação neste lote
+  const pendentes=l.movimentacoes.filter(m=>m.status==='pendente_aprovacao');
 
   const now=new Date();
   res.json({
     id:l.id,vacina_id:l.vacinaId,vacina_nome:l.vacina.nome,vacina_codigo:l.vacina.codigo,
     fabricante:l.fabricante,numero_lote:l.numeroLote,
     quantidade_total:l.quantidadeTotal,quantidade_disponivel:l.quantidadeDisponivel,
-    quantidade_aplicada:l.quantidadeAplicada,quantidade_reservada:l.quantidadeReservada,
+    quantidade_aplicada:l.quantidadeAplicada,
     validade:l.validade,dias_para_vencer:Math.ceil((l.validade-now)/864e5),
     local_armazenamento:l.localArmazenamento,valor_unitario_custo:l.valorUnitarioCusto,
     status:l.status,criado_em:l.criadoEm,
     unidades_por_status:uMap,
     total_unidades:l._count.unidades,total_movimentacoes:l._count.movimentacoes,
-    ultimas_movimentacoes:l.movimentacoes.map(m=>({
-      id:m.id,tipo:m.tipo,data:m.dataHora,quantidade:m.quantidade,status:m.status,
-      cliente:m.cliente?.nome||null,responsavel:m.cliente?.responsavelNome||null,
-      codigo_cliente:m.cliente?.codigoCliente||null,obs:m.observacoes,
-      nome_vacina:m.nomeVacina,motivo_padrao:m.motivoPadrao
+    // Pacientes que precisam desta vacina (doses pendentes nos planos)
+    demanda_planos:dosesReservadas.map(d=>({
+      dose_id:d.id,dose_numero:d.doseNumero,mes_previsto:d.mesPrevisto,
+      competencia:d.competencia,
+      paciente:d.planoContratado.cliente.nome,
+      responsavel:d.planoContratado.cliente.responsavelNome||null,
+      codigo_cliente:d.planoContratado.cliente.codigoCliente||null,
+      tipo_paciente:d.planoContratado.cliente.tipoPaciente,
+      plano:d.planoContratado.nomePlano||null,plano_id:d.planoContratadoId,
     })),
-    reservas_pendentes:reservas.map(r2=>({
-      id:r2.id,cliente:r2.cliente?.nome||null,responsavel:r2.cliente?.responsavelNome||null,
-      codigo_cliente:r2.cliente?.codigoCliente||null,data:r2.dataHora,obs:r2.observacoes
-    }))
+    // Movimentações pendentes de aprovação (fora do plano aguardando)
+    pendentes_aprovacao:pendentes.map(m=>({
+      id:m.id,
+      paciente:m.cliente?.nome||null,responsavel:m.cliente?.responsavelNome||null,
+      codigo_cliente:m.cliente?.codigoCliente||null,
+      solicitante:userMap[m.usuarioId]?.nome||null,solicitante_cargo:userMap[m.usuarioId]?.cargo||null,
+      data:m.dataHora,obs:m.observacoes,justificativa:m.justificativa,
+    })),
+    // Todas as movimentações com rastreio completo
+    movimentacoes:l.movimentacoes.map(m=>({
+      id:m.id,tipo:m.tipo,data:m.dataHora,quantidade:m.quantidade,status:m.status,
+      paciente:m.cliente?.nome||null,responsavel:m.cliente?.responsavelNome||null,
+      codigo_cliente:m.cliente?.codigoCliente||null,tipo_paciente:m.cliente?.tipoPaciente||null,
+      operador:userMap[m.usuarioId]?.nome||null,operador_cargo:userMap[m.usuarioId]?.cargo||null,
+      obs:m.observacoes,motivo_padrao:m.motivoPadrao,local:m.localAplicacao,
+    })),
   });
 }catch(e){next(e)}});
 
