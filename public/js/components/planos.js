@@ -20,7 +20,7 @@ else data.data.forEach(p=>{
   const prog=p.doses_total>0?Math.round(p.doses_aplicadas/p.doses_total*100):0;
   const tr=h('tr',{className:'clickable',onClick:()=>AppState.verPlano(p.id)});
   tr.style.borderLeft='3px solid var(--primary)';
-  tr.innerHTML=`<td class="mono text-muted text-sm">#${p.id}</td><td class="fw-600" style="cursor:pointer" onclick="event.stopPropagation();AppState.verCliente(${p.cliente_id})">${esc(p.cliente_nome)}</td><td class="mono text-sm">${esc(p.codigo_cliente||'-')}</td><td class="fw-600">${esc(p.nome_plano)}</td><td class="text-sm">${p.idade_inicio}-${p.idade_fim}m</td><td class="mono fw-600" style="color:#059669">${fmtMoeda(p.valor_final)}</td><td class="mono" style="color:var(--primary)">${fmtMoeda(p.total_pago)}</td><td class="mono" style="color:${p.saldo_pendente>0?'#d97706':'#059669'}">${fmtMoeda(p.saldo_pendente)}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:50px"><div class="prog-fill" style="width:${prog}%;background:${prog===100?'#059669':'var(--primary)'}"></div></div><span class="mono text-sm">${prog}%</span></div></td><td><span class="badge ${p.status_contrato==='ativo'?'badge-green':p.status_contrato==='pendente'?'badge-orange':'badge-gray'}">${p.status_contrato}</span></td>`;
+  tr.innerHTML=`<td class="mono text-muted text-sm">#${p.id}</td><td class="fw-600" style="cursor:pointer" onclick="event.stopPropagation();AppState.verCliente(${p.cliente_id})">${esc(p.cliente_nome)}</td><td class="mono text-sm">${esc(p.codigo_cliente||'-')}</td><td class="fw-600">${esc(p.nome_plano)}</td><td class="text-sm">${p.idade_inicio}-${p.idade_fim}m</td><td class="mono fw-600" style="color:#059669">${fmtMoeda(p.valor_final)}</td><td class="mono" style="color:var(--primary)">${fmtMoeda(p.total_pago)}</td><td class="mono" style="color:${p.saldo_pendente>0?'#d97706':'#059669'}">${fmtMoeda(p.saldo_pendente)}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:50px"><div class="prog-fill" style="width:${prog}%;background:${prog===100?'#059669':'var(--primary)'}"></div></div><span class="mono text-sm">${prog}%</span></div></td><td><span class="badge ${p.status_contrato==='ativo'?'badge-green':p.status_contrato==='finalizado'?'badge-primary':p.status_contrato==='pendente'?'badge-orange':'badge-gray'}">${p.status_contrato==='finalizado'?'✓ Finalizado':p.status_contrato}</span></td>`;
   // Actions: delete only if 0% progress and 0 paid
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   if(prog===0&&(p.total_pago||0)===0){
@@ -144,8 +144,15 @@ const pc=await Api.plano(AppState.planoDetalhe);if(!pc){wrap.appendChild(h('div'
 wrap.appendChild(h('div',{className:'page-header'},h('div',{className:'page-header-left'},
   iconBtn('btn btn-ghost btn-sm',I.chevL,'Voltar',()=>AppState.setModulo('planos')),
   h('h1',{className:'page-title',style:{marginTop:'8px'}},pc.nome_plano),
-  h('p',{className:'page-subtitle',innerHTML:`${esc(pc.cliente_nome)} ${pc.codigo_cliente?'['+pc.codigo_cliente+']':''} · ${pc.idade_inicio}-${pc.idade_fim} meses · Vendedor: ${esc(pc.vendedor_nome||'-')}`})
+  h('p',{className:'page-subtitle',innerHTML:`${esc(pc.cliente_nome)} ${pc.codigo_cliente?'['+pc.codigo_cliente+']':''} · ${pc.idade_inicio}-${pc.idade_fim} meses · Vendedor: ${esc(pc.vendedor_nome||'-')} · <span class="badge ${pc.status_contrato==='ativo'?'badge-green':pc.status_contrato==='finalizado'?'badge-primary':'badge-gray'}">${pc.status_contrato==='finalizado'?'✓ Finalizado':pc.status_contrato}</span>`})
 )));
+// Progress bar
+const dosesApp=(pc.doses||[]).filter(d=>d.status==='aplicada').length;
+const dosesTot=(pc.doses||[]).length;
+const progPct=dosesTot>0?Math.round(dosesApp/dosesTot*100):0;
+const progBar=h('div',{style:{marginBottom:'16px',padding:'12px',background:'var(--bg-card)',borderRadius:'12px',border:'1px solid var(--border)'}});
+progBar.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="fw-600" style="font-size:13px">Progresso do Plano</span><span class="mono fw-600" style="color:${progPct===100?'#059669':'var(--primary)'}">${dosesApp}/${dosesTot} doses · ${progPct}%</span></div><div class="prog-bar" style="height:10px"><div class="prog-fill" style="width:${progPct}%;background:${progPct===100?'#059669':'var(--primary)'}"></div></div>`;
+wrap.appendChild(progBar);
 const sr=h('div',{style:{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'12px',marginBottom:'24px'}});
 // Financial cards with custo adicional
 const custoExtra=(pc.excecoes_fora_plano||[]).filter(e=>e.status==='concluido').length;

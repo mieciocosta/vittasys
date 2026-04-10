@@ -19,25 +19,30 @@ r.get('/',async(req,res,next)=>{try{
   const ob=sort&&sm[sort]?typeof sm[sort]==='string'?{[sm[sort]]:order==='ASC'?'asc':'desc'}:sm[sort]:{id:'desc'};
   const[data,total]=await Promise.all([
     prisma.movimentacao.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{
-      cliente:{select:{id:true,nome:true,tipoPaciente:true,codigoCliente:true,tipoCliente:true,
-        planosContratados:{where:{statusContrato:'ativo'},select:{id:true,nomePlano:true,doses:{select:{status:true}}}}}},
+      cliente:{select:{id:true,nome:true,tipoPaciente:true,codigoCliente:true,tipoCliente:true,responsavelNome:true,
+        planosContratados:{select:{id:true,nomePlano:true,statusContrato:true,doses:{select:{status:true}}}}}},
     }}),
     prisma.movimentacao.count({where})]);
   res.json({data:data.map(m=>{
     let plano_progresso=null;
     if(m.cliente?.tipoCliente==='ativo'&&m.cliente?.planosContratados?.length>0){
-      // Aggregate across ALL active plans
+      // If movimentação has explicit planoContratadoId, use THAT plan
+      let targetPlans=m.cliente.planosContratados;
+      if(m.planoContratadoId){
+        const linked=targetPlans.find(p=>p.id===m.planoContratadoId);
+        if(linked)targetPlans=[linked];
+      }
       let totalDoses=0,totalAplicadas=0;let planoNome='';
-      m.cliente.planosContratados.forEach(pc=>{
+      targetPlans.forEach(pc=>{
         totalDoses+=pc.doses.length;
         totalAplicadas+=pc.doses.filter(d=>d.status==='aplicada').length;
-        if(!planoNome)planoNome=pc.nomePlano;
+        if(!planoNome)planoNome=pc.nomePlano+(pc.statusContrato==='finalizado'?' ✓':'');
       });
-      if(m.cliente.planosContratados.length>1)planoNome+=` (+${m.cliente.planosContratados.length-1})`;
+      if(targetPlans.length>1)planoNome+=` (+${targetPlans.length-1})`;
       plano_progresso={nome:planoNome,aplicadas:totalAplicadas,total:totalDoses,pct:totalDoses>0?Math.round(totalAplicadas/totalDoses*100):0};
     }
     const isForaPlano=m.motivoPadrao==='vacina_fora_plano';
-    return{id:m.id,tipo:m.tipo,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,codigo_barras:m.codigoBarras,quantidade:m.quantidade,local_aplicacao:m.localAplicacao,tipo_cliente:m.tipoCliente||m.cliente?.tipoCliente,tipo_atendimento:m.tipoAtendimento,status:m.status,observacoes:m.observacoes,cliente_id:m.clienteId,cliente_nome:m.cliente?.nome,codigo_cliente:m.cliente?.codigoCliente,usuario_id:m.usuarioId,unidade_id:m.unidadeId,plano_progresso,fora_do_plano:isForaPlano,
+    return{id:m.id,tipo:m.tipo,data_hora:m.dataHora,nome_vacina:m.nomeVacina,numero_lote:m.numeroLote,codigo_barras:m.codigoBarras,quantidade:m.quantidade,local_aplicacao:m.localAplicacao,tipo_cliente:m.tipoCliente||m.cliente?.tipoCliente,tipo_atendimento:m.tipoAtendimento,status:m.status,observacoes:m.observacoes,cliente_id:m.clienteId,cliente_nome:m.cliente?.nome,codigo_cliente:m.cliente?.codigoCliente,responsavel_nome:m.cliente?.responsavelNome||null,usuario_id:m.usuarioId,unidade_id:m.unidadeId,plano_progresso,fora_do_plano:isForaPlano,plano_contratado_id:m.planoContratadoId,
       requer_aprovacao:m.requerAprovacao,justificativa:m.justificativa,motivo_padrao:m.motivoPadrao,aprovado_por:m.aprovadoPor,aprovado_em:m.aprovadoEm,motivo_reprovacao:m.motivoReprovacao};
   }),pagination:{page:+page,limit:+limit,total,pages:Math.ceil(total/+limit)}});
 }catch(e){next(e)}});

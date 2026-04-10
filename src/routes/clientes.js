@@ -31,7 +31,7 @@ r.get('/',async(req,res,next)=>{try{
 r.get('/busca',async(req,res,next)=>{try{
   const{q}=req.query;if(!q||q.length<2)return res.json([]);
   const s=q.replace(/[\.\-]/g,'');
-  const data=await prisma.cliente.findMany({where:{OR:[{nome:{contains:q,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:q,mode:'insensitive'}},{responsavelNome:{contains:q,mode:'insensitive'}},{telefone:{contains:q,mode:'insensitive'}}]},orderBy:{id:'desc'},take:15});
+  const data=await prisma.cliente.findMany({where:{OR:[{nome:{contains:q,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:q,mode:'insensitive'}},{responsavelNome:{contains:q,mode:'insensitive'}},{pacienteNome:{contains:q,mode:'insensitive'}},{telefone:{contains:q,mode:'insensitive'}},{responsavelTelefone:{contains:q,mode:'insensitive'}}]},orderBy:{id:'desc'},take:15});
   res.json(data.map(mapOut));
 }catch(e){next(e)}});
 

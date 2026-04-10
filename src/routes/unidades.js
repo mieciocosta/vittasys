@@ -186,11 +186,14 @@ r.get('/movimentacao/:id',async(req,res,next)=>{try{
     m.usuarioId?prisma.usuario.findUnique({where:{id:m.usuarioId},select:{nome:true,cargo:true}}):null,
     m.aplicadoPor?prisma.usuario.findUnique({where:{id:m.aplicadoPor},select:{nome:true,cargo:true}}):null,
   ]);
-  // Get plan info if ativo client
+  // Get plan info - prefer explicit link, fallback to search
   let planoInfo=null;
-  if(m.clienteId&&m.vacinaId){
-    const pc=await prisma.planoContratado.findFirst({where:{clienteId:m.clienteId,statusContrato:'ativo',doses:{some:{vacinaId:m.vacinaId}}},select:{id:true,nomePlano:true,doses:{where:{vacinaId:m.vacinaId},select:{doseNumero:true,status:true}}}});
-    if(pc)planoInfo={id:pc.id,nome:pc.nomePlano,doses_vacina:pc.doses.length,doses_aplicadas:pc.doses.filter(d=>d.status==='aplicada').length};
+  if(m.planoContratadoId){
+    const pc=await prisma.planoContratado.findUnique({where:{id:m.planoContratadoId},select:{id:true,nomePlano:true,statusContrato:true,doses:{select:{doseNumero:true,status:true,vacinaId:true}}}});
+    if(pc)planoInfo={id:pc.id,nome:pc.nomePlano,status:pc.statusContrato,doses_vacina:pc.doses.filter(d=>d.vacinaId===m.vacinaId).length,doses_aplicadas:pc.doses.filter(d=>d.vacinaId===m.vacinaId&&d.status==='aplicada').length};
+  }else if(m.clienteId&&m.vacinaId){
+    const pc=await prisma.planoContratado.findFirst({where:{clienteId:m.clienteId,doses:{some:{vacinaId:m.vacinaId}}},orderBy:{criadoEm:'desc'},select:{id:true,nomePlano:true,statusContrato:true,doses:{where:{vacinaId:m.vacinaId},select:{doseNumero:true,status:true}}}});
+    if(pc)planoInfo={id:pc.id,nome:pc.nomePlano,status:pc.statusContrato,doses_vacina:pc.doses.length,doses_aplicadas:pc.doses.filter(d=>d.status==='aplicada').length};
   }
   // Get approver name
   let aprovadorInfo=null;

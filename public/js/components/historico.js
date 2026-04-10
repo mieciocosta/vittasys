@@ -28,7 +28,9 @@ else data.data.forEach(m=>{
   const tr=h('tr',{className:'clickable',onClick:()=>modalDetalheMovimentacao(m.id)});
   if(m.tipo_cliente==='ativo')tr.style.borderLeft='3px solid var(--primary)';
   const statusBadge=m.status==='pendente_aprovacao'?'<span class="badge badge-orange" style="font-size:10px">⏳ Pendente</span>':m.status==='reprovado'?'<span class="badge badge-red" style="font-size:10px">✗ Reprovado</span>':m.status==='cancelado'?'<span class="badge badge-gray">Cancelado</span>':m.plano_progresso?`<div class="fw-600" style="color:var(--primary)">${m.plano_progresso.pct}%</div><div class="text-sm text-muted">${m.plano_progresso.aplicadas} de ${m.plano_progresso.total}</div>`:`<span class="badge ${m.status==='concluido'?'badge-green':'badge-orange'}">${m.status}</span>`;
-  tr.innerHTML=`<td class="mono text-muted text-sm">#${m.id}</td><td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span></td><td class="fw-600">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td class="mono text-sm">${esc((m.codigo_barras||'').slice(-10))}</td><td>${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td>${statusBadge}</td>`;
+  const foraTag=m.fora_do_plano?'<span class="badge badge-orange" style="font-size:9px;margin-left:4px">Fora do plano</span>':'';
+  const childTag=m.responsavel_nome?`<div class="text-sm" style="color:#64748b;font-size:10px">👤 ${esc(m.responsavel_nome)}</div>`:'';
+  tr.innerHTML=`<td class="mono text-muted text-sm">#${m.id}</td><td class="mono">${fmtDataHora(m.data_hora)}</td><td><span class="badge ${tc}">${tl}</span>${foraTag}</td><td class="fw-600">${esc(m.nome_vacina||'-')}</td><td class="mono">${esc(m.numero_lote||'-')}</td><td class="mono text-sm">${esc((m.codigo_barras||'').slice(-10))}</td><td>${esc(m.cliente_nome||'-')} ${m.codigo_cliente?'<span class="mono text-muted">['+esc(m.codigo_cliente)+']</span>':''}${childTag}</td><td>${m.tipo_cliente?tipoClienteBadge(m.tipo_cliente):'-'}</td><td class="text-sm">${esc(m.local_aplicacao||'-')}</td><td>${statusBadge}</td>`;
   // Actions
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{e.stopPropagation();modalEditarMovimentacao(m)},{style:{marginRight:'4px'}}));
@@ -332,7 +334,7 @@ function modalDetalheMovimentacao(id){showModal('Detalhe da Movimentação',asyn
   grid.appendChild(field('Local de Aplicação',m.local_aplicacao));
   grid.appendChild(field('Observações',m.observacoes,true));
 
-  if(m.plano){grid.appendChild(field('Plano Vacinal',`${m.plano.nome} — ${m.plano.doses_aplicadas}/${m.plano.doses_vacina} doses`,true))}
+  if(m.plano){grid.appendChild(field('Plano Vacinal',`${m.plano.nome} ${m.plano.status==='finalizado'?'✓':''}— ${m.plano.doses_aplicadas}/${m.plano.doses_vacina} doses`,true))}
 
   // Approval audit trail
   if(m.requer_aprovacao||m.justificativa||m.motivo_padrao||m.aprovador_nome){
