@@ -16691,8 +16691,8 @@ async function run() {
               percentualDesconto: 0,
               margemLucro: 100,
               statusContrato,
-              idadeInicio: c.plano.includes('0 a 6') ? '0' : c.plano.includes('6 a 12') ? '6' : '0',
-              idadeFim: c.plano.includes('0 a 6') ? '6' : c.plano.includes('6 a 12') ? '12' : '18',
+              idadeInicio: c.plano.includes('0 a 6') ? 0 : c.plano.includes('6 a 12') ? 6 : 0,
+              idadeFim: c.plano.includes('0 a 6') ? 6 : c.plano.includes('6 a 12') ? 12 : 18,
             }
           });
           planosCreated++;
