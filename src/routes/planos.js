@@ -50,6 +50,7 @@ r.get('/:id',async(req,res,next)=>{try{
   const tp=p.pagamentos.reduce((s,pg)=>s+pg.valorPago,0);
 
   // Fetch fora-do-plano movimentações ONLY for THIS specific plan
+  const planStart=p.dataInicioPlano||p.criadoEm||p.dataVenda||new Date('2020-01-01');
   const excecoes=await prisma.movimentacao.findMany({
     where:{clienteId:p.cliente.id,
       OR:[
