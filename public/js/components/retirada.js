@@ -312,7 +312,7 @@ async function renderRetirada(){
     rb.appendChild(h('div',{className:'label',style:{marginBottom:'10px'}},'ÚLTIMAS MOVIMENTAÇÕES'));
     // Fetch paginated
     const offset=recentPage*RECENT_PER_PAGE;
-    const data=await Api.movimentacoes({page:recentPage+1,limit:RECENT_PER_PAGE,sort:'data_hora',order:'DESC'});
+    const data=await Api.movimentacoes({page:recentPage+1,limit:RECENT_PER_PAGE,sort:'data_hora',order:'DESC',tipo_cliente:perfilFilter||undefined});
     if(!data||!data.data){rb.appendChild(h('div',{className:'empty-state'},'Nenhuma movimentação'));wrap.appendChild(rb);return}
     recentTotal=data.pagination?.total||0;
     if(!data.data.length){rb.appendChild(h('div',{className:'empty-state',style:{padding:'20px'}},'Nenhuma movimentação registrada'));wrap.appendChild(rb);return}
