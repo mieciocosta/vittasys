@@ -188,6 +188,23 @@ async function main() {
     }
   }
 
+  // ═══ REGIÕES (para Agenda Inteligente) ═══
+  const existingRegioes=await prisma.regiao.count();
+  if(existingRegioes===0){
+    const regioes=[
+      {nome:'Centro / Praia',cor:'#2BBCB3',diaSemana:1,bairros:['Renascença','Cohama','Calhau','Ponta D\'Areia','São Francisco','Jaracaty','Jardim Renascença','Olho D\'Água']},
+      {nome:'Norte / Oeste',cor:'#1B4965',diaSemana:2,bairros:['Anjo da Guarda','Vila Embratel','Liberdade','Faco','Lira','Centro Histórico','Praia Grande','Madre Deus']},
+      {nome:'Sul',cor:'#F97316',diaSemana:3,bairros:['Maiobão','Turu','Aurora','Cohatrac','Vinhais','Bequimão','Ipase','São Cristóvão','Maioba']},
+      {nome:'Leste',cor:'#7C3AED',diaSemana:4,bairros:['Cidade Operária','Anil','Forquilha','Santa Cruz','São Raimundo','João Paulo','Vila Luizão']},
+    ];
+    for(const r of regioes){
+      await prisma.regiao.create({data:r});
+    }
+    console.log(`  ✓ ${regioes.length} regiões criadas`);
+  }else{
+    console.log(`  ✓ Regiões OK (${existingRegioes})`);
+  }
+
   console.log('✅ Seed de produção concluído\n');
 }
 

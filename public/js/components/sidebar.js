@@ -9,6 +9,7 @@ const allItems=[
   {sep:'Gestão'},
   {key:'planos',icon:I.pkg,label:'Planos Vacinais'},
   {key:'clientes',icon:I.users,label:'Clientes'},
+  {key:'agenda',icon:I.calendar,label:'Agenda'},
   {key:'financeiro',icon:I.dollar,label:'Financeiro'},
   {key:'metas',icon:I.target,label:'Metas'},
   {key:'aprovacoes',icon:I.check,label:'Aprovações',dot:true},

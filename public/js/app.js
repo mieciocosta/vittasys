@@ -29,7 +29,7 @@
     const map={
       dashboard:renderDashboard,retirada:renderRetirada,estoque:renderEstoque,
       historico:renderHistorico,planos:renderPlanos,clientes:renderClientes,
-      financeiro:renderFinanceiro,metas:renderMetas,alertas:renderAlertas,
+      financeiro:renderFinanceiro,metas:renderMetas,agenda:renderAgenda,alertas:renderAlertas,
       aprovacoes:renderAprovacoes,
       auditoria:renderAuditoria,
       'cliente-detalhe':renderClienteDetalhe,'plano-detalhe':renderPlanoDetalhe

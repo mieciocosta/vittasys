@@ -110,11 +110,17 @@ model Cliente {
   status                String   @default("ativo")
   observacoes           String?
   observacoesClinicas   String?  @map("observacoes_clinicas")
+  // Endereço e região (para agenda inteligente)
+  endereco              String?
+  bairro                String?
+  cep                   String?
+  regiaoId              Int?     @map("regiao_id")
   criadoEm              DateTime @default(now()) @map("criado_em")
   atualizadoEm          DateTime @updatedAt @map("atualizado_em")
   planosContratados     PlanoContratado[]
   movimentacoes         Movimentacao[]
   pagamentos            Pagamento[] @relation("ClientePagamentos")
+  agendamentos          Agendamento[]
   @@map("clientes")
 }
 
@@ -307,4 +313,45 @@ model RetiradaRecente {
   usuarioNome  String?  @map("usuario_nome")
   dataHora     DateTime @default(now()) @map("data_hora")
   @@map("retiradas_recentes")
+}
+
+// ═══ AGENDA INTELIGENTE ═══
+model Regiao {
+  id                Int      @id @default(autoincrement())
+  nome              String
+  cor               String   @default("#2BBCB3")
+  diaSemana         Int?     @map("dia_semana") // 1=seg, 5=sex
+  bairros           String[] @default([])
+  ativo             Boolean  @default(true)
+  criadoEm          DateTime @default(now()) @map("criado_em")
+  agendamentos      Agendamento[]
+  @@map("regioes")
+}
+
+model Agendamento {
+  id                Int      @id @default(autoincrement())
+  clienteId         Int      @map("cliente_id")
+  planoContratadoId Int?     @map("plano_contratado_id")
+  planoDoseId       Int?     @map("plano_dose_id")
+  vacinaId          Int?     @map("vacina_id")
+  regiaoId          Int?     @map("regiao_id")
+  data              DateTime
+  horario           String?  // "09:00"
+  status            String   @default("agendado") // agendado, confirmado, realizado, faltou, cancelado
+  endereco          String?
+  observacoes       String?
+  confirmadoEm      DateTime? @map("confirmado_em")
+  realizadoEm       DateTime? @map("realizado_em")
+  movimentacaoId    Int?     @map("movimentacao_id")
+  criadoPor         Int?     @map("criado_por")
+  criadoEm          DateTime @default(now()) @map("criado_em")
+  atualizadoEm      DateTime @updatedAt @map("atualizado_em")
+  // Relations
+  cliente           Cliente  @relation(fields: [clienteId], references: [id])
+  regiao            Regiao?  @relation(fields: [regiaoId], references: [id])
+  @@index([data])
+  @@index([clienteId])
+  @@index([regiaoId])
+  @@index([status])
+  @@map("agendamentos")
 }

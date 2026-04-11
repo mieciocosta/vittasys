@@ -70,4 +70,15 @@ const Api={
   importarNFe(fd){return this.postFile('/nfe/importar',fd)},
   extrairClienteIA(fd){return this.postFile('/ia/extrair-cliente',fd)},
   extrairClienteIATexto(texto){return this.post('/ia/extrair-cliente',{texto_direto:texto})},
+
+  // Agenda
+  agendaList(p){return this.get('/agenda',p)},
+  agendaResumo(){return this.get('/agenda/resumo')},
+  agendaGerar(b){return this.post('/agenda/gerar',b)},
+  agendaStatus(id,b){return this.put(`/agenda/${id}/status`,b)},
+  agendaEditar(id,b){return this.put(`/agenda/${id}`,b)},
+  agendaExcluir(id){return this.delete(`/agenda/${id}`)},
+  regioes(){return this.get('/agenda/regioes')},
+  criarRegiao(b){return this.post('/agenda/regioes',b)},
+  editarRegiao(id,b){return this.put(`/agenda/regioes/${id}`,b)},
 };
