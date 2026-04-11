@@ -59,7 +59,7 @@ else data.data.forEach(c=>{
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{
     e.stopPropagation();editId=c.id;formData={};
-    ['codigo_cliente','nome','data_nascimento','sexo','cpf','telefone','email','tipo_paciente','tipo_cliente','responsavel_nome','responsavel_parentesco','responsavel_cpf','responsavel_telefone','paciente_nome','paciente_nascimento','paciente_sexo','paciente_cpf','vendedor_id','vacinador_id','status','observacoes','observacoes_clinicas'].forEach(k=>{if(c[k]!=null)formData[k]=c[k]});
+    ['codigo_cliente','nome','data_nascimento','sexo','cpf','telefone','email','tipo_paciente','tipo_cliente','responsavel_nome','responsavel_parentesco','responsavel_cpf','responsavel_telefone','paciente_nome','paciente_nascimento','paciente_sexo','paciente_cpf','vendedor_id','vacinador_id','status','observacoes','observacoes_clinicas','endereco','bairro','cep','regiao_id'].forEach(k=>{if(c[k]!=null)formData[k]=c[k]});
     showForm=true;draw();
   },{style:{marginRight:'4px'}}));
   if((c.planos_ativos||0)===0&&(c.total_movimentacoes||0)===0){
@@ -222,6 +222,34 @@ function buildClienteForm(fd,editId,onDone){
       ].forEach(el=>grid.appendChild(el));
       sec.appendChild(grid);fm.appendChild(sec);
     }
+
+    // ═══ ENDEREÇO ═══
+    const endSec=h('div',{className:'client-form-section'});
+    endSec.appendChild(h('h4',{style:{color:'var(--navy)'}},'📍 Endereço'));
+    const endGrid=h('div',{className:'client-form-grid'});
+    [fld('Endereço Completo','endereco',fd),
+     fld('Bairro','bairro',fd),
+     fld('CEP','cep',fd),
+    ].forEach(el=>endGrid.appendChild(el));
+    // Region quick-select buttons
+    const regDiv=h('div');regDiv.appendChild(h('label',{className:'label'},'Região'));
+    const regBtns=h('div',{style:'display:flex;gap:6px;flex-wrap:wrap'});
+    const regsCache=window._vittaRegioes||[];
+    if(regsCache.length){
+      regsCache.forEach(r=>{
+        const isAct=fd.regiao_id==r.id;
+        regBtns.appendChild(h('button',{type:'button',className:`btn btn-sm ${isAct?'btn-primary':'btn-outline'}`,
+          style:`font-size:11px;border-left:3px solid ${r.cor}`,
+          onClick:()=>{fd.regiao_id=r.id;renderForm()}},r.nome));
+      });
+    }else{
+      // Load async
+      Api.regioes().then(regs=>{window._vittaRegioes=regs||[];if(regs?.length)renderForm()});
+      regBtns.appendChild(h('span',{style:'font-size:11px;color:var(--text-3)'},'Carregando regiões...'));
+    }
+    regDiv.appendChild(regBtns);
+    endGrid.appendChild(regDiv);
+    endSec.appendChild(endGrid);fm.appendChild(endSec);
 
     // ═══ OBSERVAÇÕES ═══
     fm.appendChild(h('div',{className:'client-form-section'},
