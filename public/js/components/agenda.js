@@ -105,7 +105,13 @@ const sb=h('div',{style:'display:flex;gap:6px;margin-bottom:12px;align-items:cen
 sb.appendChild(h('button',{className:'btn btn-primary btn-sm',style:'height:auto;white-space:nowrap',onClick:()=>modalCriar(fI(sel))},'+ Novo'));
 wrap.appendChild(sb);
 if(!items.length){wrap.appendChild(h('div',{style:'text-align:center;padding:40px;color:var(--text-3)'},h('div',{style:'font-size:36px'},'📅'),h('div',{style:'font-size:14px;font-weight:600;margin-top:8px'},'Nenhum agendamento')));return}
-const groups={};items.forEach(i=>{const k=i.regiao_nome||'Sem região';if(!groups[k])groups[k]={cor:i.regiao_cor||'#94a3b8',items:[]};groups[k].items.push(i)});
+// Group same patient + same time
+const merged=[];const seen={};
+items.forEach(it=>{
+  const key=it.cliente_id+'-'+it.horario;
+  if(seen[key]){seen[key].vacinas.push({nome:it.vacina,dose:it.dose_numero,id:it.id})}
+  else{seen[key]={...it,vacinas:[{nome:it.vacina,dose:it.dose_numero,id:it.id}]};merged.push(seen[key])}});
+const groups={};merged.forEach(i=>{const k=i.regiao_nome||'Sem região';if(!groups[k])groups[k]={cor:i.regiao_cor||'#94a3b8',items:[]};groups[k].items.push(i)});
 Object.entries(groups).forEach(([rn,gr])=>{
   const sec=h('div',{style:`margin-bottom:12px;border-radius:10px;overflow:hidden;border:1px solid ${gr.cor}30`});
   sec.appendChild(h('div',{style:`padding:7px 12px;background:${gr.cor}15;font-weight:700;font-size:12px;color:${gr.cor};display:flex;justify-content:space-between`},h('span',null,'📍 '+rn),h('span',null,gr.items.length+' atend.')));
@@ -117,7 +123,7 @@ Object.entries(groups).forEach(([rn,gr])=>{
     const info=h('div',{style:'flex:1;min-width:0'});
     info.innerHTML=`<div style="font-weight:700;font-size:12px">${it.responsavel?'👶 ':''}${esc(it.paciente)} <span class="mono" style="font-size:9px;color:var(--text-4)">${esc(it.codigo_cliente||'')}</span></div>
       ${it.responsavel?`<div style="font-size:9px;color:var(--text-3)">👤 ${esc(it.responsavel)}</div>`:''}
-      <div style="font-size:10px;color:var(--text-2)">💉 <strong>${esc(it.vacina)}</strong>${it.dose_numero?' D'+it.dose_numero:''}</div>
+      <div style="font-size:10px;color:var(--text-2)">💉 ${it.vacinas.map(v=>`<strong>${esc(v.nome)}</strong>${v.dose?' D'+v.dose:''}`).join(' · ')}</div>
       <div style="font-size:9px;color:var(--text-4)">${it.bairro?'📍 '+esc(it.bairro):''}</div>`;
     card.appendChild(info);
     const links=h('div',{style:'display:flex;flex-direction:column;gap:2px;min-width:28px;align-items:center'});
@@ -125,10 +131,10 @@ Object.entries(groups).forEach(([rn,gr])=>{
     if(it.celular)links.appendChild(h('a',{href:`https://wa.me/55${(it.celular||'').replace(/\D/g,'')}`,target:'_blank',style:'font-size:14px;text-decoration:none',onClick:e=>e.stopPropagation()},'📱'));
     card.appendChild(links);
     const acts=h('div',{style:'display:flex;gap:3px'});
-    if(it.status==='agendado')acts.appendChild(h('button',{style:'border:none;background:#2BBCB320;border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer',title:'Confirmar',onClick:e=>{e.stopPropagation();Api.agendaStatus(it.id,{status:'confirmado'}).then(()=>draw())}},'✓'));
+    if(it.status==='agendado')acts.appendChild(h('button',{style:'border:none;background:#2BBCB320;border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer',title:'Confirmar',onClick:async e=>{e.stopPropagation();for(const v of it.vacinas)await Api.agendaStatus(v.id,{status:'confirmado'});draw()}},'✓'));
     if(it.status==='confirmado'){
-      acts.appendChild(h('button',{style:'border:none;background:#05966920;border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer',title:'Realizado',onClick:e=>{e.stopPropagation();Api.agendaStatus(it.id,{status:'realizado'}).then(()=>draw())}},'✅'));
-      acts.appendChild(h('button',{style:'border:none;background:#dc262620;border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer',title:'Faltou',onClick:e=>{e.stopPropagation();Api.agendaStatus(it.id,{status:'faltou'}).then(()=>draw())}},'✗'))}
+      acts.appendChild(h('button',{style:'border:none;background:#05966920;border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer',title:'Realizado',onClick:async e=>{e.stopPropagation();for(const v of it.vacinas)await Api.agendaStatus(v.id,{status:'realizado'});draw()}},'✅'));
+      acts.appendChild(h('button',{style:'border:none;background:#dc262620;border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer',title:'Faltou',onClick:async e=>{e.stopPropagation();for(const v of it.vacinas)await Api.agendaStatus(v.id,{status:'faltou'});draw()}},'✗'))}
     if(['agendado','confirmado'].includes(it.status))acts.appendChild(h('button',{style:'border:none;background:var(--bg-subtle);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer',title:'Editar',onClick:e=>{e.stopPropagation();modalEdit(it)}},'✏️'));
     card.appendChild(acts);sec.appendChild(card)});
   wrap.appendChild(sec)})}
@@ -284,43 +290,80 @@ async function exportPDF(){
 const p={data:fI(sel)};if(regF)p.regiao_id=regF;const items=await Api.agendaList(p)||[];
 if(!items.length){Toast.show('Sem dados','warning');return}
 const rg={};items.forEach(i=>{const k=i.regiao_nome||'Sem região';if(!rg[k])rg[k]={cor:i.regiao_cor||'#94a3b8',items:[]};rg[k].items.push(i)});
-const logoUrl=window.location.origin+'/assets/logos/logo-horizontal-color.png';
-const dtStr=`(${fB(sel)}) ${DF[sel.getDay()].toLowerCase()}`;
-let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Agenda ${fB(sel)}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;color:#000;font-size:10px}
-.hd{text-align:center;padding:8px;background:#d4f5f2;border-bottom:3px solid #2BBCB3}
-.hd img{height:40px;margin-bottom:4px}
-.hd .tit{font-size:13px;font-weight:800;color:#1B4965;letter-spacing:1px}
-.hd .dt{font-size:11px;font-weight:700;color:#1B4965;margin-top:2px}
-.pg{padding:4px 10px}
-table{width:100%;border-collapse:collapse;margin-top:4px}
-th{background:#b2e8e4;color:#1B4965;padding:5px 4px;font-size:9px;text-align:center;border:1px solid #1B4965;font-weight:800;text-transform:uppercase}
-td{padding:4px;border:1px solid #999;font-size:9px;vertical-align:top;text-align:center}
-.ft{text-align:center;padding:4px;font-size:7px;color:#666;border-top:2px solid #2BBCB3;margin-top:6px}
-.realizado{background:#d4edda;color:#155724;font-weight:700}
-.remarcado{background:#fff3cd;color:#856404;font-weight:700}
-.ok{color:#059669;font-weight:800}
-a{color:#2BBCB3;font-size:8px}
-@media print{@page{margin:5mm;size:portrait}}</style></head><body>
-<div class="hd"><img src="${logoUrl}" onerror="this.outerHTML='<div style=font-size:18px;font-weight:800;color:#1B4965>Vittalis Saúde</div>'"><div class="tit">AGENDAMENTO VACINAL</div><div class="dt">${dtStr}</div></div>
-<div class="pg">
-<table><tr><th>HORÁRIO</th><th>CLIENTE</th><th>CÓDIGO</th><th>VACINAS</th><th>ENDEREÇO</th><th>CELULAR</th><th>CONTROLE</th></tr>`;
-// Group items by client for same-time display
-Object.entries(rg).forEach(([rn,g])=>{
-  html+=`<tr><td colspan="7" style="background:#f0fffe;font-weight:800;text-align:left;color:#1B4965;border-left:4px solid ${g.cor};font-size:10px;padding:6px">📍 ${rn}</td></tr>`;
+// Group vaccines for same patient+time
+Object.values(rg).forEach(g=>{
+  const merged=[];const seen={};
   g.items.forEach(it=>{
+    const key=it.cliente_id+'-'+it.horario;
+    if(seen[key]){seen[key].vacinas.push((it.vacina||'')+(it.dose_numero?' D'+it.dose_numero:''))}
+    else{seen[key]={...it,vacinas:[(it.vacina||'')+(it.dose_numero?' D'+it.dose_numero:'')]};merged.push(seen[key])}});
+  g.merged=merged});
+const logoUrl=window.location.origin+'/assets/logos/logo-vertical-color.png';
+const dtStr=`${fB(sel)}`;const diaSem=DF[sel.getDay()].toLowerCase();
+const totalItems=items.length;
+let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Agenda ${dtStr}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#1B4965;font-size:10px}
+.header{text-align:center;padding:15px 20px 12px;border-bottom:4px solid #2BBCB3;position:relative}
+.header::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#1B4965,#2BBCB3,#1B4965)}
+.header img{height:55px;margin-bottom:6px;background:white;padding:4px 8px;border-radius:6px}
+.header .title{font-size:16px;font-weight:800;color:#1B4965;letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+.header .date{font-size:13px;font-weight:700;color:#2BBCB3;margin-top:3px}
+.header .meta{font-size:10px;color:#64748b;margin-top:2px}
+.body{padding:8px 15px}
+.region-bar{padding:6px 12px;margin:10px 0 4px;font-size:11px;font-weight:800;color:white;border-radius:4px;display:flex;justify-content:space-between;align-items:center}
+table{width:100%;border-collapse:collapse}
+th{background:#1B4965;color:white;padding:6px 5px;font-size:8px;text-align:center;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+th:first-child{border-radius:4px 0 0 0}th:last-child{border-radius:0 4px 0 0}
+td{padding:5px;border-bottom:1px solid #d1d5db;font-size:9px;vertical-align:top}
+tr:nth-child(even){background:#f8fffe}
+tr:hover{background:#e6f7f5}
+.time{font-size:13px;font-weight:800;color:#1B4965;text-align:center;white-space:nowrap}
+.client{text-align:left}.client strong{font-size:10px;display:block}.client .resp{font-size:8px;color:#64748b;font-style:italic}
+.vaccines{text-align:left;font-weight:600}.vaccines span{display:inline-block;background:#e6f7f5;color:#1B4965;padding:1px 6px;border-radius:3px;margin:1px;font-size:8px}
+.addr{text-align:left;font-size:8px;color:#374151;max-width:140px}
+.map-link{display:block;color:#2BBCB3;font-size:7px;text-decoration:none;margin-top:2px}
+.map-link:hover{text-decoration:underline}
+.phone{text-align:center;font-family:monospace;font-size:9px}
+.status{text-align:center;font-size:8px;font-weight:700}
+.status-ok{color:#059669}.status-done{color:#059669;background:#d1fae5}.status-missed{color:#dc2626;background:#fee2e2}
+.footer{margin-top:12px;padding:8px 15px;border-top:3px solid #2BBCB3;display:flex;justify-content:space-between;align-items:center;font-size:8px;color:#94a3b8}
+.footer .brand{color:#1B4965;font-weight:700;font-size:9px}
+@media print{@page{margin:8mm;size:landscape}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div class="header">
+  <img src="${logoUrl}" onerror="this.outerHTML='<div style=font-size:22px;font-weight:800;color:#1B4965>💎 Vittalis Saúde</div>'">
+  <div class="title">Agendamento Vacinal</div>
+  <div class="date">(${dtStr}) ${diaSem}</div>
+  <div class="meta">${totalItems} atendimento(s) programado(s)</div>
+</div>
+<div class="body">`;
+Object.entries(rg).forEach(([rn,g])=>{
+  html+=`<div class="region-bar" style="background:${g.cor}">📍 ${rn} <span style="font-size:9px;font-weight:400">${g.merged.length} paciente(s)</span></div>
+  <table><tr><th style="width:55px">Horário</th><th>Cliente</th><th style="width:60px">Código</th><th>Vacinas</th><th style="width:130px">Endereço</th><th style="width:40px">Mapa</th><th style="width:85px">Celular</th><th style="width:70px">Controle</th></tr>`;
+  g.merged.forEach(it=>{
     const addr=it.endereco||it.bairro||'';
     const mapUrl=addr?`https://www.google.com/maps/search/${encodeURIComponent(addr+', São Luís MA')}`:'';
-    const stCls=it.status==='realizado'?'realizado':it.status==='faltou'?'remarcado':'';
-    const stTxt=it.status==='realizado'?'REALIZADO':it.status==='confirmado'?'CONFIRMADO':it.status==='faltou'?'REMARCOU':'STATUS DO CONTRATO:<br><span class="ok">OK</span>';
-    html+=`<tr class="${stCls}"><td style="font-weight:800;font-size:11px">${it.horario||''}</td>
-      <td style="text-align:left"><strong>${it.paciente||'-'}</strong>${it.responsavel?'<br>('+it.responsavel+')':''}</td>
-      <td style="font-family:monospace;font-size:8px">${it.codigo_cliente||'-'}</td>
-      <td style="text-align:left"><strong>${it.vacina||'-'}</strong>${it.dose_numero?' D'+it.dose_numero:''}</td>
-      <td style="text-align:left;font-size:8px">${addr||'-'}${mapUrl?'<br><a href="'+mapUrl+'" target="_blank">📍 ver mapa</a>':''}</td>
-      <td>${it.celular||'-'}</td>
-      <td style="font-size:8px">${stTxt}</td></tr>`})});
-html+=`</table></div><div class="ft">VittaSys — Vittalis Saúde · São Luís/MA · Gerado: ${new Date().toLocaleString('pt-BR')}</div></body></html>`;
-const pw=window.open('','_blank');pw.document.write(html);pw.document.close();setTimeout(()=>pw.print(),500)}
+    const stCls=it.status==='realizado'?'status-done':it.status==='faltou'?'status-missed':'';
+    const stTxt=it.status==='realizado'?'✅ REALIZADO':it.status==='confirmado'?'✓ CONFIRMADO':it.status==='faltou'?'✗ REMARCOU':'<span class="status-ok">STATUS DO<br>CONTRATO:<br>✓ OK</span>';
+    const vacsHtml=it.vacinas.map(v=>`<span>${v}</span>`).join(' ');
+    html+=`<tr class="${stCls}">
+      <td class="time">${it.horario||'--:--'}</td>
+      <td class="client"><strong>${it.paciente||'-'}</strong>${it.responsavel?`<div class="resp">(${it.responsavel})</div>`:''}</td>
+      <td style="text-align:center;font-family:monospace;font-size:8px">${it.codigo_cliente||'-'}</td>
+      <td class="vaccines">${vacsHtml}</td>
+      <td class="addr">${addr||'-'}</td>
+      <td style="text-align:center">${mapUrl?`<a href="${mapUrl}" target="_blank" class="map-link">📍 ver<br>mapa</a>`:'-'}</td>
+      <td class="phone">${it.celular||'-'}</td>
+      <td class="status">${stTxt}</td></tr>`});
+  html+='</table>'});
+html+=`</div>
+<div class="footer">
+  <span class="brand">VittaSys — Vittalis Saúde</span>
+  <span>São Luís / MA</span>
+  <span>Gerado: ${new Date().toLocaleString('pt-BR')}</span>
+</div></body></html>`;
+const pw=window.open('','_blank');pw.document.write(html);pw.document.close();setTimeout(()=>pw.print(),600)}
 
 await draw();return wrap;}

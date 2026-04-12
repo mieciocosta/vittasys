@@ -129,11 +129,10 @@ r.post('/',async(req,res,next)=>{try{const b=req.body;
   if(!vacinas.length)return res.status(400).json({error:'Selecione ao menos uma vacina'});
   const created=[];
   for(let i=0;i<vacinas.length;i++){
-    const hr=b.horario||'09:00';const[hh,mm]=hr.split(':').map(Number);
-    const mins=hh*60+mm+(i*30);const newH=String(Math.floor(mins/60)).padStart(2,'0');const newM=String(mins%60).padStart(2,'0');
+    const hr=b.horario||'09:00';
     const ag=await prisma.agendamento.create({data:{clienteId:+b.cliente_id,vacinaId:+vacinas[i],
       planoContratadoId:b.plano_contratado_id?+b.plano_contratado_id:null,
-      regiaoId:b.regiao_id?+b.regiao_id:null,data:new Date(b.data),horario:`${newH}:${newM}`,
+      regiaoId:b.regiao_id?+b.regiao_id:null,data:new Date(b.data),horario:hr,
       status:'agendado',endereco:b.endereco||null,observacoes:b.observacoes||null,
       criadoPor:b.usuario_id?+b.usuario_id:null}});
     created.push(ag.id);}

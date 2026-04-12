@@ -25,7 +25,7 @@ const items=allItems.filter(it=>{
 
 const nav=h('nav',{className:'sidebar'});
 const brand=h('div',{className:'sb-brand',style:{cursor:'pointer'},onClick:()=>AppState.setModulo('dashboard')});
-const logoImg=h('img',{src:'assets/logos/logo-horizontal-color.png',alt:'Vittalis',style:'height:32px'});
+const logoImg=h('img',{src:'assets/logos/logo-horizontal-white.png',alt:'Vittalis',style:'height:32px'});
 logoImg.onerror=function(){this.replaceWith(h('span',{style:{fontSize:'18px',fontWeight:'700',color:'#f1f5f9'}},'💎 VittaSys'))};
 brand.appendChild(logoImg);
 brand.appendChild(h('div',{className:'sb-brand-sub'},'Sistema de Gestão de Vacinação'));
