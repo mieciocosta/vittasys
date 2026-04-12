@@ -124,12 +124,20 @@ r.post('/gerar',async(req,res,next)=>{try{
 // CRIAR MANUAL
 r.post('/',async(req,res,next)=>{try{const b=req.body;
   if(!b.cliente_id||!b.data)return res.status(400).json({error:'Cliente e data obrigatórios'});
-  const ag=await prisma.agendamento.create({data:{clienteId:+b.cliente_id,vacinaId:b.vacina_id?+b.vacina_id:null,
-    planoContratadoId:b.plano_contratado_id?+b.plano_contratado_id:null,
-    regiaoId:b.regiao_id?+b.regiao_id:null,data:new Date(b.data),horario:b.horario||null,
-    status:'agendado',endereco:b.endereco||null,observacoes:b.observacoes||null,
-    criadoPor:b.usuario_id?+b.usuario_id:null}});
-  res.json({success:true,id:ag.id})}catch(e){next(e)}});
+  const vacinas=b.vacina_ids||[];
+  if(b.vacina_id)vacinas.push(+b.vacina_id);
+  if(!vacinas.length)return res.status(400).json({error:'Selecione ao menos uma vacina'});
+  const created=[];
+  for(let i=0;i<vacinas.length;i++){
+    const hr=b.horario||'09:00';const[hh,mm]=hr.split(':').map(Number);
+    const mins=hh*60+mm+(i*30);const newH=String(Math.floor(mins/60)).padStart(2,'0');const newM=String(mins%60).padStart(2,'0');
+    const ag=await prisma.agendamento.create({data:{clienteId:+b.cliente_id,vacinaId:+vacinas[i],
+      planoContratadoId:b.plano_contratado_id?+b.plano_contratado_id:null,
+      regiaoId:b.regiao_id?+b.regiao_id:null,data:new Date(b.data),horario:`${newH}:${newM}`,
+      status:'agendado',endereco:b.endereco||null,observacoes:b.observacoes||null,
+      criadoPor:b.usuario_id?+b.usuario_id:null}});
+    created.push(ag.id);}
+  res.json({success:true,ids:created,message:`${created.length} agendamento(s) criado(s)`})}catch(e){next(e)}});
 
 // STATUS
 r.put('/:id/status',async(req,res,next)=>{try{const{status}=req.body;const d={status};
