@@ -302,7 +302,7 @@ const c=await Api.cliente(AppState.clienteDetalhe);if(!c){wrap.appendChild(h('di
 const isChild=(c.tipo_paciente==='crianca'||c.tipo_paciente==='bebe')&&c.responsavel_nome;
 const celular=c.telefone||c.responsavel_telefone||'-';
 wrap.appendChild(h('div',{className:'page-header'},h('div',{className:'page-header-left'},
-  iconBtn('btn btn-outline btn-sm',I.chevL,'Voltar para Clientes',()=>AppState.setModulo('clientes')),
+  iconBtn('btn btn-outline btn-sm',I.chevL,AppState._returnTo==='agenda'?'Voltar para Agenda':'Voltar para Clientes',()=>{const rt=AppState._returnTo;AppState._returnTo=null;AppState.setModulo(rt||'clientes')}),
   h('h1',{className:'page-title',style:{marginTop:'10px'}},isChild?`👶 ${c.nome}`:`${c.nome} ${c.codigo_cliente?'['+c.codigo_cliente+']':''}`),
   h('p',{className:'page-subtitle',innerHTML:isChild?`${tipoClienteBadge(c.tipo_cliente)} · Resp: ${esc(c.responsavel_nome)} · Cel: ${esc(celular)}`:`${tipoClienteBadge(c.tipo_cliente)} · Cel: ${esc(celular)} · CPF: ${esc(c.cpf||'-')}`})
 )));

@@ -69,8 +69,9 @@
 /* ═══ LOGO FIXES ═══ */
 .login-logo img, .sb-brand img {
   object-fit: contain !important;
-  background: transparent !important;
-  mix-blend-mode: normal !important;
+  background: white !important;
+  border-radius: 6px;
+  padding: 4px 8px;
   image-rendering: auto;
   -webkit-image-rendering: auto;
 }
