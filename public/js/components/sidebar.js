@@ -29,6 +29,11 @@ const logoImg=h('img',{src:'assets/logos/logo-horizontal-white.png',alt:'Vittali
 logoImg.onerror=function(){this.replaceWith(h('span',{style:{fontSize:'18px',fontWeight:'700',color:'#f1f5f9'}},'💎 VittaSys'))};
 brand.appendChild(logoImg);
 brand.appendChild(h('div',{className:'sb-brand-sub'},'Sistema de Gestão de Vacinação'));
+// Environment badge
+if(window._vittaEnv&&window._vittaEnv!=='production'){
+  brand.appendChild(h('div',{style:'background:#f97316;color:white;font-size:9px;font-weight:800;padding:2px 8px;border-radius:4px;text-align:center;margin-top:4px;letter-spacing:1px;text-transform:uppercase'},
+    '⚠ '+window._vittaEnv));
+}
 nav.appendChild(brand);
 
 const nw=h('div',{className:'sb-nav'});

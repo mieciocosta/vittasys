@@ -1,6 +1,11 @@
 (function(){
   const root=document.getElementById('app');
 
+  // ═══ LOAD ENV CONFIG ═══
+  Api.get('/config').then(cfg=>{
+    if(cfg){window._vittaEnv=cfg.ambiente;window._vittaVersion=cfg.versao}
+  }).catch(()=>{});
+
   // ═══ RESTORE SESSION ON LOAD ═══
   AppState.restoreSession();
   if(AppState.usuario){

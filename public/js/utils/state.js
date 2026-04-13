@@ -3,10 +3,47 @@ const ROUTE_MAP={
   '/painel':'dashboard','/retirada':'retirada','/estoque':'estoque',
   '/movimentacoes':'historico','/planos':'planos','/clientes':'clientes',
   '/financeiro':'financeiro','/metas':'metas','/alertas':'alertas',
-  '/aprovacoes':'aprovacoes',
+  '/aprovacoes':'aprovacoes','/agenda':'agenda',
   '/auditoria':'auditoria',
 };
 const ROUTE_REVERSE={};Object.entries(ROUTE_MAP).forEach(([k,v])=>ROUTE_REVERSE[v]=k);
+
+// ═══ SESSION TIMEOUT ═══
+const SESSION_TIMEOUT_MS=15*60*1000; // 15 minutes
+let _sessionTimer=null;
+let _lastActivity=Date.now();
+
+function _resetSessionTimer(){
+  _lastActivity=Date.now();
+  // Save timestamp
+  try{sessionStorage.setItem('vittasys_last_activity',String(_lastActivity))}catch(e){}
+}
+
+function _checkSessionTimeout(){
+  if(!AppState.usuario)return;
+  const now=Date.now();
+  const elapsed=now-_lastActivity;
+  if(elapsed>=SESSION_TIMEOUT_MS){
+    // Session expired
+    clearInterval(_sessionTimer);
+    AppState.logout();
+    Toast?.show('Sessão expirada. Faça login novamente.','warning');
+  }
+}
+
+function _startSessionMonitor(){
+  // Reset on any user activity
+  ['click','keydown','mousemove','touchstart','scroll'].forEach(evt=>{
+    document.addEventListener(evt,_resetSessionTimer,{passive:true,once:false});
+  });
+  // Check every 30 seconds
+  _sessionTimer=setInterval(_checkSessionTimeout,30000);
+  _resetSessionTimer();
+}
+
+function _stopSessionMonitor(){
+  if(_sessionTimer){clearInterval(_sessionTimer);_sessionTimer=null}
+}
 
 const AppState={
   usuario:null,modulo:'dashboard',clienteDetalhe:null,planoDetalhe:null,movDetalheId:null,
@@ -15,20 +52,37 @@ const AppState={
   // ═══ SESSION PERSISTENCE ═══
   login(u){
     this.usuario=u;
-    try{sessionStorage.setItem('vittasys_session',JSON.stringify(u))}catch(e){}
+    try{
+      sessionStorage.setItem('vittasys_session',JSON.stringify(u));
+      sessionStorage.setItem('vittasys_login_time',String(Date.now()));
+    }catch(e){}
+    _startSessionMonitor();
     this.notify();
   },
   logout(){
+    _stopSessionMonitor();
     if(this.usuario){try{Api.auditoriaLog({acao:'logout',usuarioId:this.usuario.id,usuarioNome:this.usuario.nome,perfil:this.usuario.perfil})}catch(e){}}
     this.usuario=null;this.modulo='dashboard';
-    try{sessionStorage.removeItem('vittasys_session')}catch(e){}
+    try{sessionStorage.removeItem('vittasys_session');sessionStorage.removeItem('vittasys_last_activity');sessionStorage.removeItem('vittasys_login_time')}catch(e){}
     history.pushState(null,'','/');
     this.notify();
   },
   restoreSession(){
     try{
       const s=sessionStorage.getItem('vittasys_session');
-      if(s){this.usuario=JSON.parse(s);return true}
+      if(s){
+        // Check if session has expired
+        const lastAct=+(sessionStorage.getItem('vittasys_last_activity')||0);
+        if(lastAct&&(Date.now()-lastAct)>=SESSION_TIMEOUT_MS){
+          sessionStorage.removeItem('vittasys_session');
+          sessionStorage.removeItem('vittasys_last_activity');
+          return false;
+        }
+        this.usuario=JSON.parse(s);
+        _lastActivity=lastAct||Date.now();
+        _startSessionMonitor();
+        return true;
+      }
     }catch(e){}
     return false;
   },

@@ -36,6 +36,11 @@ app.use('/api/pacotes', require('./routes/planos'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/api/config', (req, res) => res.json({
+  ambiente: process.env.AMBIENTE || process.env.NODE_ENV || 'development',
+  session_timeout: +(process.env.SESSION_TIMEOUT_MINUTES || 15),
+  versao: '2.0',
+}));
 
 // ═══ FRONTEND (static files) ═══
 app.use(express.static(path.join(__dirname, '..', 'public')));
