@@ -138,10 +138,36 @@ r.post('/',async(req,res,next)=>{try{const b=req.body;
     created.push(ag.id);}
   res.json({success:true,ids:created,message:`${created.length} agendamento(s) criado(s)`})}catch(e){next(e)}});
 
-// STATUS
-r.put('/:id/status',async(req,res,next)=>{try{const{status}=req.body;const d={status};
-  if(status==='confirmado')d.confirmadoEm=new Date();if(status==='realizado')d.realizadoEm=new Date();
-  await prisma.agendamento.update({where:{id:+req.params.id},data:d});res.json({success:true})}catch(e){next(e)}});
+// STATUS — with plan dose integration
+r.put('/:id/status',async(req,res,next)=>{try{
+  const{status}=req.body;
+  const ag=await prisma.agendamento.findUnique({where:{id:+req.params.id}});
+  if(!ag)return res.status(404).json({error:'Não encontrado'});
+  
+  const d={status};
+  if(status==='confirmado')d.confirmadoEm=new Date();
+  if(status==='realizado'){
+    d.realizadoEm=new Date();
+    // ═══ INTEGRAÇÃO: Marcar dose como aplicada no plano ═══
+    if(ag.planoDoseId){
+      await prisma.planoContratadoDose.update({
+        where:{id:ag.planoDoseId},
+        data:{status:'aplicada',dataAplicacao:new Date()}
+      }).catch(()=>{});
+    }
+  }
+  if(status==='faltou'||status==='cancelado'){
+    // Se estava realizado e voltou, reverter dose
+    if(ag.status==='realizado'&&ag.planoDoseId){
+      await prisma.planoContratadoDose.update({
+        where:{id:ag.planoDoseId},
+        data:{status:'pendente',dataAplicacao:null}
+      }).catch(()=>{});
+    }
+  }
+  await prisma.agendamento.update({where:{id:+req.params.id},data:d});
+  res.json({success:true});
+}catch(e){next(e)}});
 
 // EDITAR
 r.put('/:id',async(req,res,next)=>{try{const b=req.body;const d={};

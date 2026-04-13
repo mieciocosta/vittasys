@@ -143,21 +143,24 @@ Object.entries(groups).forEach(([rn,gr])=>{
 function modalCriar(dateISO){showModal('+ Novo Agendamento',async(body,close)=>{
   const fd={data:dateISO,horario:'09:00',cliente_id:'',vacina_ids:[],regiao_id:'',observacoes:'',usuario_id:AppState.usuario?.id};
   let selCli=null;
-  // Patient
-  const cs=h('div',{style:'margin-bottom:18px'});cs.appendChild(h('label',{className:'label',style:'font-size:13px'},'👤 PACIENTE'));
+  // Patient — only clients with active plans
+  const cs=h('div',{style:'margin-bottom:18px'});cs.appendChild(h('label',{className:'label',style:'font-size:13px'},'👤 PACIENTE (apenas com plano ativo)'));
   const ci=h('input',{className:'input',style:'font-size:14px;padding:12px',placeholder:'Buscar por nome, código, CPF...'});
   const cl=h('div',{style:'max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;display:none;margin-top:4px'});
   const selBox=h('div',{style:'display:none;padding:10px;background:var(--primary-bg);border-radius:8px;margin-top:6px;font-size:12px'});
   let timer;ci.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(async()=>{
     if(ci.value.length<2){cl.style.display='none';return}
-    const res=await Api.buscarClientes(ci.value)||[];cl.innerHTML='';cl.style.display='block';
-    if(!res.length){cl.innerHTML='<div style="padding:10px;color:var(--text-3);font-size:12px">Nenhum resultado</div>';return}
+    const res=await Api.get('/clientes/busca',{q:ci.value,plano_ativo:'true'})||[];
+    cl.innerHTML='';cl.style.display='block';
+    if(!res.length){cl.innerHTML='<div style="padding:10px;color:var(--text-3);font-size:12px">Nenhum cliente com plano ativo encontrado</div>';return}
     res.forEach(c=>{cl.appendChild(h('div',{style:'padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9',
       onClick:()=>{
         fd.cliente_id=c.id;selCli=c;ci.value=c.nome;cl.style.display='none';
         // Auto-detect region
         const autoR=findReg(c.bairro);
         if(autoR){fd.regiao_id=autoR.id;regDiv.querySelectorAll('[data-rid]').forEach(b=>{b.className=b.dataset.rid==autoR.id?'btn btn-sm btn-primary':'btn btn-sm btn-outline'})}
+        // Auto-fill address
+        if(c.endereco||c.bairro){addrInp.value=c.endereco||c.bairro||'';fd.endereco=addrInp.value}
         selBox.style.display='block';
         selBox.innerHTML=`<strong>${c.responsavel_nome?'👶 ':'👤 '}${esc(c.nome)}</strong> <span class="mono" style="color:var(--text-4);font-size:10px">${esc(c.codigo_cliente||'')}</span>
           ${c.responsavel_nome?`<div style="font-size:11px;color:var(--text-3)">Resp: ${esc(c.responsavel_nome)}</div>`:''}
@@ -166,13 +169,26 @@ function modalCriar(dateISO){showModal('+ Novo Agendamento',async(body,close)=>{
         h('span',null,h('strong',null,esc(c.nome)),c.responsavel_nome?' ('+esc(c.responsavel_nome)+')':''),
         h('span',{style:'font-size:10px;color:var(--text-4)'},esc(c.codigo_cliente||'')))))})},300)});
   cs.appendChild(ci);cs.appendChild(cl);cs.appendChild(selBox);body.appendChild(cs);
-  // Date + Time
-  const row=h('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px'});
+  // Date + Time + Type
+  const row=h('div',{style:'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px'});
   const d1=h('div');d1.appendChild(h('label',{className:'label',style:'font-size:13px'},'📅 DATA'));
   const di=h('input',{className:'input',type:'date',value:fd.data,style:'font-size:14px;padding:10px'});di.addEventListener('change',e=>{fd.data=e.target.value});d1.appendChild(di);row.appendChild(d1);
   const d2=h('div');d2.appendChild(h('label',{className:'label',style:'font-size:13px'},'🕐 HORÁRIO'));
   const hi=h('input',{className:'input',type:'time',value:fd.horario,style:'font-size:14px;padding:10px'});hi.addEventListener('change',e=>{fd.horario=e.target.value});d2.appendChild(hi);row.appendChild(d2);
+  const d3=h('div');d3.appendChild(h('label',{className:'label',style:'font-size:13px'},'📍 TIPO'));
+  fd.tipo='domiciliar';
+  const btnDom=h('button',{type:'button',className:'btn btn-sm btn-primary',style:'flex:1;font-size:10px;padding:8px',
+    onClick:()=>{fd.tipo='domiciliar';btnDom.className='btn btn-sm btn-primary';btnClinic.className='btn btn-sm btn-outline';addrSec.style.display='block'}},'🏠 Domicílio');
+  const btnClinic=h('button',{type:'button',className:'btn btn-sm btn-outline',style:'flex:1;font-size:10px;padding:8px',
+    onClick:()=>{fd.tipo='clinica';btnClinic.className='btn btn-sm btn-primary';btnDom.className='btn btn-sm btn-outline';addrSec.style.display='none'}},'🏥 Clínica');
+  d3.appendChild(h('div',{style:'display:flex;gap:4px'},btnDom,btnClinic));row.appendChild(d3);
   body.appendChild(row);
+  // Address section (domicílio default)
+  const addrSec=h('div',{style:'margin-bottom:18px'});
+  addrSec.appendChild(h('label',{className:'label',style:'font-size:13px'},'🏠 ENDEREÇO COMPLETO *'));
+  const addrInp=h('input',{className:'input',style:'font-size:13px;padding:10px',placeholder:'Rua, nº, bairro, referência...'});
+  addrInp.addEventListener('input',e=>{fd.endereco=e.target.value});
+  addrSec.appendChild(addrInp);body.appendChild(addrSec);
   // VACCINES — MULTI-SELECT TOGGLE BUTTONS
   const vd=h('div',{style:'margin-bottom:18px'});vd.appendChild(h('label',{className:'label',style:'font-size:13px'},'💉 VACINAS (selecione uma ou mais)'));
   const selCount=h('span',{style:'font-size:11px;color:var(--primary);margin-left:8px;font-weight:600'},'0 selecionada(s)');
@@ -307,7 +323,7 @@ let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Agenda ${dtStr
 body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#1B4965;font-size:10px}
 .header{text-align:center;padding:15px 20px 12px;border-bottom:4px solid #2BBCB3;position:relative}
 .header::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#1B4965,#2BBCB3,#1B4965)}
-.header img{height:55px;margin-bottom:6px;background:white;padding:4px 8px;border-radius:6px}
+.header img{height:55px;margin-bottom:6px}
 .header .title{font-size:16px;font-weight:800;color:#1B4965;letter-spacing:2px;text-transform:uppercase;margin-top:4px}
 .header .date{font-size:13px;font-weight:700;color:#2BBCB3;margin-top:3px}
 .header .meta{font-size:10px;color:#64748b;margin-top:2px}
@@ -343,7 +359,7 @@ Object.entries(rg).forEach(([rn,g])=>{
   html+=`<div class="region-bar" style="background:${g.cor}">📍 ${rn} <span style="font-size:9px;font-weight:400">${g.merged.length} paciente(s)</span></div>
   <table><tr><th style="width:55px">Horário</th><th>Cliente</th><th style="width:60px">Código</th><th>Vacinas</th><th style="width:130px">Endereço</th><th style="width:40px">Mapa</th><th style="width:85px">Celular</th><th style="width:70px">Controle</th></tr>`;
   g.merged.forEach(it=>{
-    const addr=it.endereco||it.bairro||'';
+    const addr=[it.endereco,it.bairro].filter(Boolean).join(', ')||'-';
     const mapUrl=addr?`https://www.google.com/maps/search/${encodeURIComponent(addr+', São Luís MA')}`:'';
     const stCls=it.status==='realizado'?'status-done':it.status==='faltou'?'status-missed':'';
     const stTxt=it.status==='realizado'?'✅ REALIZADO':it.status==='confirmado'?'✓ CONFIRMADO':it.status==='faltou'?'✗ REMARCOU':'<span class="status-ok">STATUS DO<br>CONTRATO:<br>✓ OK</span>';

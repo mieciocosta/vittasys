@@ -29,10 +29,13 @@ r.get('/',async(req,res,next)=>{try{
 }catch(e){next(e)}});
 
 r.get('/busca',async(req,res,next)=>{try{
-  const{q}=req.query;if(!q||q.length<2)return res.json([]);
+  const{q,plano_ativo}=req.query;if(!q||q.length<2)return res.json([]);
   const s=q.replace(/[\.\-]/g,'');
-  const data=await prisma.cliente.findMany({where:{OR:[{nome:{contains:q,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:q,mode:'insensitive'}},{responsavelNome:{contains:q,mode:'insensitive'}},{pacienteNome:{contains:q,mode:'insensitive'}},{telefone:{contains:q,mode:'insensitive'}},{responsavelTelefone:{contains:q,mode:'insensitive'}}]},orderBy:{id:'desc'},take:15});
-  res.json(data.map(mapOut));
+  const where={OR:[{nome:{contains:q,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:q,mode:'insensitive'}},{responsavelNome:{contains:q,mode:'insensitive'}},{pacienteNome:{contains:q,mode:'insensitive'}},{telefone:{contains:q,mode:'insensitive'}},{responsavelTelefone:{contains:q,mode:'insensitive'}}]};
+  if(plano_ativo==='true')where.planosContratados={some:{statusContrato:'ativo'}};
+  const data=await prisma.cliente.findMany({where,orderBy:{id:'desc'},take:15,
+    include:{planosContratados:{where:{statusContrato:'ativo'},select:{id:true,nomePlano:true,_count:{select:{doses:true}}}}}});
+  res.json(data.map(c=>{const o=mapOut(c);o.planos_ativos=c.planosContratados.length;return o}));
 }catch(e){next(e)}});
 
 r.get('/:id',async(req,res,next)=>{try{
