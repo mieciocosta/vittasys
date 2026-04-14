@@ -4,7 +4,7 @@ const ROUTE_MAP={
   '/movimentacoes':'historico','/planos':'planos','/clientes':'clientes',
   '/financeiro':'financeiro','/metas':'metas','/alertas':'alertas',
   '/aprovacoes':'aprovacoes','/agenda':'agenda',
-  '/auditoria':'auditoria',
+  '/auditoria':'auditoria','/usuarios':'usuarios',
 };
 const ROUTE_REVERSE={};Object.entries(ROUTE_MAP).forEach(([k,v])=>ROUTE_REVERSE[v]=k);
 

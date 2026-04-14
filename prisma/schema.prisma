@@ -8,14 +8,16 @@ datasource db {
 }
 
 model Usuario {
-  id        Int      @id @default(autoincrement())
-  nome      String
-  cargo     String
-  email     String?  @unique
-  pin       String
-  perfil    String   @default("operador") // master, ativos, espontaneos, operador
-  ativo     Boolean  @default(true)
-  criadoEm  DateTime @default(now()) @map("criado_em")
+  id              Int      @id @default(autoincrement())
+  nome            String
+  cargo           String
+  email           String?  @unique
+  cpf             String?
+  dataNascimento  DateTime? @map("data_nascimento")
+  pin             String
+  perfil          String   @default("operador") // master, ativos, espontaneos, atendimento, operador
+  ativo           Boolean  @default(true)
+  criadoEm        DateTime @default(now()) @map("criado_em")
   @@map("usuarios")
 }
 
