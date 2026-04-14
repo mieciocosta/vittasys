@@ -9,20 +9,19 @@ async function renderLogin() {
 
     const card = h('div', { className: 'login-card' });
 
-    const logo = h('div', {
-    className: 'login-logo',
-    style: {
-      textAlign: 'center',
-      marginBottom: '12px',
-      background: '#ffffff',
-      padding: '12px 16px',
-      borderRadius: '14px',
-      display: 'inline-block',
-      marginLeft: 'auto',
-      marginRight: 'auto',
-      boxShadow: '0 4px 14px rgba(15, 26, 46, 0.08)'
-    }
-  });
+        const logo = h('div', {
+        className: 'login-logo',
+        style: {
+        textAlign: 'center',
+        marginBottom: '12px',
+        background: '#0f1a2e',
+        padding: '12px 16px',
+        borderRadius: '14px',
+        display: 'inline-block',
+        marginLeft: 'auto',
+        marginRight: 'auto'
+      }
+});
 
       const logoWrap = h('div', {
     style: {
