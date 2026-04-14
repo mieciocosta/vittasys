@@ -67,35 +67,8 @@
 @media(max-width:900px){.sidebar{width:60px;overflow:hidden}.main-content{padding:20px}.dash-grid{grid-template-columns:1fr 1fr}.dash-cols{grid-template-columns:1fr}.vac-detail-grid{grid-template-columns:1fr 1fr}.client-form-grid,.form-grid,.form-grid-3{grid-template-columns:1fr}}
 
 /* ═══ LOGO FIXES ═══ */
-.login-logo img, .sb-brand img {
-  object-fit: contain !important;
-  image-rendering: auto;
-  -webkit-image-rendering: auto;
-}
-.sb-brand img {
-  filter: brightness(1.1);
-  height: 30px !important;
-}
-.login-logo img {
-  height: 60px !important;
-  max-width: 280px;
-}
-/* Fix any dark bg leak */
-.login-logo, .sb-brand {
-  background: transparent !important;
-}
 
-/* ═══ LOGO FIXES v4.3 ═══ */
-.login-logo img, .sb-brand img {
-  object-fit: contain !important;
-  background: transparent !important;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-}
-img[src*="logo"] {
-  background-color: transparent !important;
-  mix-blend-mode: normal !important;
-}
+/* Fix any dark bg leak */
 
 /* ═══ SORTABLE HEADERS ═══ */
 .table-wrap th[style*="cursor"] {
@@ -106,24 +79,6 @@ img[src*="logo"] {
   background: var(--primary-bg) !important;
 }
 
-/* ═══ LOGO FIXES — PRODUCTION ═══ */
-.login-logo img, .sb-brand img {
-  object-fit: contain !important;
-  background: transparent !important;
-  image-rendering: auto !important;
-  max-width: 100%;
-}
-.sb-brand img {
-  height: 30px !important;
-  filter: brightness(1.15) !important;
-}
-.login-logo img {
-  height: 64px !important;
-  max-width: 300px;
-}
-img[src*="logo"] {
-  background-color: transparent !important;
-}
 /* Sortable header hover */
 .table-wrap th[style*="cursor"]:hover {
   color: var(--primary) !important;
