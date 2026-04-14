@@ -1,6 +1,6 @@
 function renderSidebar(alertCount) {
   const u = AppState.usuario;
-  const ini = u.nome.split(' ').map(n => n[0]).join('').slice(0, 2);
+  const ini = (u.nome || '').split(' ').map(n => n[0]).join('').slice(0, 2);
 
   const perfilLabel = {
     master: '👑 Master',
@@ -36,51 +36,61 @@ function renderSidebar(alertCount) {
 
   const nav = h('nav', { className: 'sidebar' });
 
-const brand = h('div', {
-  className: 'sb-brand',
-  style: { cursor: 'pointer' },
-  onClick: () => AppState.setModulo('dashboard')
-});
+  const brand = h('div', {
+    className: 'sb-brand',
+    style: { cursor: 'pointer' },
+    onClick: () => AppState.setModulo('dashboard')
+  });
 
-const logoWrap = h('div', {
-  style: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: '6px'
-  }
-});
+  const logoWrap = h('div', {
+    style: {
+      display: 'flex',
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+      marginBottom: '6px',
+      background: 'transparent',
+      padding: '0',
+      borderRadius: '0'
+    }
+  });
 
-const logoImg = h('img', {
- src: '/assets/logos/logo-vertical-color.png',
-  alt: 'Vittalis',
-  style: {
-  height: '40px'
-}
-});
+  const logoImg = h('img', {
+    src: '/assets/logos/logo-vertical-color.png?v=2',
+    alt: 'Vittalis',
+    style: {
+      height: '42px',
+      objectFit: 'contain',
+      display: 'block',
+      maxWidth: '100%',
+      background: 'transparent',
+      filter: 'none',
+      imageRendering: 'auto',
+      mixBlendMode: 'normal'
+    }
+  });
 
-logoImg.onerror = function () {
-  this.replaceWith(
-    h(
-      'span',
-      {
-        style: {
-          fontSize: '18px',
-          fontWeight: '700',
-          color: '#f1f5f9'
-        }
-      },
-      '💎 VittaSys'
-    )
+  logoImg.onerror = function () {
+    this.replaceWith(
+      h(
+        'span',
+        {
+          style: {
+            fontSize: '18px',
+            fontWeight: '700',
+            color: '#f1f5f9'
+          }
+        },
+        '💎 VittaSys'
+      )
+    );
+  };
+
+  logoWrap.appendChild(logoImg);
+  brand.appendChild(logoWrap);
+
+  brand.appendChild(
+    h('div', { className: 'sb-brand-sub' }, 'Sistema de Gestão de Vacinação')
   );
-};
-
-logoWrap.appendChild(logoImg);
-brand.appendChild(logoWrap);
-
-brand.appendChild(
-  h('div', { className: 'sb-brand-sub' }, 'Sistema de Gestão de Vacinação')
-);
 
   if (window._vittaEnv && window._vittaEnv !== 'production') {
     brand.appendChild(
@@ -121,10 +131,10 @@ brand.appendChild(
 
   const ud = h('div', { className: 'sb-user' });
   ud.innerHTML = `
-    <div class="sb-avatar">${ini}</div>
+    <div class="sb-avatar">${esc(ini)}</div>
     <div class="sb-user-info">
-      <div class="sb-user-name">${esc(u.nome)}</div>
-      <div class="sb-user-role">${esc(u.cargo)} · ${perfilLabel[u.perfil] || u.perfil}</div>
+      <div class="sb-user-name">${esc(u.nome || '')}</div>
+      <div class="sb-user-role">${esc(u.cargo || '')} · ${perfilLabel[u.perfil] || u.perfil}</div>
     </div>
   `;
 
