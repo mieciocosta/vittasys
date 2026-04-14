@@ -31,7 +31,7 @@ async function renderLogin() {
   });
 
     const img = h('img', {
-  src: '/assets/logos/logo-vertical-color.png',
+  src: '/assets/logos/logo-horizontal-white.png',
   alt: 'Vittalis Saúde',
   style: {
     height: '110px',

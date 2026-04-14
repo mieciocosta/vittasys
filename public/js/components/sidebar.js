@@ -52,7 +52,7 @@ const logoWrap = h('div', {
 });
 
 const logoImg = h('img', {
-  src: '/assets/logos/logo-vertical-color.png',
+  src: '/assets/logos/logo-horizontal-white.png',
   alt: 'Vittalis',
   style: {
     height: '32px',
