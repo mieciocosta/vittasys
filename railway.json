@@ -7,7 +7,7 @@
   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
-    "startCommand": "npx prisma db push --accept-data-loss && node prisma/seed-homolog.js && node src/server.jsnpx prisma db push --accept-data-loss && node prisma/seed-homolog.js && node src/server.js",
+    "startCommand": "npx prisma db push --accept-data-loss && node prisma/seed-prod.js && node tests/generate-report.js && node src/server.js",
     "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
