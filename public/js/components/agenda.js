@@ -312,11 +312,10 @@ async function exportarPDF(){
 const p={data:fI(sel)};if(regF)p.regiao_id=regF;const items=await Api.agendaList(p)||[];
 if(!items.length){Toast.show('Sem dados','warning');return}
 const rg={};items.forEach(i=>{const k=i.regiao_nome||'Sem região';if(!rg[k])rg[k]={cor:i.regiao_cor||'#94a3b8',items:[]};rg[k].items.push(i)});
-const logoUrl=window.location.origin+'/assets/logos/logo-horizontal-color.png';
-let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Agenda ${fB(sel)}</title>
+const logoUrl = `${window.location.origin}/assets/logos/logo-vertical-color.png`;
+let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Agenda ${fB(sel)}</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1B4965;font-size:9px}
 .hd{padding:8px 15px;background:#f0fffe;border-bottom:3px solid #2BBCB3;display:flex;align-items:center;justify-content:space-between}
-.hd img{height:45px;background:white;border-radius:4px;padding:2px 6px}
 .hd-r{text-align:right}.hd-r .tit{font-size:14px;font-weight:800;color:#1B4965}.hd-r .sub{font-size:10px;color:#64748b}
 .pg{padding:6px 15px}
 .rh{padding:4px 8px;font-size:10px;font-weight:bold;border-left:4px solid #2BBCB3;margin:6px 0 2px;background:#f0fffe;color:#1B4965}
@@ -328,8 +327,19 @@ tr:nth-child(even){background:#f8fffe}
 .link{color:#2BBCB3;font-size:7px;text-decoration:underline}
 .ft{padding:4px 15px;border-top:2px solid #2BBCB3;display:flex;justify-content:space-between;font-size:7px;color:#94a3b8;margin-top:4px}
 @media print{@page{margin:5mm;size:landscape}}</style></head><body>
-<div class="hd"><div style="text-align:center;margin-bottom:6px;"><img src="${logoUrl}" style="height:55px;object-fit:contain;display:block;margin:0 auto;" onerror="this.outerHTML='<div style=&quot;font-size:22px;font-weight:800;color:#1B4965&quot;>Vittalis Saude</div>'"></div>Vittalis Saúde</strong>'"/>
-<div class="hd-r"><div class="tit">AGENDA DE VACINAÇÃO</div><div class="sub">${DF[sel.getDay()]}, ${fB(sel)} — ${items.length} atendimentos</div></div></div><div class="pg">`;
+<div class="hd">
+  <div style="text-align:center;">
+    <img
+      src="${logoUrl}"
+      style="height:55px;object-fit:contain;display:block;margin:0 auto;"
+      onerror="this.outerHTML='<div style=&quot;font-size:22px;font-weight:800;color:#1B4965&quot;>💎 Vittalis Saúde</div>'"
+    >
+  </div>
+  <div class="hd-r">
+    <div class="tit">AGENDA DE VACINAÇÃO</div>
+    <div class="sub">${DF[sel.getDay()]}, ${fB(sel)} — ${items.length} atendimentos</div>
+  </div>
+</div><div class="pg">`;
 Object.entries(rg).forEach(([rn,g])=>{
   html+=`<div class="rh" style="border-left-color:${g.cor}">📍 ${rn} (${g.items.length})</div>
   <table><tr><th>HORÁRIO</th><th>CLIENTE</th><th>CÓDIGO</th><th>RESPONSÁVEL</th><th>VACINAS</th><th>ENDEREÇO</th><th>CELULAR</th><th>STATUS</th><th>CONTRATO</th></tr>`;

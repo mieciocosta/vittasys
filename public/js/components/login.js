@@ -10,58 +10,58 @@ async function renderLogin() {
     const card = h('div', { className: 'login-card' });
 
     const logo = h('div', {
-      className: 'login-logo',
-      style: {
-        textAlign: 'center',
-        marginBottom: '12px',
-        background: '#ffffff',
-        padding: '12px 16px',
-        borderRadius: '14px',
-        display: 'inline-block',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-        boxShadow: '0 4px 14px rgba(15, 26, 46, 0.08)'
-      }
-    });
+    className: 'login-logo',
+    style: {
+      textAlign: 'center',
+      marginBottom: '12px',
+      background: '#ffffff',
+      padding: '12px 16px',
+      borderRadius: '14px',
+      display: 'inline-block',
+      marginLeft: 'auto',
+      marginRight: 'auto',
+      boxShadow: '0 4px 14px rgba(15, 26, 46, 0.08)'
+    }
+  });
 
-    const logoWrap = h('div', {
-      style: {
-        textAlign: 'center'
-      }
-    });
+      const logoWrap = h('div', {
+    style: {
+      textAlign: 'center'
+    }
+  });
 
     const img = h('img', {
-      src: '/assets/logos/logo-vertical-color.png',
-      alt: 'Vittalis Saúde',
-      style: {
-        height: '110px',
-        objectFit: 'contain',
-        display: 'block',
-        margin: '0 auto'
-      }
-    });
+  src: '/assets/logos/logo-vertical-color.png',
+  alt: 'Vittalis Saúde',
+  style: {
+    height: '110px',
+    objectFit: 'contain',
+    display: 'block',
+    margin: '0 auto'
+  }
+});
 
     img.onerror = function () {
-      this.remove();
-      logo.appendChild(
-        h(
-          'div',
-          {
-            style: {
-              fontSize: '24px',
-              fontWeight: '800',
-              color: 'var(--navy)',
-              textAlign: 'center'
-            }
-          },
-          '💎 VittaSys'
-        )
-      );
-    };
+  this.remove();
+  logo.appendChild(
+    h(
+      'div',
+      {
+        style: {
+          fontSize: '24px',
+          fontWeight: '800',
+          color: 'var(--navy)',
+          textAlign: 'center'
+        }
+      },
+      '💎 VittaSys'
+    )
+  );
+};
 
-    logo.appendChild(img);
-    logoWrap.appendChild(logo);
-    card.appendChild(logoWrap);
+logo.appendChild(img);
+logoWrap.appendChild(logo);
+card.appendChild(logoWrap);
 
     card.appendChild(
       h('div', { className: 'login-sub' }, 'Sistema de Gestão de Vacinação')

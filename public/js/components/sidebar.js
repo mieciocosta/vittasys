@@ -36,54 +36,54 @@ function renderSidebar(alertCount) {
 
   const nav = h('nav', { className: 'sidebar' });
 
-  const brand = h('div', {
-    className: 'sb-brand',
-    style: { cursor: 'pointer' },
-    onClick: () => AppState.setModulo('dashboard')
-  });
+const brand = h('div', {
+  className: 'sb-brand',
+  style: { cursor: 'pointer' },
+  onClick: () => AppState.setModulo('dashboard')
+});
 
-  const logoWrap = h('div', {
-    style: {
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: '6px'
-    }
-  });
+const logoWrap = h('div', {
+  style: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: '6px'
+  }
+});
 
-  const logoImg = h('img', {
-    src: '/assets/logos/logo-horizontal-white.png',
-    alt: 'Vittalis',
-    style: {
-      height: '32px',
-      objectFit: 'contain',
-      display: 'block',
-      maxWidth: '100%'
-    }
-  });
+const logoImg = h('img', {
+  src: '/assets/logos/logo-vertical-color.png',
+  alt: 'Vittalis',
+  style: {
+    height: '32px',
+    objectFit: 'contain',
+    display: 'block',
+    maxWidth: '100%'
+  }
+});
 
-  logoImg.onerror = function () {
-    this.replaceWith(
-      h(
-        'span',
-        {
-          style: {
-            fontSize: '18px',
-            fontWeight: '700',
-            color: '#f1f5f9'
-          }
-        },
-        '💎 VittaSys'
-      )
-    );
-  };
-
-  logoWrap.appendChild(logoImg);
-  brand.appendChild(logoWrap);
-
-  brand.appendChild(
-    h('div', { className: 'sb-brand-sub' }, 'Sistema de Gestão de Vacinação')
+logoImg.onerror = function () {
+  this.replaceWith(
+    h(
+      'span',
+      {
+        style: {
+          fontSize: '18px',
+          fontWeight: '700',
+          color: '#f1f5f9'
+        }
+      },
+      '💎 VittaSys'
+    )
   );
+};
+
+logoWrap.appendChild(logoImg);
+brand.appendChild(logoWrap);
+
+brand.appendChild(
+  h('div', { className: 'sb-brand-sub' }, 'Sistema de Gestão de Vacinação')
+);
 
   if (window._vittaEnv && window._vittaEnv !== 'production') {
     brand.appendChild(
