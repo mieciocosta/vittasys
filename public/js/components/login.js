@@ -13,7 +13,20 @@ async function renderLogin() {
       className: 'login-logo',
       style: {
         textAlign: 'center',
-        marginBottom: '12px'
+        marginBottom: '12px',
+        background: '#ffffff',
+        padding: '12px 16px',
+        borderRadius: '14px',
+        display: 'inline-block',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        boxShadow: '0 4px 14px rgba(15, 26, 46, 0.08)'
+      }
+    });
+
+    const logoWrap = h('div', {
+      style: {
+        textAlign: 'center'
       }
     });
 
@@ -47,7 +60,8 @@ async function renderLogin() {
     };
 
     logo.appendChild(img);
-    card.appendChild(logo);
+    logoWrap.appendChild(logo);
+    card.appendChild(logoWrap);
 
     card.appendChild(
       h('div', { className: 'login-sub' }, 'Sistema de Gestão de Vacinação')
