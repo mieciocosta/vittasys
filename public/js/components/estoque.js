@@ -287,23 +287,55 @@ function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(
 },'640px')}
 
 // ═══ NOVA VACINA AVULSA ═══
-function modalNovaVacina(){showModal('Cadastrar Nova Vacina',(body,close)=>{
-  const fd={};const gr=h('div',{className:'form-grid'});
-  [['codigo','Código *','Ex: BCG'],['nome','Nome *','']].forEach(([k,l,ph])=>{
-    const d=h('div');d.appendChild(h('label',{className:'label'},l));const inp=h('input',{className:'input',placeholder:ph});
-    inp.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(inp);gr.appendChild(d)});
-  // Fabricante dropdown
-  const df=h('div');df.appendChild(h('label',{className:'label'},'Fabricante *'));
-  df.appendChild(buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],'',v=>{fd.fabricante=v}));gr.appendChild(df);
-  [['laboratorio','Laboratório',''],['categoria','Categoria',''],['via_administracao','Via Adm.','IM, SC, Oral...'],['valor_custo_medio','Custo Médio R$','0','number'],['valor_venda_sugerido','Venda Sugerida R$','0','number']].forEach(([k,l,ph,type])=>{
-    const d=h('div');d.appendChild(h('label',{className:'label'},l));const inp=h('input',{className:'input',type:type||'text',placeholder:ph});
-    inp.addEventListener('input',e=>{fd[k]=type==='number'?parseFloat(e.target.value):e.target.value});d.appendChild(inp);gr.appendChild(d)});
+function modalNovaVacina(){showModal('Cadastrar Nova Vacina',async(body,close)=>{
+  const fd={};
+  const vacs=await Api.vacinas()||[];
+
+  // Barcode
+  const bSec=h('div',{style:'margin-bottom:18px;padding:16px;background:var(--primary-bg);border-radius:12px;border:2px solid var(--primary)'});
+  bSec.appendChild(h('div',{className:'label',style:'color:var(--primary-dark);font-size:12px'},'CÓDIGO DE BARRAS (bipe ou digite)'));
+  const bInp=h('input',{className:'scanner-input',placeholder:'Bipe o código ou digite aqui...',style:'font-size:18px;padding:14px;font-family:var(--mono);letter-spacing:2px;text-align:center'});
+  bInp.addEventListener('input',e=>{fd.codigo_barras=e.target.value.trim()});
+  bSec.appendChild(bInp);
+  bSec.appendChild(h('div',{style:'font-size:11px;color:var(--text-3);margin-top:6px;text-align:center'},'Opcional. Vincula o código de barras à vacina.'));
+  body.appendChild(bSec);
+
+  const gr=h('div',{className:'form-grid'});
+  // Código
+  const dc=h('div');dc.appendChild(h('label',{className:'label'},'CÓDIGO *'));
+  const ic=h('input',{className:'input',placeholder:'Ex: BCG, HEXA, PCV20...'});
+  ic.addEventListener('input',e=>{fd.codigo=e.target.value});dc.appendChild(ic);gr.appendChild(dc);
+  // Nome — dropdown
+  const dn=h('div');dn.appendChild(h('label',{className:'label'},'NOME *'));
+  const nOpts=[['','— Selecione —'],...vacs.map(v=>[v.nome,v.nome])];
+  const stdN=['BCG','Hepatite B','Hexaacelular (DTPa-VIP-Hib-HB)','Pentaacelular (DTPa-VIP-Hib)','Rotavírus Pentavalente','Pneumocócica 20-valente','Meningocócica B (Bexsero)','Meningocócica ACWY','Influenza Quadrivalente','Febre Amarela','Tríplice Viral (SCR)','Varicela','Hepatite A','HPV Quadrivalente','DTPa (Tríplice Acelular)','dTpa (Adulto)','Raiva','Dengue'];
+  const ex=new Set(vacs.map(v=>v.nome));stdN.forEach(n=>{if(!ex.has(n))nOpts.push([n,n])});
+  dn.appendChild(buildSelect(nOpts,'',v=>{fd.nome=v;const m=vacs.find(x=>x.nome===v);if(m){fd.fabricante=m.fabricante;ic.value=m.codigo;fd.codigo=m.codigo;rebuildFab()}}));
+  gr.appendChild(dn);
+  // Fabricante
+  const df=h('div');df.appendChild(h('label',{className:'label'},'FABRICANTE *'));
+  let fabSel=buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],fd.fabricante||'',v=>{fd.fabricante=v});
+  df.appendChild(fabSel);gr.appendChild(df);
+  function rebuildFab(){df.innerHTML='';df.appendChild(h('label',{className:'label'},'FABRICANTE *'));fabSel=buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],fd.fabricante||'',v=>{fd.fabricante=v});df.appendChild(fabSel)}
+  // Laboratório
+  const dl=h('div');dl.appendChild(h('label',{className:'label'},'LABORATÓRIO'));
+  const il=h('input',{className:'input'});il.addEventListener('input',e=>{fd.laboratorio=e.target.value});dl.appendChild(il);gr.appendChild(dl);
+  // Categoria dropdown
+  const dcat=h('div');dcat.appendChild(h('label',{className:'label'},'CATEGORIA'));
+  dcat.appendChild(buildSelect([['','— Selecione —'],['Calendário','Calendário'],['Premium','Premium'],['Sazonal','Sazonal'],['Viagem','Viagem'],['Ocupacional','Ocupacional']],'',v=>{fd.categoria=v}));
+  gr.appendChild(dcat);
+  // Custo + Venda
+  [['valor_custo_medio','CUSTO MÉDIO R$','0'],['valor_venda_sugerido','VENDA SUGERIDA R$','0']].forEach(([k,l,ph])=>{
+    const d=h('div');d.appendChild(h('label',{className:'label'},l));
+    const inp=h('input',{className:'input',type:'number',placeholder:ph,step:'0.01'});
+    inp.addEventListener('input',e=>{fd[k]=parseFloat(e.target.value)||0});d.appendChild(inp);gr.appendChild(d)});
   body.appendChild(gr);
-  body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'Cadastrar',async()=>{
+  body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'✓ Cadastrar Vacina',async()=>{
     if(!fd.codigo||!fd.nome||!fd.fabricante)return Toast.show('Código, nome e fabricante obrigatórios','error');
     const r=await Api.criarVacina(fd);if(r?.success){Toast.show('Vacina cadastrada!');close();draw()}else Toast.show(r?.error||'Erro','error');
   },{style:{marginTop:'16px'}}));
-})}
+  setTimeout(()=>bInp.focus(),100);
+},'560px')}
 
 // ═══ NOVO LOTE ═══
 function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
