@@ -191,6 +191,8 @@ function modalDetalheLote(id){showModal('Detalhamento do Lote',async(body,close)
 function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(body,close)=>{
   const fd={quantidade:1,usuario_id:AppState.usuario?.id};
   let lookupDone=false;
+  // Preload vaccines for select
+  window._vittaVacinas=await Api.vacinas()||[];
 
   // Barcode input (FIRST — autofocus for scanner)
   const barcodeSection=h('div',{style:{marginBottom:'20px',padding:'20px',background:'var(--primary-bg)',borderRadius:'12px',border:'2px solid var(--primary)'}});
@@ -230,11 +232,13 @@ function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(
 
   function fillForm(){
     formDiv.innerHTML='';
+    const vacs=window._vittaVacinas||[];
     const gr=h('div',{className:'form-grid'});
-    // Name
-    const d1=h('div');d1.appendChild(h('label',{className:'label',style:fd.nome_vacina?'color:var(--primary)':''},'Nome da Vacina *'+(fd.nome_vacina?' ✓':'')));
-    const i1=h('input',{className:'input',value:fd.nome_vacina||'',placeholder:'Nome da vacina',style:fd.nome_vacina?'border-color:var(--primary);font-weight:600':''});
-    i1.addEventListener('input',e=>{fd.nome_vacina=e.target.value});d1.appendChild(i1);gr.appendChild(d1);
+    // Vaccine SELECT instead of free text
+    const d1=h('div');d1.appendChild(h('label',{className:'label',style:fd.nome_vacina?'color:var(--primary)':''},'NOME DA VACINA *'+(fd.nome_vacina?' ✓':'')));
+    const selOpts=[['','— Selecione a vacina —'],...vacs.map(v=>[v.nome,`${v.nome} (${v.codigo})`])];
+    d1.appendChild(buildSelect(selOpts,fd.nome_vacina||'',v=>{fd.nome_vacina=v;const match=vacs.find(x=>x.nome===v);if(match){fd.fabricante=match.fabricante;fd.codigo_vacina=match.codigo;fillForm()}}));
+    gr.appendChild(d1);
     // Fabricante dropdown
     const d2=h('div');d2.appendChild(h('label',{className:'label',style:fd.fabricante?'color:var(--primary)':''},'Fabricante *'+(fd.fabricante?' ✓':'')));
     d2.appendChild(buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],fd.fabricante||'',v=>{fd.fabricante=v}));

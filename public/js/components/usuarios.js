@@ -89,13 +89,14 @@ users.forEach(u=>{
 wrap.appendChild(tbl);
 
 // Info box
-wrap.appendChild(h('div',{style:'margin-top:14px;padding:12px;background:#eff6ff;border-radius:10px;font-size:11px;color:#1e40af;line-height:1.6'},
-  `<strong>Regras de segurança:</strong><br>
+const infoBox=h('div',{style:'margin-top:14px;padding:12px;background:#eff6ff;border-radius:10px;font-size:11px;color:#1e40af;line-height:1.6'});
+infoBox.innerHTML=`<strong>Regras de segurança:</strong><br>
   • Senha padrão de novos usuários: <strong>1234</strong><br>
   • Exclusão é <strong>soft delete</strong> — o usuário fica inativo mas todas as auditorias são preservadas<br>
   • Apenas o <strong>Master</strong> pode alterar nome, CPF e data de nascimento<br>
   • O próprio usuário pode alterar apenas sua <strong>senha</strong> (precisa informar a atual)<br>
-  • Perfil <strong>Atendimento</strong>: visualiza dados de ativos/espontâneos, planos, e pode cadastrar clientes`));
+  • Perfil <strong>Atendimento</strong>: visualiza dados de ativos/espontâneos, planos, e pode cadastrar clientes`;
+wrap.appendChild(infoBox);
 
 return wrap;
 
@@ -136,7 +137,9 @@ function modalUser(u){showModal(u?'✏️ Editar Usuário':'+ Novo Usuário',asy
 
   // PIN (only for new or master reset)
   if(!u){
-    body.appendChild(h('div',{style:'padding:10px;background:#f0fffe;border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--primary)'},'🔐 Senha padrão: <strong>1234</strong>'));
+    const pinInfo=h('div',{style:'padding:10px;background:#f0fffe;border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--primary)'});
+    pinInfo.innerHTML='🔐 Senha padrão: <strong>1234</strong>';
+    body.appendChild(pinInfo);
   }else{
     const pd2=h('div',{style:'margin-bottom:14px'});pd2.appendChild(h('label',{className:'label',style:'font-size:13px'},'🔐 NOVA SENHA (deixe vazio para manter)'));
     const i6=h('input',{className:'input',type:'password',maxLength:'4',style:'font-size:13px;padding:10px',placeholder:'••••'});

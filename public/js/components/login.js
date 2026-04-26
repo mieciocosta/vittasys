@@ -9,40 +9,35 @@ async function renderLogin() {
 
     const card = h('div', { className: 'login-card' });
 
-    const logoWrap = h('div', {
-      style: {
-        textAlign: 'center',
-        marginBottom: '12px'
-      }
-    });
-
     const logo = h('div', {
       className: 'login-logo',
       style: {
         textAlign: 'center',
         marginBottom: '12px',
-        background: 'transparent',
-        padding: '0',
-        borderRadius: '0',
+        background: '#ffffff',
+        padding: '12px 16px',
+        borderRadius: '14px',
         display: 'inline-block',
         marginLeft: 'auto',
         marginRight: 'auto',
-        boxShadow: 'none'
+        boxShadow: '0 4px 14px rgba(15, 26, 46, 0.08)'
+      }
+    });
+
+    const logoWrap = h('div', {
+      style: {
+        textAlign: 'center'
       }
     });
 
     const img = h('img', {
-      src: '/assets/logos/logo-vertical-color.png?v=2',
+      src: '/assets/logos/logo-vertical-color.png',
       alt: 'Vittalis Saúde',
       style: {
         height: '110px',
         objectFit: 'contain',
         display: 'block',
-        margin: '0 auto',
-        background: 'transparent',
-        filter: 'none',
-        imageRendering: 'auto',
-        mixBlendMode: 'normal'
+        margin: '0 auto'
       }
     });
 

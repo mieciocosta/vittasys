@@ -1,6 +1,6 @@
 function renderSidebar(alertCount) {
   const u = AppState.usuario;
-  const ini = (u.nome || '').split(' ').map(n => n[0]).join('').slice(0, 2);
+  const ini = u.nome.split(' ').map(n => n[0]).join('').slice(0, 2);
 
   const perfilLabel = {
     master: '👑 Master',
@@ -45,27 +45,20 @@ function renderSidebar(alertCount) {
   const logoWrap = h('div', {
     style: {
       display: 'flex',
-      justifyContent: 'flex-start',
+      justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: '6px',
-      background: 'transparent',
-      padding: '0',
-      borderRadius: '0'
+      marginBottom: '6px'
     }
   });
 
   const logoImg = h('img', {
-    src: '/assets/logos/logo-vertical-color.png?v=2',
+    src: '/assets/logos/logo-horizontal-white.png',
     alt: 'Vittalis',
     style: {
-      height: '42px',
+      height: '32px',
       objectFit: 'contain',
       display: 'block',
-      maxWidth: '100%',
-      background: 'transparent',
-      filter: 'none',
-      imageRendering: 'auto',
-      mixBlendMode: 'normal'
+      maxWidth: '100%'
     }
   });
 
@@ -131,10 +124,10 @@ function renderSidebar(alertCount) {
 
   const ud = h('div', { className: 'sb-user' });
   ud.innerHTML = `
-    <div class="sb-avatar">${esc(ini)}</div>
+    <div class="sb-avatar">${ini}</div>
     <div class="sb-user-info">
-      <div class="sb-user-name">${esc(u.nome || '')}</div>
-      <div class="sb-user-role">${esc(u.cargo || '')} · ${perfilLabel[u.perfil] || u.perfil}</div>
+      <div class="sb-user-name">${esc(u.nome)}</div>
+      <div class="sb-user-role">${esc(u.cargo)} · ${perfilLabel[u.perfil] || u.perfil}</div>
     </div>
   `;
 
