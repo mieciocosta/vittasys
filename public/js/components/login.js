@@ -13,20 +13,11 @@ async function renderLogin() {
       className: 'login-logo',
       style: {
         textAlign: 'center',
-        marginBottom: '12px',
-        background: '#ffffff',
-        padding: '12px 16px',
-        borderRadius: '14px',
-        display: 'inline-block',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-        boxShadow: '0 4px 14px rgba(15, 26, 46, 0.08)'
-      }
-    });
-
-    const logoWrap = h('div', {
-      style: {
-        textAlign: 'center'
+        marginBottom: '16px',
+        padding: '20px 24px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
       }
     });
 
@@ -34,10 +25,9 @@ async function renderLogin() {
       src: '/assets/logos/logo-vertical-color.png',
       alt: 'Vittalis Saúde',
       style: {
-        height: '110px',
+        height: '100px',
         objectFit: 'contain',
-        display: 'block',
-        margin: '0 auto'
+        display: 'block'
       }
     });
 
@@ -60,8 +50,7 @@ async function renderLogin() {
     };
 
     logo.appendChild(img);
-    logoWrap.appendChild(logo);
-    card.appendChild(logoWrap);
+    card.appendChild(logo);
 
     card.appendChild(
       h('div', { className: 'login-sub' }, 'Sistema de Gestão de Vacinação')

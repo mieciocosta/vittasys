@@ -52,10 +52,10 @@ function renderSidebar(alertCount) {
   });
 
   const logoImg = h('img', {
-    src: '/assets/logos/logo-horizontal-white.png',
+    src: '/assets/logos/logo-vertical-color.png',
     alt: 'Vittalis',
     style: {
-      height: '32px',
+      height: '42px',
       objectFit: 'contain',
       display: 'block',
       maxWidth: '100%'

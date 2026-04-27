@@ -312,7 +312,7 @@ async function exportarPDF(){
 const p={data:fI(sel)};if(regF)p.regiao_id=regF;const items=await Api.agendaList(p)||[];
 if(!items.length){Toast.show('Sem dados','warning');return}
 const rg={};items.forEach(i=>{const k=i.regiao_nome||'Sem região';if(!rg[k])rg[k]={cor:i.regiao_cor||'#94a3b8',items:[]};rg[k].items.push(i)});
-const logoUrl=window.location.origin+'/assets/logos/logo-horizontal-color.png';
+const logoUrl=window.location.origin+'/assets/logos/logo-vertical-color.png';
 let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Agenda ${fB(sel)}</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1B4965;font-size:9px}
 .hd{padding:8px 15px;background:#f0fffe;border-bottom:3px solid #2BBCB3;display:flex;align-items:center;justify-content:space-between}
