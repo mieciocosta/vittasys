@@ -68,6 +68,37 @@ function inputComMascara(className, placeholder, maskFn, onChange, value) {
 
 // ═══ SHARED CONSTANTS ═══
 const FABRICANTES=['GSK','Pfizer','Sanofi','MSD','Butantan','Bio-Manguinhos','Ataulpho de Paiva','AstraZeneca','Johnson & Johnson','Moderna','Sinovac','Outro'];
+const VACINAS_PADRAO=[
+  'BCG','Hepatite B',
+  'Hexaacelular (DTPa-VIP-Hib-HB) (Infanrix Hexa)',
+  'Pentaacelular (DTPa-VIP-Hib) (Pentaxim)',
+  'Rotavírus Pentavalente (RotaTeq)',
+  'Pneumocócica 13-valente (Prevenar 13)',
+  'Pneumocócica 15-valente (Vaxneuvance)',
+  'Pneumocócica 20-valente (Prevenar 20)',
+  'Meningocócica B (Bexsero)',
+  'Meningocócica ACWY (Nimenrix) - GSK',
+  'Meningocócica ACWY (MenQuadfi) - Sanofi',
+  'Meningocócica ACWY (Menveo) - GSK',
+  'Influenza Quadrivalente (Fluarix Tetra)',
+  'Influenza Quadrivalente (FluQuadri)',
+  'Febre Amarela (Stamaril)',
+  'Tríplice Viral SCR (Priorix)',
+  'Varicela (Varilrix)',
+  'Hepatite A (Havrix)',
+  'Hepatite A (Vaqta)',
+  'HPV Quadrivalente (Gardasil 4)',
+  'HPV 9-valente (Gardasil 9)',
+  'DTPa - Tríplice Acelular (Infanrix)',
+  'dTpa Adulto (Boostrix)',
+  'dTpa Adulto (Adacel)',
+  'Poliomielite VIP (Imovax Polio)',
+  'Raiva (Verorab)',
+  'Dengue (Qdenga)',
+  'Herpes Zóster (Shingrix)',
+  'COVID-19 (Comirnaty) - Pfizer',
+  'COVID-19 (Spikevax) - Moderna',
+];
 
 // ═══ CAMERA CAPTURE FOR CRITICAL AUDIT ACTIONS ═══
 // Shows camera feed in modal, captures photo, sends to backend

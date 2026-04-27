@@ -234,9 +234,10 @@ function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(
     formDiv.innerHTML='';
     const vacs=window._vittaVacinas||[];
     const gr=h('div',{className:'form-grid'});
-    // Vaccine SELECT instead of free text
+    // Vaccine SELECT — standard names + existing
     const d1=h('div');d1.appendChild(h('label',{className:'label',style:fd.nome_vacina?'color:var(--primary)':''},'NOME DA VACINA *'+(fd.nome_vacina?' ✓':'')));
-    const selOpts=[['','— Selecione a vacina —'],...vacs.map(v=>[v.nome,`${v.nome} (${v.codigo})`])];
+    const selOpts=[['','— Selecione a vacina —'],...vacs.map(v=>[v.nome,v.nome])];
+    const exN=new Set(vacs.map(v=>v.nome));VACINAS_PADRAO.forEach(n=>{if(!exN.has(n))selOpts.push([n,n])});
     d1.appendChild(buildSelect(selOpts,fd.nome_vacina||'',v=>{fd.nome_vacina=v;const match=vacs.find(x=>x.nome===v);if(match){fd.fabricante=match.fabricante;fd.codigo_vacina=match.codigo;fillForm()}}));
     gr.appendChild(d1);
     // Fabricante dropdown
@@ -308,8 +309,7 @@ function modalNovaVacina(){showModal('Cadastrar Nova Vacina',async(body,close)=>
   // Nome — dropdown
   const dn=h('div');dn.appendChild(h('label',{className:'label'},'NOME *'));
   const nOpts=[['','— Selecione —'],...vacs.map(v=>[v.nome,v.nome])];
-  const stdN=['BCG','Hepatite B','Hexaacelular (DTPa-VIP-Hib-HB)','Pentaacelular (DTPa-VIP-Hib)','Rotavírus Pentavalente','Pneumocócica 20-valente','Meningocócica B (Bexsero)','Meningocócica ACWY','Influenza Quadrivalente','Febre Amarela','Tríplice Viral (SCR)','Varicela','Hepatite A','HPV Quadrivalente','DTPa (Tríplice Acelular)','dTpa (Adulto)','Raiva','Dengue'];
-  const ex=new Set(vacs.map(v=>v.nome));stdN.forEach(n=>{if(!ex.has(n))nOpts.push([n,n])});
+  const exN2=new Set(vacs.map(v=>v.nome));VACINAS_PADRAO.forEach(n=>{if(!exN2.has(n))nOpts.push([n,n])});
   dn.appendChild(buildSelect(nOpts,'',v=>{fd.nome=v;const m=vacs.find(x=>x.nome===v);if(m){fd.fabricante=m.fabricante;ic.value=m.codigo;fd.codigo=m.codigo;rebuildFab()}}));
   gr.appendChild(dn);
   // Fabricante
@@ -339,26 +339,78 @@ function modalNovaVacina(){showModal('Cadastrar Nova Vacina',async(body,close)=>
 
 // ═══ NOVO LOTE ═══
 function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
-  const fd={};const vacs=await Api.vacinas()||[];const gr=h('div',{className:'form-grid'});
-  const d1=h('div');d1.appendChild(h('label',{className:'label'},'Vacina *'));
-  d1.appendChild(buildSelect([['','Selecione...'],...vacs.map(v=>[v.id,`${v.nome} (${v.fabricante})`])],'',v=>{fd.vacina_id=v;fd.nome_vacina=vacs.find(x=>x.id==v)?.nome||''}));
-  gr.appendChild(d1);
-  [['numero_lote','Nº Lote *','BCG-202601']].forEach(([k,l,ph])=>{const d=h('div');d.appendChild(h('label',{className:'label'},l));const inp=h('input',{className:'input',placeholder:ph});inp.addEventListener('input',e=>{fd[k]=e.target.value});d.appendChild(inp);gr.appendChild(d)});
-  // Fabricante dropdown
-  const df2=h('div');df2.appendChild(h('label',{className:'label'},'Fabricante *'));df2.appendChild(buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],'',v=>{fd.fabricante=v}));gr.appendChild(df2);
-  [['quantidade_total','Quantidade *','','number'],['validade','Validade * (MM/AAAA)','','month'],['temperatura','Temperatura','2-8°C'],['local','Local','Câmara Fria Principal'],['valor_unitario','Custo Unit. R$','0','number']].forEach(([k,l,ph,type])=>{
-    const d=h('div');d.appendChild(h('label',{className:'label'},l));
-    const inp=h('input',{className:'input',type:type||'text',placeholder:ph});
-    inp.addEventListener('input',e=>{fd[k]=type==='number'?parseFloat(e.target.value):e.target.value});
-    d.appendChild(inp);gr.appendChild(d);
-  });body.appendChild(gr);
-  body.appendChild(h('div',{style:{marginTop:'12px',padding:'10px',background:'var(--primary-bg)',borderRadius:'8px',fontSize:'12px',color:'var(--primary-dark)'}},'ℹ️ Unidades com código de barras serão geradas automaticamente'));
-  body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'Cadastrar Lote',async()=>{
+  const fd={};const vacs=await Api.vacinas()||[];
+
+  // Barcode
+  const bSec=h('div',{style:'margin-bottom:18px;padding:16px;background:var(--primary-bg);border-radius:12px;border:2px solid var(--primary)'});
+  bSec.appendChild(h('div',{className:'label',style:'color:var(--primary-dark);font-size:12px'},'CÓDIGO DE BARRAS (bipe ou digite)'));
+  const bInp=h('input',{className:'scanner-input',placeholder:'Bipe o código ou digite aqui...',style:'font-size:18px;padding:14px;font-family:var(--mono);letter-spacing:2px;text-align:center'});
+  bInp.addEventListener('input',debounce(async(e)=>{
+    const code=e.target.value.trim();fd.codigo_barras=code;
+    if(code.length<4)return;
+    const r=await Api.buscarPorBarcode(code);
+    if(r&&r.found){
+      const v=r.vacina;const l=r.lote;
+      fd.vacina_id=v.id;fd.fabricante=v.fabricante;
+      if(l){fd.numero_lote=l.numeroLote||l.numero_lote;if(l.validade)fd.validade=String(l.validade).slice(0,7)}
+      Toast.show('Código encontrado: '+v.nome);rebuildForm();
+    }
+  },400));
+  bSec.appendChild(bInp);
+  bSec.appendChild(h('div',{style:'font-size:11px;color:var(--text-3);margin-top:6px;text-align:center'},'Opcional. Se o código já estiver cadastrado, preenche automaticamente.'));
+  body.appendChild(bSec);
+
+  const formDiv=h('div');body.appendChild(formDiv);
+  rebuildForm();
+
+  function rebuildForm(){
+    formDiv.innerHTML='';
+    const gr=h('div',{className:'form-grid'});
+    // Vacina dropdown — existing + standard names
+    const d1=h('div');d1.appendChild(h('label',{className:'label'},'VACINA *'));
+    const vOpts=[['','— Selecione —'],...vacs.map(v=>[v.id,v.nome])];
+    const exN=new Set(vacs.map(v=>v.nome));
+    VACINAS_PADRAO.forEach(n=>{if(!exN.has(n))vOpts.push(['new:'+n,n+' (nova)'])});
+    d1.appendChild(buildSelect(vOpts,fd.vacina_id||'',v=>{fd.vacina_id=v;const m=vacs.find(x=>x.id==v);if(m){fd.fabricante=m.fabricante;rebuildForm()}}));
+    gr.appendChild(d1);
+    // Nº Lote
+    const d2=h('div');d2.appendChild(h('label',{className:'label'},'Nº LOTE *'));
+    const i2=h('input',{className:'input',value:fd.numero_lote||'',placeholder:'Ex: HEXA-202601'});
+    i2.addEventListener('input',e=>{fd.numero_lote=e.target.value});d2.appendChild(i2);gr.appendChild(d2);
+    // Fabricante
+    const d3=h('div');d3.appendChild(h('label',{className:'label'},'FABRICANTE *'));
+    d3.appendChild(buildSelect([['','— Selecione —'],...FABRICANTES.map(f=>[f,f])],fd.fabricante||'',v=>{fd.fabricante=v}));gr.appendChild(d3);
+    // Quantidade
+    const d4=h('div');d4.appendChild(h('label',{className:'label'},'QUANTIDADE *'));
+    const i4=h('input',{className:'input',type:'number',value:fd.quantidade_total||'',min:'1'});
+    i4.addEventListener('input',e=>{fd.quantidade_total=parseInt(e.target.value)||0});d4.appendChild(i4);gr.appendChild(d4);
+    // Validade
+    const d5=h('div');d5.appendChild(h('label',{className:'label'},'VALIDADE * (MM/AAAA)'));
+    const i5=h('input',{className:'input',type:'month',value:fd.validade||''});
+    i5.addEventListener('input',e=>{fd.validade=e.target.value});d5.appendChild(i5);gr.appendChild(d5);
+    // Temperatura
+    const d6=h('div');d6.appendChild(h('label',{className:'label'},'TEMPERATURA'));
+    const i6=h('input',{className:'input',value:fd.temperatura||'2-8°C'});
+    i6.addEventListener('input',e=>{fd.temperatura=e.target.value});d6.appendChild(i6);gr.appendChild(d6);
+    // Local
+    const d7=h('div');d7.appendChild(h('label',{className:'label'},'LOCAL'));
+    const i7=h('input',{className:'input',value:fd.local||'Câmara Fria Principal'});
+    i7.addEventListener('input',e=>{fd.local=e.target.value});d7.appendChild(i7);gr.appendChild(d7);
+    // Custo
+    const d8=h('div');d8.appendChild(h('label',{className:'label'},'CUSTO UNIT. R$'));
+    const i8=h('input',{className:'input',type:'number',value:fd.valor_unitario||0,step:'0.01'});
+    i8.addEventListener('input',e=>{fd.valor_unitario=parseFloat(e.target.value)||0});d8.appendChild(i8);gr.appendChild(d8);
+    formDiv.appendChild(gr);
+  }
+
+  body.appendChild(h('div',{style:'margin-top:12px;padding:10px;background:var(--primary-bg);border-radius:8px;font-size:12px;color:var(--primary-dark)'},'ℹ️ Unidades com código de barras serão geradas automaticamente'));
+  body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'✓ Cadastrar Lote',async()=>{
     if(!fd.vacina_id||!fd.numero_lote||!fd.quantidade_total||!fd.validade)return Toast.show('Preencha campos obrigatórios','error');
     fd.usuario_id=AppState.usuario?.id;
-    const r=await Api.criarLote(fd);if(r?.success){Toast.show(`Lote criado com ${r.unidades_criadas} unidades!`);close();draw()}else Toast.show(r?.error||'Erro','error');
+    const r=await Api.criarLote(fd);if(r?.success){Toast.show('Lote criado com '+r.unidades_criadas+' unidades!');close();draw()}else Toast.show(r?.error||'Erro','error');
   },{style:{marginTop:'16px'}}));
-})}
+  setTimeout(()=>bInp.focus(),100);
+},'600px')}
 
 // ═══ IMPORTAR NF-e ═══
 function modalImportarNFe(){showModal('Importar NF-e (XML)',async(body,close)=>{
