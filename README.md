@@ -31,7 +31,7 @@ npm start
 # 1. Push para o GitHub
 git add .
 git commit -m "VittaSys v2.0 - Frontend + Backend integrado"
-git push origin main 
+git push origin main  
 
 # 2. No Railway:
 #    - O serviço já está conectado ao repo
