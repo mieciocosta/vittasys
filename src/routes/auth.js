@@ -5,7 +5,7 @@ const PERMS={
   ativos:['dashboard','retirada','estoque','historico','planos','clientes','alertas','agenda'],
   espontaneos:['dashboard','retirada','estoque','historico','clientes','alertas'],
   atendimento:['dashboard','estoque','historico','planos','clientes','alertas'],
-  operador:['dashboard','retirada','estoque','historico','clientes','alertas']
+  operador:['dashboard','retirada','estoque','historico','planos','clientes','alertas']
 };
 
 r.post('/login',async(req,res,next)=>{try{
