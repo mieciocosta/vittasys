@@ -61,6 +61,9 @@ const Api={
   planos(p){return this.get('/planos',p)},
   plano(id){return this.get(`/planos/${id}`)},
   criarPlano(b){return this.post('/planos',b)},
+  editarPlano(id,b){return this.put(`/planos/${id}`,b)},
+  aprovarAlteracaoPlano(id,b){return this.post(`/planos/${id}/aprovar-alteracao`,b)},
+  alteracoesPendentes(){return this.get('/planos/alteracoes/pendentes')},
   planosStats(){return this.get('/planos/stats/resumo')},
 
   finResumo(){return this.get('/financeiro/resumo')},

@@ -166,7 +166,85 @@ r.post('/',async(req,res,next)=>{try{const b=req.body;
     return res.status(409).json({error:'Verifique se este plano já foi criado para este cliente.'});
   }
   next(e)}});
-module.exports=r;
+
+// ═══ EDITAR PLANO CONTRATADO ═══
+r.put('/:id',async(req,res,next)=>{try{
+  const id=+req.params.id;const b=req.body;
+  const isMaster=b._caller_perfil==='master';
+  
+  const data={};
+  if(b.nome_plano)data.nomePlano=b.nome_plano;
+  if(b.valor_bruto!=null){
+    data.valorBruto=+b.valor_bruto;
+    const desc=+(b.percentual_desconto||0);
+    data.percentualDesconto=desc;
+    data.valorDesconto=data.valorBruto*desc/100;
+    data.valorFinal=data.valorBruto-data.valorDesconto;
+    if(b.valor_custo!=null){data.valorCusto=+b.valor_custo;data.lucroPrevisto=data.valorFinal-data.valorCusto;data.margemLucro=data.valorFinal>0?((data.valorFinal-data.valorCusto)/data.valorFinal*100):0}
+  }
+  if(b.percentual_desconto!=null&&!b.valor_bruto){
+    const pc=await prisma.planoContratado.findUnique({where:{id}});
+    data.percentualDesconto=+b.percentual_desconto;data.valorDesconto=pc.valorBruto*data.percentualDesconto/100;
+    data.valorFinal=pc.valorBruto-data.valorDesconto;
+  }
+  if(b.status_contrato)data.statusContrato=b.status_contrato;
+  if(b.forma_pagamento)data.formaPagamento=b.forma_pagamento;
+  if(b.data_inicio_plano)data.dataInicioPlano=new Date(b.data_inicio_plano);
+  if(b.data_fim_plano)data.dataFimPlano=new Date(b.data_fim_plano);
+  if(b.vendedor_id!=null)data.vendedorId=+b.vendedor_id||null;
+  
+  if(!Object.keys(data).length)return res.status(400).json({error:'Nenhum campo alterado'});
+  
+  if(isMaster){
+    // Master: apply directly
+    await prisma.planoContratado.update({where:{id},data});
+    // Log
+    await prisma.auditLog.create({data:{acao:'plano_editado',entidade:'plano_contratado',entidadeId:id,
+      usuarioId:b._caller_id?+b._caller_id:null,detalhes:JSON.stringify(data)}}).catch(()=>{});
+    res.json({success:true,message:'Plano atualizado'});
+  }else{
+    // Operador: save as pending approval
+    await prisma.auditLog.create({data:{
+      acao:'plano_alteracao_pendente',entidade:'plano_contratado',entidadeId:id,
+      usuarioId:b._caller_id?+b._caller_id:null,
+      detalhes:JSON.stringify({alteracoes:data,solicitante:b._caller_nome||'Operador'})
+    }});
+    res.json({success:true,message:'Alteração enviada para aprovação do master',pendente:true});
+  }
+}catch(e){next(e)}});
+
+// ═══ APROVAR/REJEITAR ALTERAÇÃO DE PLANO ═══
+r.post('/:id/aprovar-alteracao',async(req,res,next)=>{try{
+  const{audit_id,aprovado,motivo}=req.body;
+  const log=await prisma.auditLog.findUnique({where:{id:+audit_id}});
+  if(!log||log.acao!=='plano_alteracao_pendente')return res.status(404).json({error:'Solicitação não encontrada'});
+  
+  const det=JSON.parse(log.detalhes||'{}');
+  if(aprovado){
+    await prisma.planoContratado.update({where:{id:+req.params.id},data:det.alteracoes});
+    await prisma.auditLog.update({where:{id:+audit_id},data:{acao:'plano_alteracao_aprovada',
+      detalhes:JSON.stringify({...det,aprovado_por:req.body._caller_nome,aprovado_em:new Date()})}});
+    res.json({success:true,message:'Alteração aprovada e aplicada'});
+  }else{
+    await prisma.auditLog.update({where:{id:+audit_id},data:{acao:'plano_alteracao_rejeitada',
+      detalhes:JSON.stringify({...det,rejeitado_por:req.body._caller_nome,motivo:motivo||'',rejeitado_em:new Date()})}});
+    res.json({success:true,message:'Alteração rejeitada'});
+  }
+}catch(e){next(e)}});
+
+// ═══ LISTAR ALTERAÇÕES PENDENTES ═══
+r.get('/alteracoes/pendentes',async(req,res,next)=>{try{
+  const logs=await prisma.auditLog.findMany({where:{acao:'plano_alteracao_pendente'},orderBy:{criadoEm:'desc'}});
+  const result=[];
+  for(const log of logs){
+    const det=JSON.parse(log.detalhes||'{}');
+    const pc=await prisma.planoContratado.findUnique({where:{id:log.entidadeId},include:{cliente:{select:{nome:true,codigoCliente:true}}}}).catch(()=>null);
+    if(!pc)continue;
+    result.push({audit_id:log.id,plano_id:log.entidadeId,cliente:pc.cliente.nome,codigo:pc.cliente.codigoCliente,
+      plano:pc.nomePlano,alteracoes:det.alteracoes,solicitante:det.solicitante,data:log.criadoEm});
+  }
+  res.json(result);
+}catch(e){next(e)}});
 
 // ═══ DELETE PLANO CONTRATADO ═══
 r.delete('/:id',async(req,res,next)=>{try{
@@ -185,3 +263,5 @@ r.delete('/:id',async(req,res,next)=>{try{
   await prisma.planoContratado.delete({where:{id}});
   res.json({success:true,message:'Plano excluído com sucesso'});
 }catch(e){next(e)}});
+
+module.exports=r;

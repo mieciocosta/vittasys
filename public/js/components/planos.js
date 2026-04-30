@@ -139,6 +139,58 @@ function modalNovoPlano(){showModal('Novo Plano Vacinal',async(body,close)=>{
 
 },'640px')}
 
+// ═══ EDITAR PLANO CONTRATADO ═══
+function modalEditarPlano(pc){showModal('✏️ Editar Plano — '+pc.nome_plano,async(body,close)=>{
+  const isMaster=AppState.isMaster();
+  const fd={valor_bruto:pc.valor_bruto||pc.valor_final||0,percentual_desconto:pc.percentual_desconto||pc.percentualDesconto||0,
+    valor_custo:pc.valor_custo||pc.valorCusto||0,status_contrato:pc.status_contrato||pc.statusContrato,
+    forma_pagamento:pc.forma_pagamento||pc.formaPagamento||'avista',
+    _caller_id:AppState.usuario?.id,_caller_perfil:AppState.usuario?.perfil,_caller_nome:AppState.usuario?.nome};
+
+  if(!isMaster){
+    const notice=h('div',{style:'padding:10px 14px;background:#fff7ed;border-left:3px solid #f97316;border-radius:8px;margin-bottom:16px;font-size:12px;color:#9a3412'});
+    notice.innerHTML='⚠️ <strong>Perfil Operador:</strong> Suas alterações serão enviadas para aprovação do Master antes de serem aplicadas.';
+    body.appendChild(notice);
+  }
+
+  // Client info
+  body.appendChild(h('div',{style:'padding:10px;background:var(--bg-subtle);border-radius:8px;margin-bottom:16px;font-size:12px'},
+    h('strong',null,pc.cliente_nome+' '),h('span',{className:'mono',style:'color:var(--text-3)'},pc.codigo_cliente||'')));
+
+  const gr=h('div',{className:'form-grid',style:'margin-bottom:16px'});
+  // Valor Bruto
+  const d1=h('div');d1.appendChild(h('label',{className:'label'},'VALOR BRUTO R$'));
+  const i1=h('input',{className:'input',type:'number',value:fd.valor_bruto,step:'0.01'});
+  i1.addEventListener('input',e=>{fd.valor_bruto=parseFloat(e.target.value)||0});d1.appendChild(i1);gr.appendChild(d1);
+  // Desconto
+  const d2=h('div');d2.appendChild(h('label',{className:'label'},'DESCONTO %'));
+  const i2=h('input',{className:'input',type:'number',value:fd.percentual_desconto,max:'100'});
+  i2.addEventListener('input',e=>{fd.percentual_desconto=parseFloat(e.target.value)||0});d2.appendChild(i2);gr.appendChild(d2);
+  // Custo
+  const d3=h('div');d3.appendChild(h('label',{className:'label'},'CUSTO R$'));
+  const i3=h('input',{className:'input',type:'number',value:fd.valor_custo,step:'0.01'});
+  i3.addEventListener('input',e=>{fd.valor_custo=parseFloat(e.target.value)||0});d3.appendChild(i3);gr.appendChild(d3);
+  // Forma pagamento
+  const d4=h('div');d4.appendChild(h('label',{className:'label'},'FORMA PAGAMENTO'));
+  d4.appendChild(buildSelect([['avista','À Vista'],['cartao','Cartão']], fd.forma_pagamento,v=>{fd.forma_pagamento=v}));
+  gr.appendChild(d4);
+  // Status
+  const d5=h('div');d5.appendChild(h('label',{className:'label'},'STATUS'));
+  d5.appendChild(buildSelect([['ativo','Ativo'],['finalizado','Finalizado'],['cancelado','Cancelado'],['pendente','Pendente']], fd.status_contrato,v=>{fd.status_contrato=v}));
+  gr.appendChild(d5);
+  body.appendChild(gr);
+
+  body.appendChild(h('button',{className:'btn btn-primary btn-block',style:'font-size:14px;padding:12px',onClick:async()=>{
+    const r=await Api.editarPlano(pc.id,fd);
+    if(r?.success){
+      Toast.show(r.message||(r.pendente?'Enviado para aprovação':'Plano atualizado'));
+      close();
+      // Refresh
+      if(AppState.modulo==='plano-detalhe')AppState.notify();
+    }else Toast.show(r?.error||'Erro','error');
+  }},isMaster?'💾 Salvar Alterações':'📤 Enviar para Aprovação'));
+},'500px')}
+
 // ═══ GERENCIAR MODELOS DE PLANO ═══
 function modalTemplates(){showModal('⚙ Modelos de Plano Vacinal',async(body,close)=>{
   async function listTemplates(){
@@ -229,6 +281,8 @@ wrap.appendChild(h('div',{className:'page-header'},h('div',{className:'page-head
   iconBtn('btn btn-ghost btn-sm',I.chevL,'Voltar',()=>AppState.setModulo('planos')),
   h('h1',{className:'page-title',style:{marginTop:'8px'}},pc.nome_plano),
   h('p',{className:'page-subtitle',innerHTML:`${esc(pc.cliente_nome)} ${pc.codigo_cliente?'['+pc.codigo_cliente+']':''} · ${pc.idade_inicio}-${pc.idade_fim} meses · Vendedor: ${esc(pc.vendedor_nome||'-')} · <span class="badge ${pc.status_contrato==='ativo'?'badge-green':pc.status_contrato==='finalizado'?'badge-primary':'badge-gray'}">${pc.status_contrato==='finalizado'?'✓ Finalizado':pc.status_contrato}</span>`})
+),h('div',{className:'page-header-actions'},
+  iconBtn('btn btn-outline btn-sm',null,'✏️ Editar Plano',()=>modalEditarPlano(pc))
 )));
 // Progress bar
 const dosesApp=(pc.doses||[]).filter(d=>d.status==='aplicada').length;

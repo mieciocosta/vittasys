@@ -8,12 +8,13 @@ async function renderAprovacoes(){
       h('p',{className:'page-subtitle'},'Movimentações sensíveis pendentes de aprovação master'))));
 
     const data=await Api.movimentacoesPendentes()||[];
+    const planAlts=await Api.alteracoesPendentes()||[];
 
-    if(!data.length){
+    if(!data.length&&!planAlts.length){
       wrap.appendChild(h('div',{className:'empty-state',style:{padding:'60px 20px',textAlign:'center'}},
         h('div',{style:{fontSize:'48px',marginBottom:'16px'}},'✅'),
         h('div',{style:{fontSize:'18px',fontWeight:'700',color:'var(--text-2)'}},'Nenhuma aprovação pendente'),
-        h('div',{style:{fontSize:'13px',color:'var(--text-3)',marginTop:'8px'}},'Todas as movimentações sensíveis estão resolvidas')));
+        h('div',{style:{fontSize:'13px',color:'var(--text-3)',marginTop:'8px'}},'Todas as movimentações e alterações estão resolvidas')));
       return;
     }
 
@@ -73,6 +74,46 @@ async function renderAprovacoes(){
 
       wrap.appendChild(card);
     });
+
+    // ═══ ALTERAÇÕES DE PLANO PENDENTES ═══
+    if(planAlts.length){
+      wrap.appendChild(h('div',{style:'margin-top:24px;margin-bottom:12px'},
+        h('h2',{style:'font-size:16px;font-weight:700;color:var(--navy)'},'📋 Alterações de Plano Pendentes ('+planAlts.length+')')));
+      planAlts.forEach(pa=>{
+        const card2=h('div',{style:'background:var(--card-bg);border-radius:12px;padding:20px;margin-bottom:12px;border:1px solid var(--border);border-left:4px solid #8b5cf6'});
+        card2.appendChild(h('div',{style:'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'},
+          h('div',null,
+            h('span',{style:'font-weight:700;font-size:14px'},esc(pa.cliente)+' '),
+            h('span',{className:'mono',style:'color:var(--text-3)'},esc(pa.codigo||'')),
+            h('span',{style:'margin-left:8px;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;color:white;background:#8b5cf6'},'ALTERAÇÃO PLANO')),
+          h('div',{style:'font-size:11px;color:var(--text-3)'},'Solicitado por: '+esc(pa.solicitante||'-')+' — '+fmtDataHora(pa.data))
+        ));
+        // Show changes
+        const changes=pa.alteracoes||{};
+        const grid2=h('div',{style:'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px'});
+        const fieldMap={nomePlano:'Nome',valorBruto:'Valor Bruto',percentualDesconto:'Desconto %',valorFinal:'Valor Final',statusContrato:'Status',formaPagamento:'Pagamento',valorCusto:'Custo'};
+        Object.entries(changes).forEach(([k,v])=>{
+          const label=fieldMap[k]||k;
+          const d=h('div',{style:'padding:8px;background:#f5f3ff;border-radius:6px'});
+          d.appendChild(h('div',{style:'font-size:9px;color:#7c3aed;font-weight:600;text-transform:uppercase'},label));
+          d.appendChild(h('div',{style:'font-size:13px;font-weight:600;margin-top:2px'},typeof v==='number'?fmtMoeda(v):String(v)));
+          grid2.appendChild(d)});
+        card2.appendChild(grid2);
+        // Actions
+        const acts2=h('div',{style:'display:flex;gap:10px'});
+        acts2.appendChild(h('button',{className:'btn btn-primary',style:'flex:1;padding:10px;font-size:13px',onClick:async()=>{
+          const r=await Api.aprovarAlteracaoPlano(pa.plano_id,{audit_id:pa.audit_id,aprovado:true,_caller_nome:AppState.usuario?.nome});
+          if(r?.success){Toast.show(r.message);draw()}else Toast.show(r?.error||'Erro','error')
+        }},'✓ Aprovar'));
+        acts2.appendChild(h('button',{className:'btn btn-red',style:'flex:1;padding:10px;font-size:13px',onClick:async()=>{
+          const motivo=prompt('Motivo da rejeição:');if(!motivo)return;
+          const r=await Api.aprovarAlteracaoPlano(pa.plano_id,{audit_id:pa.audit_id,aprovado:false,motivo,_caller_nome:AppState.usuario?.nome});
+          if(r?.success){Toast.show(r.message);draw()}else Toast.show(r?.error||'Erro','error')
+        }},'✗ Rejeitar'));
+        card2.appendChild(acts2);
+        wrap.appendChild(card2);
+      });
+    }
   }
 
   function modalAprovar(m){showModal(`Aprovar ${m.tipo} #${m.id}`,async(body,close)=>{
