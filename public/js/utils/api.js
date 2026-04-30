@@ -55,6 +55,9 @@ const Api={
   },
 
   planosTemplates(){return this.get('/planos/templates')},
+  criarTemplate(b){return this.post('/planos/templates',b)},
+  editarTemplate(id,b){return this.put(`/planos/templates/${id}`,b)},
+  excluirTemplate(id){return this.delete(`/planos/templates/${id}`)},
   planos(p){return this.get('/planos',p)},
   plano(id){return this.get(`/planos/${id}`)},
   criarPlano(b){return this.post('/planos',b)},

@@ -5,6 +5,59 @@ r.get('/templates',async(req,res,next)=>{try{
   res.json(planos.map(p=>({...p,idade_inicio:p.idadeInicio,idade_fim:p.idadeFim,valor_tabela:p.valorTabela,valor_avista:p.valorAvista,valor_cartao:p.valorCartao,parcelas:p.parcelas,desc_pagamento:p.descPagamento,vacinas:p.vacinas.map(v=>({...v,vacina_nome:v.vacina.nome,vacina_codigo:v.vacina.codigo}))})));
 }catch(e){next(e)}});
 
+// ═══ CRIAR TEMPLATE DE PLANO ═══
+r.post('/templates',async(req,res,next)=>{try{
+  const b=req.body;
+  if(!b.nome)return res.status(400).json({error:'Nome do plano obrigatório'});
+  const p=await prisma.plano.create({data:{
+    nome:b.nome,descricao:b.descricao||null,
+    idadeInicio:+(b.idade_inicio||0),idadeFim:+(b.idade_fim||18),
+    tipoPlano:b.tipo_plano||'padrao',validadeMeses:+(b.validade_meses||18),
+    valorTabela:+(b.valor_tabela||0),valorAvista:b.valor_avista?+b.valor_avista:null,
+    valorCartao:b.valor_cartao?+b.valor_cartao:null,parcelas:b.parcelas?+b.parcelas:1,
+    descPagamento:b.desc_pagamento||null,status:'ativo'
+  }});
+  // Add vaccines
+  if(b.vacinas?.length){
+    for(const v of b.vacinas){
+      await prisma.planoVacina.create({data:{planoId:p.id,vacinaId:+v.vacina_id,doses:+(v.doses||1),
+        mesPrevInicio:+(v.mes_inicio||0),mesPrevFim:+(v.mes_fim||18)}});
+    }
+  }
+  res.json({success:true,id:p.id});
+}catch(e){next(e)}});
+
+// ═══ EDITAR TEMPLATE ═══
+r.put('/templates/:id',async(req,res,next)=>{try{
+  const b=req.body;const id=+req.params.id;
+  const data={};
+  if(b.nome)data.nome=b.nome;
+  if(b.descricao!==undefined)data.descricao=b.descricao;
+  if(b.idade_inicio!=null)data.idadeInicio=+b.idade_inicio;
+  if(b.idade_fim!=null)data.idadeFim=+b.idade_fim;
+  if(b.valor_tabela!=null)data.valorTabela=+b.valor_tabela;
+  if(b.valor_avista!=null)data.valorAvista=+b.valor_avista;
+  if(b.valor_cartao!=null)data.valorCartao=+b.valor_cartao;
+  if(b.parcelas!=null)data.parcelas=+b.parcelas;
+  if(b.desc_pagamento!==undefined)data.descPagamento=b.desc_pagamento;
+  await prisma.plano.update({where:{id},data});
+  // Update vaccines if provided
+  if(b.vacinas){
+    await prisma.planoVacina.deleteMany({where:{planoId:id}});
+    for(const v of b.vacinas){
+      await prisma.planoVacina.create({data:{planoId:id,vacinaId:+v.vacina_id,doses:+(v.doses||1),
+        mesPrevInicio:+(v.mes_inicio||0),mesPrevFim:+(v.mes_fim||18)}});
+    }
+  }
+  res.json({success:true});
+}catch(e){next(e)}});
+
+// ═══ EXCLUIR TEMPLATE ═══
+r.delete('/templates/:id',async(req,res,next)=>{try{
+  await prisma.plano.update({where:{id:+req.params.id},data:{status:'inativo'}});
+  res.json({success:true});
+}catch(e){next(e)}});
+
 r.get('/stats/resumo',async(req,res,next)=>{try{
   const[tc,dp,da,vt]=await Promise.all([
     prisma.planoContratado.count({where:{statusContrato:'ativo'}}),
@@ -80,13 +133,17 @@ r.post('/',async(req,res,next)=>{try{const b=req.body;
   const cliente=await prisma.cliente.findUnique({where:{id:+b.cliente_id},select:{id:true,tipoCliente:true,codigoCliente:true}});
   if(cliente&&cliente.tipoCliente==='espontaneo'){
     const updateData={tipoCliente:'ativo'};
-    // Generate VIT-XXX code if doesn't have one
+    // Generate unique VIT-XXX code with retry
     if(!cliente.codigoCliente||cliente.codigoCliente.startsWith('ESP-')){
-      const last=await prisma.cliente.findFirst({where:{codigoCliente:{startsWith:'VIT-'}},orderBy:{id:'desc'}});
-      const n=last?parseInt(last.codigoCliente.replace('VIT-',''))+1:1;
-      updateData.codigoCliente=`VIT-${String(n).padStart(3,'0')}`;
+      for(let attempt=0;attempt<5;attempt++){
+        const last=await prisma.cliente.findFirst({where:{codigoCliente:{startsWith:'VIT-'}},orderBy:{codigoCliente:'desc'}});
+        const n=last?parseInt(last.codigoCliente.replace('VIT-',''))+1+attempt:1;
+        const code=`VIT-${String(n).padStart(3,'0')}`;
+        const exists=await prisma.cliente.findFirst({where:{codigoCliente:code}});
+        if(!exists){updateData.codigoCliente=code;break}
+      }
     }
-    await prisma.cliente.update({where:{id:+b.cliente_id},data:updateData});
+    try{await prisma.cliente.update({where:{id:+b.cliente_id},data:updateData})}catch(e){console.log('Aviso: erro ao promover cliente para ativo:',e.message)}
   }
 
   // Auto-create doses from template
@@ -102,7 +159,13 @@ r.post('/',async(req,res,next)=>{try{const b=req.body;
   const resp={success:true,id:p.id,doses_criadas:dosesCreated};
   if(alertas.length>0)resp.alertas_estoque=alertas;
   res.json(resp);
-}catch(e){next(e)}});
+}catch(e){
+  if(e.code==='P2002'){
+    const field=e.meta?.target||[];
+    if(String(field).includes('codigo_cliente'))return res.status(409).json({error:'Erro ao gerar código do cliente. Tente novamente.'});
+    return res.status(409).json({error:'Verifique se este plano já foi criado para este cliente.'});
+  }
+  next(e)}});
 module.exports=r;
 
 // ═══ DELETE PLANO CONTRATADO ═══

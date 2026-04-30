@@ -2,7 +2,9 @@ async function renderPlanos(){let f={page:1,limit:50,search:'',status_contrato:'
 async function draw(){wrap.innerHTML='';
 const hdr=h('div',{className:'page-header'});
 hdr.appendChild(h('div',{className:'page-header-left'},h('h1',{className:'page-title'},'Planos Vacinais'),h('p',{className:'page-subtitle'},'Contratos, projeção mensal e doses')));
-hdr.appendChild(h('div',{className:'page-header-actions'},iconBtn('btn btn-primary btn-sm',I.plus,'Novo Plano',()=>modalNovoPlano())));
+hdr.appendChild(h('div',{className:'page-header-actions'},
+  AppState.isMaster()?iconBtn('btn btn-outline btn-sm',null,'⚙ Modelos',()=>modalTemplates()):null,
+  iconBtn('btn btn-primary btn-sm',I.plus,'Novo Plano',()=>modalNovoPlano())));
 wrap.appendChild(hdr);
 const stats=await Api.planosStats();
 if(stats){const sr=h('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'12px',marginBottom:'24px'}});
@@ -136,6 +138,88 @@ function modalNovoPlano(){showModal('Novo Plano Vacinal',async(body,close)=>{
   },{style:{marginTop:'20px'}}));
 
 },'640px')}
+
+// ═══ GERENCIAR MODELOS DE PLANO ═══
+function modalTemplates(){showModal('⚙ Modelos de Plano Vacinal',async(body,close)=>{
+  async function listTemplates(){
+    body.innerHTML='';
+    const tpls=await Api.planosTemplates()||[];
+    if(!tpls.length){body.appendChild(h('div',{style:'text-align:center;padding:20px;color:var(--text-3)'},'Nenhum modelo cadastrado'));
+    }else{
+      tpls.forEach(t=>{
+        const row=h('div',{style:'display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #f1f5f9'});
+        const info=h('div',{style:'flex:1'});
+        info.innerHTML=`<div style="font-weight:700;font-size:13px">${esc(t.nome)}</div>
+          <div style="font-size:11px;color:var(--text-3)">${t.idade_inicio}-${t.idade_fim} meses · ${(t.vacinas||[]).length} vacinas · <span style="color:#059669;font-weight:600">${fmtMoeda(t.valor_avista||t.valor_tabela)}</span> à vista${t.valor_cartao?' · '+fmtMoeda(t.valor_cartao)+' cartão':''}</div>`;
+        row.appendChild(info);
+        row.appendChild(h('button',{style:'border:none;background:var(--bg-subtle);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px',onClick:()=>editTemplate(t)},'✏️'));
+        if(AppState.isMaster()){row.appendChild(h('button',{style:'border:none;background:#dc262610;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px',onClick:async()=>{
+          if(!confirm('Desativar modelo "'+t.nome+'"?'))return;
+          await Api.excluirTemplate(t.id);Toast.show('Modelo desativado');listTemplates()
+        }},'🗑'))}
+        body.appendChild(row);
+      });
+    }
+    body.appendChild(h('button',{className:'btn btn-primary btn-block',style:'margin-top:14px',onClick:()=>editTemplate(null)},'+ Novo Modelo de Plano'));
+  }
+  async function editTemplate(t){
+    body.innerHTML='';
+    const vacs=await Api.vacinas()||[];
+    const fd={nome:t?.nome||'',descricao:t?.descricao||'',idade_inicio:t?.idade_inicio||0,idade_fim:t?.idade_fim||18,
+      valor_tabela:t?.valor_tabela||0,valor_avista:t?.valor_avista||0,valor_cartao:t?.valor_cartao||0,
+      parcelas:t?.parcelas||1,desc_pagamento:t?.desc_pagamento||'',
+      vacinas:(t?.vacinas||[]).map(v=>({vacina_id:v.vacinaId||v.vacina_id,doses:v.doses,mes_inicio:v.mesPrevInicio||v.mes_inicio||0,mes_fim:v.mesPrevFim||v.mes_fim||18,nome:v.vacina_nome||v.vacina?.nome||''}))};
+    body.appendChild(h('label',{className:'label',style:'font-size:13px'},'📋 NOME DO PLANO *'));
+    const ni=h('input',{className:'input',style:'font-size:14px;padding:10px;margin-bottom:14px',value:fd.nome,placeholder:'Ex: Plano Vacinal 0 a 6 meses'});
+    ni.addEventListener('input',e=>{fd.nome=e.target.value});body.appendChild(ni);
+    const gr=h('div',{className:'form-grid',style:'margin-bottom:14px'});
+    [['idade_inicio','IDADE INÍCIO (meses)','number'],['idade_fim','IDADE FIM (meses)','number'],
+     ['valor_avista','VALOR À VISTA R$','number'],['valor_cartao','VALOR CARTÃO R$','number'],
+     ['parcelas','PARCELAS','number'],['desc_pagamento','DESC. PAGAMENTO','text']].forEach(([k,l,type])=>{
+      const d=h('div');d.appendChild(h('label',{className:'label'},l));
+      const inp=h('input',{className:'input',type:type,value:fd[k]||'',placeholder:'0'});
+      inp.addEventListener('input',e=>{fd[k]=type==='number'?parseFloat(e.target.value)||0:e.target.value});
+      d.appendChild(inp);gr.appendChild(d)});
+    body.appendChild(gr);
+    // Vaccines selection
+    body.appendChild(h('label',{className:'label',style:'font-size:13px'},'💉 VACINAS DO PLANO'));
+    const vacList=h('div',{style:'margin-bottom:14px'});
+    function renderVacs(){
+      vacList.innerHTML='';
+      fd.vacinas.forEach((v,i)=>{
+        const row=h('div',{style:'display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f1f5f9'});
+        row.appendChild(h('span',{style:'flex:1;font-size:12px;font-weight:600'},esc(v.nome||'Vacina #'+(i+1))));
+        row.appendChild(h('span',{style:'font-size:11px;color:var(--text-3)'},v.doses+' dose(s)'));
+        row.appendChild(h('button',{style:'border:none;background:#dc262610;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px',onClick:()=>{fd.vacinas.splice(i,1);renderVacs()}},'✗'));
+        vacList.appendChild(row)});
+    }
+    renderVacs();body.appendChild(vacList);
+    // Add vaccine
+    const addRow=h('div',{style:'display:flex;gap:6px;margin-bottom:14px;align-items:end'});
+    const avd=h('div',{style:'flex:1'});avd.appendChild(h('label',{className:'label'},'Vacina'));
+    const avSel=buildSelect([['','— Selecione —'],...vacs.map(v=>[v.id,v.nome])],'',()=>{});avd.appendChild(avSel);addRow.appendChild(avd);
+    const add=h('div',{style:'width:70px'});add.appendChild(h('label',{className:'label'},'Doses'));
+    const adInp=h('input',{className:'input',type:'number',value:'1',min:'1',style:'text-align:center'});add.appendChild(adInp);addRow.appendChild(add);
+    addRow.appendChild(h('button',{className:'btn btn-outline btn-sm',style:'height:38px;margin-bottom:0',onClick:()=>{
+      const vid=avSel.value;if(!vid)return Toast.show('Selecione uma vacina','error');
+      const vac=vacs.find(v=>v.id==vid);
+      fd.vacinas.push({vacina_id:+vid,doses:parseInt(adInp.value)||1,mes_inicio:0,mes_fim:18,nome:vac?.nome||''});
+      avSel.value='';adInp.value='1';renderVacs()
+    }},'+'));
+    body.appendChild(addRow);
+    // Buttons
+    const btns=h('div',{style:'display:flex;gap:8px'});
+    btns.appendChild(h('button',{className:'btn btn-primary',style:'flex:1;padding:12px;font-size:13px',onClick:async()=>{
+      if(!fd.nome)return Toast.show('Nome obrigatório','error');
+      fd.valor_tabela=fd.valor_avista||fd.valor_cartao||0;
+      const r=t?await Api.editarTemplate(t.id,fd):await Api.criarTemplate(fd);
+      if(r?.success){Toast.show(t?'Modelo atualizado!':'Modelo criado!');listTemplates()}else Toast.show(r?.error||'Erro','error');
+    }},t?'💾 Salvar':'+ Criar Modelo'));
+    btns.appendChild(h('button',{className:'btn btn-outline',style:'flex:1;padding:12px;font-size:13px',onClick:()=>listTemplates()},'← Voltar'));
+    body.appendChild(btns);
+  }
+  await listTemplates();
+},'600px')}
 
 await draw();return wrap;}
 
