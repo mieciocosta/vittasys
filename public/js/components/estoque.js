@@ -365,7 +365,15 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
     const gr=h('div',{className:'form-grid'});
     // Vacina dropdown — existing + standard names
     const d1=h('div');d1.appendChild(h('label',{className:'label'},'VACINA *'));
-    d1.appendChild(buildVacSelect(vacs,'',(vid,v)=>{fd.vacina_id=vid;const m=vacs.find(x=>x.id==vid);if(m){fd.fabricante=m.fabricante;rebuildForm()}},'Buscar vacina pelo nome...'));
+    d1.appendChild(buildVacSelect(vacs,'',(vid,v)=>{
+      if(String(vid).startsWith('new:')){
+        // Vaccine not in DB yet — store name to create on save
+        fd.vacina_id=null;fd._nova_vacina=v.nome;
+      }else{
+        fd.vacina_id=+vid;fd._nova_vacina=null;
+      }
+      const m=vacs.find(x=>x.id==vid);if(m){fd.fabricante=m.fabricante;rebuildForm()}
+    },'Buscar vacina pelo nome...'));
     gr.appendChild(d1);
     // Nº Lote
     const d2=h('div');d2.appendChild(h('label',{className:'label'},'Nº LOTE *'));
@@ -399,6 +407,13 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
 
   body.appendChild(h('div',{style:'margin-top:12px;padding:10px;background:var(--primary-bg);border-radius:8px;font-size:12px;color:var(--primary-dark)'},'ℹ️ Unidades com código de barras serão geradas automaticamente'));
   body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'✓ Cadastrar Lote',async()=>{
+    // Auto-create vaccine if it's new
+    if(!fd.vacina_id&&fd._nova_vacina){
+      const code=fd._nova_vacina.replace(/[^A-Za-z0-9]/g,'').slice(0,10).toUpperCase();
+      const rv=await Api.criarVacina({codigo:code,nome:fd._nova_vacina,fabricante:fd.fabricante||'',categoria:'Premium'});
+      if(rv?.success||rv?.id){fd.vacina_id=rv.id||rv.vacina?.id}
+      else{Toast.show('Erro ao criar vacina: '+(rv?.error||''),'error');return}
+    }
     if(!fd.vacina_id||!fd.numero_lote||!fd.quantidade_total||!fd.validade)return Toast.show('Preencha campos obrigatórios','error');
     fd.usuario_id=AppState.usuario?.id;
     const r=await Api.criarLote(fd);if(r?.success){Toast.show('Lote criado com '+r.unidades_criadas+' unidades!');close();draw()}else Toast.show(r?.error||'Erro','error');
