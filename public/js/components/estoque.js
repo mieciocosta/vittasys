@@ -348,7 +348,7 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
     const r=await Api.buscarPorBarcode(code);
     if(r&&r.found){
       const v=r.vacina;const l=r.lote;
-      fd.vacina_id=v.id;fd.fabricante=v.fabricante;
+      fd.vacina_id=v.id;fd.fabricante=v.fabricante;fd._vac_nome=v.nome;
       if(l){fd.numero_lote=l.numeroLote||l.numero_lote;if(l.validade)fd.validade=String(l.validade).slice(0,7)}
       Toast.show('Código encontrado: '+v.nome);rebuildForm();
     }
@@ -365,14 +365,14 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
     const gr=h('div',{className:'form-grid'});
     // Vacina dropdown — existing + standard names
     const d1=h('div');d1.appendChild(h('label',{className:'label'},'VACINA *'));
-    d1.appendChild(buildVacSelect(vacs,'',(vid,v)=>{
+    d1.appendChild(buildVacSelect(vacs,fd._vac_nome||'',(vid,v)=>{
+      fd._vac_nome=v.nome;
       if(String(vid).startsWith('new:')){
-        // Vaccine not in DB yet — store name to create on save
         fd.vacina_id=null;fd._nova_vacina=v.nome;
       }else{
         fd.vacina_id=+vid;fd._nova_vacina=null;
       }
-      const m=vacs.find(x=>x.id==vid);if(m){fd.fabricante=m.fabricante;rebuildForm()}
+      const m=vacs.find(x=>x.id==vid);if(m){fd.fabricante=m.fabricante}rebuildForm()
     },'Buscar vacina pelo nome...'));
     gr.appendChild(d1);
     // Nº Lote
