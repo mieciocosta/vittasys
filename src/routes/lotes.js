@@ -37,7 +37,9 @@ r.get('/',async(req,res,next)=>{try{
 
   const[data,total]=await Promise.all([
     prisma.lote.findMany({where,orderBy,skip:(+page-1)*+limit,take:+limit,
-      include:{vacina:{select:{id:true,nome:true,codigo:true,viaAdministracao:true}},_count:{select:{unidades:true}}}}),
+      include:{vacina:{select:{id:true,nome:true,codigo:true,viaAdministracao:true}},
+        unidades:{take:1,select:{codigoBarras:true}},
+        _count:{select:{unidades:true}}}}),
     prisma.lote.count({where})
   ]);
 
@@ -69,6 +71,7 @@ r.get('/',async(req,res,next)=>{try{
       unidades_total:l._count.unidades,
       unidades_disponiveis:ucMap[l.id]||0,
       criado_em:l.criadoEm,
+      codigo_barras:l.unidades?.[0]?.codigoBarras||'',
     };
   });
 
@@ -249,8 +252,11 @@ r.put('/:id',async(req,res,next)=>{try{
   if(b.local_armazenamento)data.localArmazenamento=b.local_armazenamento;
   if(b.valor_unitario_custo!=null)data.valorUnitarioCusto=+b.valor_unitario_custo;
   if(b.status)data.status=b.status;
-  if(!Object.keys(data).length)return res.json({success:true});
-  await prisma.lote.update({where:{id},data});
+  if(Object.keys(data).length)await prisma.lote.update({where:{id},data});
+  // Update barcode on ALL units of this lote
+  if(b.codigo_barras!=null){
+    await prisma.unidade.updateMany({where:{loteId:id},data:{codigoBarras:b.codigo_barras.trim()}});
+  }
   res.json({success:true});
 }catch(e){next(e)}});
 

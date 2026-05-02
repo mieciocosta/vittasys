@@ -55,10 +55,19 @@ async function draw(){wrap.innerHTML='';
       actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'✏️',async e=>{
         e.stopPropagation();
         showModal(`Editar Lote #${l.id} — ${esc(l.vacina_nome)}`,async(body,close)=>{
-          const fd={numero_lote:l.numero_lote,fabricante:l.fabricante,local_armazenamento:l.local_armazenamento,valor_unitario_custo:l.valor_unitario_custo||0,status:l.status};
+          const fd={numero_lote:l.numero_lote,fabricante:l.fabricante,local_armazenamento:l.local_armazenamento,valor_unitario_custo:l.valor_unitario_custo||0,status:l.status,codigo_barras:l.codigo_barras||''};
           // Read-only info
           body.appendChild(h('div',{style:{padding:'10px 12px',background:'var(--bg-subtle)',borderRadius:'8px',marginBottom:'16px',fontSize:'12px',color:'var(--text-3)'}},
             `Vacina: ${esc(l.vacina_nome)} · Validade: ${fmtData(l.validade)} · Estoque: ${l.quantidade_disponivel}/${l.quantidade_total}`));
+          // Barcode scanner (master only)
+          if(AppState.isMaster()){
+            const bSec=h('div',{style:'margin-bottom:16px;padding:12px;background:var(--primary-bg);border-radius:10px;border:2px solid var(--primary)'});
+            bSec.appendChild(h('div',{className:'label',style:'color:var(--primary-dark);font-size:11px'},'📦 CÓDIGO DE BARRAS (bipe ou digite)'));
+            const bInp=h('input',{className:'scanner-input',value:fd.codigo_barras,placeholder:'Bipe o código de barras...',style:'font-size:16px;padding:12px;font-family:var(--mono);letter-spacing:2px;text-align:center'});
+            bInp.addEventListener('input',e=>{fd.codigo_barras=e.target.value.trim()});
+            bSec.appendChild(bInp);
+            body.appendChild(bSec);
+          }
           const gr=h('div',{className:'form-grid'});
           [['numero_lote','Nº do Lote'],['fabricante','Fabricante'],['local_armazenamento','Local de Armazenamento']].forEach(([k,lab])=>{
             const d=h('div');d.appendChild(h('label',{className:'label'},lab));
