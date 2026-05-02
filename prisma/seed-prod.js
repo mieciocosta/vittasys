@@ -42,6 +42,14 @@ async function main() {
     { codigo: 'SCR', nome: 'Tríplice Viral (SCR)', fabricante: 'GSK', categoria: 'Calendário' },
     { codigo: 'VZ', nome: 'Varicela', fabricante: 'GSK', categoria: 'Calendário' },
     { codigo: 'HEP-A', nome: 'Hepatite A', fabricante: 'GSK', categoria: 'Calendário' },
+    { codigo: 'MMR', nome: 'Tríplice Viral SCR (M-M-R II)', fabricante: 'MSD', categoria: 'Calendário' },
+    { codigo: 'ABRYSVO', nome: 'VSR - Vírus Sincicial Respiratório (Abrysvo)', fabricante: 'Pfizer', categoria: 'Premium' },
+    { codigo: 'HPV4', nome: 'HPV Quadrivalente (Gardasil 4)', fabricante: 'MSD', categoria: 'Calendário' },
+    { codigo: 'HPV9', nome: 'HPV 9-valente (Gardasil 9)', fabricante: 'MSD', categoria: 'Premium' },
+    { codigo: 'DTPA', nome: 'dTpa Adulto (Boostrix)', fabricante: 'GSK', categoria: 'Calendário' },
+    { codigo: 'DENGUE', nome: 'Dengue (Qdenga)', fabricante: 'Takeda', categoria: 'Premium' },
+    { codigo: 'HZ', nome: 'Herpes Zóster (Shingrix)', fabricante: 'GSK', categoria: 'Premium' },
+    { codigo: 'PCV13', nome: 'Pneumocócica 13-valente (Prevenar 13)', fabricante: 'Pfizer', categoria: 'Premium' },
   ];
   const vacinaMap = {};
   for (const v of vacinas) {

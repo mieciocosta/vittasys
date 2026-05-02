@@ -73,32 +73,84 @@ const VACINAS_PADRAO=[
   'Hexaacelular (DTPa-VIP-Hib-HB) (Infanrix Hexa)',
   'Pentaacelular (DTPa-VIP-Hib) (Pentaxim)',
   'Rotavírus Pentavalente (RotaTeq)',
+  'Rotavírus (Rotarix)',
   'Pneumocócica 13-valente (Prevenar 13)',
   'Pneumocócica 15-valente (Vaxneuvance)',
   'Pneumocócica 20-valente (Prevenar 20)',
+  'Pneumocócica 23-valente (Pneumovax 23)',
   'Meningocócica B (Bexsero)',
   'Meningocócica ACWY (Nimenrix) - GSK',
   'Meningocócica ACWY (MenQuadfi) - Sanofi',
   'Meningocócica ACWY (Menveo) - GSK',
+  'Meningocócica C (Menjugate)',
   'Influenza Quadrivalente (Fluarix Tetra)',
   'Influenza Quadrivalente (FluQuadri)',
+  'Influenza Quadrivalente (Influvac Tetra)',
   'Febre Amarela (Stamaril)',
-  'Tríplice Viral SCR (Priorix)',
+  'Tríplice Viral SCR (Priorix) - GSK',
+  'Tríplice Viral SCR (M-M-R II) - MSD',
+  'Tetraviral SCRV (Priorix Tetra)',
   'Varicela (Varilrix)',
+  'Varicela (Varivax)',
   'Hepatite A (Havrix)',
   'Hepatite A (Vaqta)',
+  'Hepatite A+B (Twinrix)',
   'HPV Quadrivalente (Gardasil 4)',
   'HPV 9-valente (Gardasil 9)',
   'DTPa - Tríplice Acelular (Infanrix)',
+  'DTPa-VIP (Infanrix IPV)',
   'dTpa Adulto (Boostrix)',
   'dTpa Adulto (Adacel)',
+  'dTpa-VIP Adulto (Boostrix Polio)',
   'Poliomielite VIP (Imovax Polio)',
   'Raiva (Verorab)',
+  'Raiva (Imovax Raiva)',
   'Dengue (Qdenga)',
   'Herpes Zóster (Shingrix)',
+  'VSR - Vírus Sincicial Respiratório (Abrysvo) - Pfizer',
+  'VSR - Vírus Sincicial Respiratório (Arexvy) - GSK',
   'COVID-19 (Comirnaty) - Pfizer',
   'COVID-19 (Spikevax) - Moderna',
+  'Febre Tifóide (Typhim Vi)',
+  'Cólera (Dukoral)',
+  'Pneumocócica 10-valente (Synflorix)',
 ];
+
+// ═══ SEARCHABLE VACCINE SELECT COMPONENT ═══
+function buildVacSelect(vacinas, selectedValue, onChange, placeholder){
+  const wrap=h('div',{style:'position:relative'});
+  const input=h('input',{className:'input',style:'font-size:13px;padding:10px',
+    placeholder:placeholder||'Digite o nome da vacina...',value:selectedValue||''});
+  const list=h('div',{style:'position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-lg);z-index:100;display:none'});
+  
+  // Merge DB vaccines + standard names
+  const allNames=new Map();
+  (vacinas||[]).forEach(v=>{allNames.set(v.nome||v,{id:v.id||v,nome:v.nome||v,fabricante:v.fabricante||''})});
+  VACINAS_PADRAO.forEach(n=>{if(!allNames.has(n))allNames.set(n,{id:'new:'+n,nome:n,fabricante:''})});
+  
+  function filter(q){
+    list.innerHTML='';
+    const ql=q.toLowerCase();
+    const matches=[...allNames.values()].filter(v=>v.nome.toLowerCase().includes(ql)||v.fabricante?.toLowerCase().includes(ql));
+    if(!matches.length){list.innerHTML='<div style="padding:10px;color:var(--text-3);font-size:12px">Nenhuma vacina encontrada</div>';list.style.display='block';return}
+    matches.slice(0,15).forEach(v=>{
+      const opt=h('div',{style:'padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between',
+        onClick:()=>{input.value=v.nome;list.style.display='none';onChange(v.id,v)}});
+      opt.appendChild(h('span',{style:'font-weight:600'},esc(v.nome)));
+      if(v.fabricante)opt.appendChild(h('span',{style:'font-size:10px;color:var(--text-3)'},esc(v.fabricante)));
+      opt.addEventListener('mouseenter',()=>{opt.style.background='var(--primary-bg)'});
+      opt.addEventListener('mouseleave',()=>{opt.style.background=''});
+      list.appendChild(opt)});
+    list.style.display='block';
+  }
+  
+  input.addEventListener('focus',()=>{filter(input.value)});
+  input.addEventListener('input',()=>{filter(input.value)});
+  document.addEventListener('click',e=>{if(!wrap.contains(e.target))list.style.display='none'});
+  
+  wrap.appendChild(input);wrap.appendChild(list);
+  return wrap;
+}
 
 // ═══ CAMERA CAPTURE FOR CRITICAL AUDIT ACTIONS ═══
 // Shows camera feed in modal, captures photo, sends to backend

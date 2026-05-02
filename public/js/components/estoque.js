@@ -237,8 +237,7 @@ function modalCadastroBarras(){showModal('Cadastro por Código de Barras',async(
     // Vaccine SELECT — standard names + existing
     const d1=h('div');d1.appendChild(h('label',{className:'label',style:fd.nome_vacina?'color:var(--primary)':''},'NOME DA VACINA *'+(fd.nome_vacina?' ✓':'')));
     const selOpts=[['','— Selecione a vacina —'],...vacs.map(v=>[v.nome,v.nome])];
-    const exN=new Set(vacs.map(v=>v.nome));VACINAS_PADRAO.forEach(n=>{if(!exN.has(n))selOpts.push([n,n])});
-    d1.appendChild(buildSelect(selOpts,fd.nome_vacina||'',v=>{fd.nome_vacina=v;const match=vacs.find(x=>x.nome===v);if(match){fd.fabricante=match.fabricante;fd.codigo_vacina=match.codigo;fillForm()}}));
+    d1.appendChild(buildVacSelect(vacs,fd.nome_vacina||'',(_id,v)=>{fd.nome_vacina=v.nome;const match=vacs.find(x=>x.nome===v.nome);if(match){fd.fabricante=match.fabricante;fd.codigo_vacina=match.codigo;fillForm()}},'Buscar vacina pelo nome...'));
     gr.appendChild(d1);
     // Fabricante dropdown
     const d2=h('div');d2.appendChild(h('label',{className:'label',style:fd.fabricante?'color:var(--primary)':''},'Fabricante *'+(fd.fabricante?' ✓':'')));
@@ -308,9 +307,7 @@ function modalNovaVacina(){showModal('Cadastrar Nova Vacina',async(body,close)=>
   ic.addEventListener('input',e=>{fd.codigo=e.target.value});dc.appendChild(ic);gr.appendChild(dc);
   // Nome — dropdown
   const dn=h('div');dn.appendChild(h('label',{className:'label'},'NOME *'));
-  const nOpts=[['','— Selecione —'],...vacs.map(v=>[v.nome,v.nome])];
-  const exN2=new Set(vacs.map(v=>v.nome));VACINAS_PADRAO.forEach(n=>{if(!exN2.has(n))nOpts.push([n,n])});
-  dn.appendChild(buildSelect(nOpts,'',v=>{fd.nome=v;const m=vacs.find(x=>x.nome===v);if(m){fd.fabricante=m.fabricante;ic.value=m.codigo;fd.codigo=m.codigo;rebuildFab()}}));
+  dn.appendChild(buildVacSelect(vacs,'',(_id,v)=>{fd.nome=v.nome;const m=vacs.find(x=>x.nome===v.nome);if(m){fd.fabricante=m.fabricante;ic.value=m.codigo;fd.codigo=m.codigo;rebuildFab()}},'Buscar vacina pelo nome...'));
   gr.appendChild(dn);
   // Fabricante
   const df=h('div');df.appendChild(h('label',{className:'label'},'FABRICANTE *'));
@@ -368,10 +365,7 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
     const gr=h('div',{className:'form-grid'});
     // Vacina dropdown — existing + standard names
     const d1=h('div');d1.appendChild(h('label',{className:'label'},'VACINA *'));
-    const vOpts=[['','— Selecione —'],...vacs.map(v=>[v.id,v.nome])];
-    const exN=new Set(vacs.map(v=>v.nome));
-    VACINAS_PADRAO.forEach(n=>{if(!exN.has(n))vOpts.push(['new:'+n,n+' (nova)'])});
-    d1.appendChild(buildSelect(vOpts,fd.vacina_id||'',v=>{fd.vacina_id=v;const m=vacs.find(x=>x.id==v);if(m){fd.fabricante=m.fabricante;rebuildForm()}}));
+    d1.appendChild(buildVacSelect(vacs,'',(vid,v)=>{fd.vacina_id=vid;const m=vacs.find(x=>x.id==vid);if(m){fd.fabricante=m.fabricante;rebuildForm()}},'Buscar vacina pelo nome...'));
     gr.appendChild(d1);
     // Nº Lote
     const d2=h('div');d2.appendChild(h('label',{className:'label'},'Nº LOTE *'));
