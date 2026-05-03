@@ -31,10 +31,10 @@ async function reportEstoque(){
       h('div',{style:'font-size:20px;font-weight:800;color:'+x[3]},String(x[1])),h('div',{style:'font-size:10px;color:var(--text-3)'},x[2])))});
   content.appendChild(kpis);
   // Simple grid — vaccine name + qty
-  const tbl=h('div',{style:'border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:18px'});
+  const tbl=h('div',{style:'border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:18px;max-width:500px'});
   data.vacinas.forEach(function(v,i){
     var clr=v.totalDoses<=0?'#dc2626':v.totalDoses<=5?'#f97316':'var(--navy)';
-    var row=h('div',{style:'display:flex;justify-content:space-between;align-items:center;padding:8px 14px;max-width:500px;border-bottom:1px solid #f1f5f9;'+(i%2?'background:#f8fffe':'')});
+    var row=h('div',{style:'display:flex;justify-content:space-between;align-items:center;padding:8px 14px;max-width:480px;margin:0 auto;border-bottom:1px solid #f1f5f9;'+(i%2?'background:#f8fffe':'')});
     row.appendChild(h('span',{style:'font-weight:600;font-size:13px'},esc(v.nome)));
     row.appendChild(h('span',{style:'font-size:18px;font-weight:800;color:'+clr+';min-width:40px;text-align:right'},String(v.totalDoses).padStart(2,'0')));
     tbl.appendChild(row)});
@@ -77,7 +77,7 @@ function exportPDF(data){
   s+='.kpi{text-align:center}.kpi .val{font-size:22px;font-weight:800}.kpi .lbl{font-size:8px;color:#64748b;text-transform:uppercase}';
   s+='.body{padding:10px 20px}';
   s+='.stitle{font-size:11px;font-weight:800;color:#1B4965;margin:10px 0 4px;padding-bottom:3px;border-bottom:2px solid #2BBCB3}';
-  s+='.vrow{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;max-width:420px;margin:0 auto;border-bottom:1px solid #e2e8f0;font-size:12px}';
+  s+='.vrow{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #e2e8f0;font-size:12px}';
   s+='.vrow:nth-child(even){background:#f8fffe}';
   s+='.vrow .nm{font-weight:600}.vrow .qt{font-size:16px;font-weight:800;min-width:35px;text-align:right}';
   s+='.zero{color:#dc2626}.low{color:#f97316}.ok{color:#1B4965}';
@@ -102,7 +102,7 @@ function exportPDF(data){
   s+='<div class="kpi"><div class="val">'+r.total_lotes+'</div><div class="lbl">Lotes</div></div></div>';
   s+='<div class="body">';
   s+='<div class="stitle">RESUMO POR VACINA</div>';
-  s+='<div style="border:2px solid #1B4965;border-radius:6px;overflow:hidden">';
+  s+='<div style="border:2px solid #1B4965;border-radius:6px;max-width:500px;margin:0 auto;overflow:hidden">';
   data.vacinas.forEach(function(v){
     var cls=v.totalDoses<=0?'zero':v.totalDoses<=5?'low':'ok';
     s+='<div class="vrow"><span class="nm">'+v.nome+'</span><span class="qt '+cls+'">'+String(v.totalDoses).padStart(2,'0')+'</span></div>';
