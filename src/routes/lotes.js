@@ -73,7 +73,8 @@ r.get('/',async(req,res,next)=>{try{
       criado_em:l.criadoEm,
       codigo_barras:l.unidades?.[0]?.codigoBarras||'',
       doses_por_unidade:l.dosesPorUnidade||1,
-      total_doses:(l.quantidadeDisponivel)*(l.dosesPorUnidade||1),
+      doses_abertas:l.dosesAbertas||0,
+      total_doses:(l.quantidadeDisponivel)*(l.dosesPorUnidade||1)-(l.dosesAbertas||0),
     };
   });
 
@@ -212,7 +213,8 @@ r.get('/:id',async(req,res,next)=>{try{
     quantidade_total:l.quantidadeTotal,quantidade_disponivel:l.quantidadeDisponivel,
     quantidade_aplicada:l.quantidadeAplicada,
     doses_por_unidade:l.dosesPorUnidade||1,
-    total_doses:l.quantidadeDisponivel*(l.dosesPorUnidade||1),
+    doses_abertas:l.dosesAbertas||0,
+    total_doses:l.quantidadeDisponivel*(l.dosesPorUnidade||1)-(l.dosesAbertas||0),
     validade:l.validade,dias_para_vencer:Math.ceil((l.validade-now)/864e5),
     local_armazenamento:l.localArmazenamento,valor_unitario_custo:l.valorUnitarioCusto,
     status:l.status,criado_em:l.criadoEm,

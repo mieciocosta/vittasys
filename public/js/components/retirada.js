@@ -45,7 +45,7 @@ async function renderRetirada(){
     sc.appendChild(h('div',{className:'scanner-top'},ib,h('div',null,
       h('div',{className:'scanner-title'},etapa==='scan'?'Aguardando Leitura':'Vacina Selecionada ✓'),
       h('div',{className:'scanner-desc'},etapa==='scan'?'Bipe ou busque por lote/vacina':
-        unidadeSel?`${unidadeSel.vacina_nome} — Lote ${unidadeSel.numero_lote} — ${unidadeSel.quantidade_disponivel} doses`:'-'))));
+        unidadeSel?`${unidadeSel.vacina_nome} — Lote ${unidadeSel.numero_lote} — ${unidadeSel._doses_total} doses`:'-'))));
     // Input
     const iw=h('div',{className:'scanner-input-wrap'});
     iw.appendChild(h('div',{className:'scanner-input-icon',innerHTML:I.search}));
@@ -100,7 +100,7 @@ async function renderRetirada(){
       [['Vacina',unidadeSel.vacina_nome,'fw-600'],['Lote',unidadeSel.numero_lote,'mono'],
        ['Cód. Barras',unidadeSel.codigo_barras,'mono'],
        ['Validade',`${fmtData(unidadeSel.validade)} (${st.label})`],
-       ['Estoque',`${unidadeSel.quantidade_disponivel} doses disponíveis`,'fw-600']
+       ['Estoque',`${unidadeSel._doses_total} doses disponíveis`,'fw-600']
       ].forEach(([l,v,cls])=>{
         const d=h('div',{className:'vac-detail-item'});d.appendChild(h('label',null,l));
         d.appendChild(h('span',{className:cls||''},v));ig.appendChild(d)});
@@ -187,13 +187,13 @@ async function renderRetirada(){
       const cf=h('div',{className:'confirm-banner slide-up'});
       cf.appendChild(iconBtn('btn btn-outline btn-sm',I.chevL,'Voltar',()=>{etapa='aplicador';draw()}));
       // Last unit alert
-      if(unidadeSel.quantidade_disponivel<=1){
+      if(unidadeSel._doses_total<=1){
         cf.appendChild(h('div',{style:{padding:'12px',background:'#fef2f2',borderRadius:'10px',marginBottom:'14px',border:'1px solid #fca5a5'}},
           h('div',{style:{fontWeight:'700',color:'#dc2626',fontSize:'14px'}},'⚠ ÚLTIMA UNIDADE DESTE LOTE'),
-          h('div',{style:{fontSize:'12px',color:'#dc2626',marginTop:'4px'}},`Lote ${esc(unidadeSel.numero_lote)} ficará com estoque ZERO.`)));
-      }else if(unidadeSel.quantidade_disponivel<=3){
+          h('div',{style:{fontSize:'12px',color:'#dc2626',marginTop:'4px'}},`Lote ${esc(unidadeSel.numero_lote)} ficará com estoque ZERO!`)));
+      }else if(unidadeSel._doses_total<=3){
         cf.appendChild(h('div',{style:{padding:'10px',background:'#fffbeb',borderRadius:'10px',marginBottom:'14px',border:'1px solid #fcd34d'}},
-          h('div',{style:{fontWeight:'600',color:'#d97706',fontSize:'13px'}},`⚠ Estoque baixo: ${unidadeSel.quantidade_disponivel} unidades restantes`)));
+          h('div',{style:{fontWeight:'600',color:'#d97706',fontSize:'13px'}},`⚠ Estoque baixo: ${unidadeSel._doses_total} doses restantes`)));
       }
       cf.appendChild(h('h2',{style:{textAlign:'center',fontSize:'17px',fontWeight:'700',margin:'12px 0'}},'Confirmar Retirada'));
       // Patient name LARGE — show responsável if child
@@ -208,7 +208,7 @@ async function renderRetirada(){
       }
       const grid=h('div',{className:'confirm-grid'});
       grid.innerHTML=`<div><div class="cg-label">VACINA</div><div class="cg-value">${esc(unidadeSel.vacina_nome)}</div><div class="cg-sub">Lote: ${esc(unidadeSel.numero_lote)} · CB: ${esc(unidadeSel.codigo_barras.slice(-10))}</div></div>
-        <div><div class="cg-label">ESTOQUE APÓS</div><div class="cg-value" style="color:${unidadeSel.quantidade_disponivel<=1?'#dc2626':'inherit'}">${Math.max(0,unidadeSel.quantidade_disponivel-1)} doses</div></div>
+        <div><div class="cg-label">ESTOQUE APÓS</div><div class="cg-value" style="color:${unidadeSel._doses_total<=1?'#dc2626':'inherit'}">${Math.max(0,unidadeSel._doses_total-1)} doses</div></div>
         <div><div class="cg-label">LOCAL</div><div class="cg-value">${esc(localAplicacao)}</div></div>
         <div><div class="cg-label">APLICADOR</div><div class="cg-value">${aplicadorSel?esc(aplicadorSel.nome):'Sem aplicação'}</div></div>
         ${planoSel?`<div style="grid-column:1/-1"><div class="cg-label">PLANO VINCULADO</div><div class="cg-value" style="color:var(--primary)">${esc(planoSel.nome_plano)} (${planoSel.doses_aplicadas||0}/${planoSel.doses_total||0})</div></div>`:''}`;
@@ -285,7 +285,7 @@ async function renderRetirada(){
         if(unit)selUnit(unit);
       }});
       const st=statusVenc(g.dias_para_vencer);
-      it.innerHTML=`<div style="flex:1"><div style="font-weight:600">${esc(g.vacina_nome)}</div><div style="font-size:12px;color:#64748b">Lote: ${esc(g.numero_lote)} · <strong>${g.quantidade_disponivel} doses</strong></div></div><div style="text-align:right"><span class="badge ${st.cls}">${st.label}</span><div style="font-size:11px;color:#94a3b8;margin-top:2px">${fmtData(g.validade)}</div></div>`;
+      it.innerHTML=`<div style="flex:1"><div style="font-weight:600">${esc(g.vacina_nome)}</div><div style="font-size:12px;color:#64748b">Lote: ${esc(g.numero_lote)} · <strong>${(g.doses_por_unidade||1)>1?g.quantidade_disponivel*(g.doses_por_unidade||1)-(g.doses_abertas||0):g.quantidade_disponivel} doses</strong></div></div><div style="text-align:right"><span class="badge ${st.cls}">${st.label}</span><div style="font-size:11px;color:#94a3b8;margin-top:2px">${fmtData(g.validade)}</div></div>`;
       list.appendChild(it);
     });
     par.appendChild(list);
@@ -366,6 +366,9 @@ async function renderRetirada(){
   }
   // ═══ ACTIONS ═══
   function selUnit(u){
+    // Calculate total available doses for multi-dose boxes
+    const dpu=u.doses_por_unidade||1;
+    u._doses_total=dpu>1?(u.quantidade_disponivel*dpu-(u.doses_abertas||0)):u.quantidade_disponivel;
     unidadeSel=u;
     query='';
     resultados=[];

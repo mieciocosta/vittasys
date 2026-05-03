@@ -119,8 +119,23 @@ r.post('/',async(req,res,next)=>{try{
       await prisma.lote.update({where:{id:+b.lote_id},data:{quantidadeTotal:{increment:qty},quantidadeDisponivel:{increment:qty}}});
     }else if(['retirada','aplicacao','descarte'].includes(b.tipo)){
       const lote=await prisma.lote.findUnique({where:{id:+b.lote_id}});
-      if(lote&&lote.quantidadeDisponivel<qty)return res.status(400).json({error:`Estoque insuficiente: ${lote.quantidadeDisponivel} disponíveis`});
-      await prisma.lote.update({where:{id:+b.lote_id},data:{quantidadeDisponivel:{decrement:qty}}});
+      if(!lote)return res.status(400).json({error:'Lote não encontrado'});
+      const dpu=lote.dosesPorUnidade||1;
+      if(dpu>1){
+        // Multi-dose box: track doses, only consume box when all doses used
+        const totalDoses=lote.quantidadeDisponivel*dpu-(lote.dosesAbertas||0);
+        if(totalDoses<qty)return res.status(400).json({error:`Estoque insuficiente: ${totalDoses} doses disponíveis`});
+        const novasDosesAbertas=(lote.dosesAbertas||0)+qty;
+        const caixasConsumidas=Math.floor(novasDosesAbertas/dpu);
+        const dosesRestantes=novasDosesAbertas%dpu;
+        const updateData={dosesAbertas:dosesRestantes,quantidadeAplicada:{increment:qty}};
+        if(caixasConsumidas>0)updateData.quantidadeDisponivel={decrement:caixasConsumidas};
+        await prisma.lote.update({where:{id:+b.lote_id},data:updateData});
+      }else{
+        // Single-dose: original behavior
+        if(lote.quantidadeDisponivel<qty)return res.status(400).json({error:`Estoque insuficiente: ${lote.quantidadeDisponivel} disponíveis`});
+        await prisma.lote.update({where:{id:+b.lote_id},data:{quantidadeDisponivel:{decrement:qty},quantidadeAplicada:{increment:qty}}});
+      }
     }
   }
 
@@ -172,10 +187,21 @@ r.post('/:id/aprovar',async(req,res,next)=>{try{
   if(mov.loteId){
     if(['retirada','aplicacao','descarte','ajuste'].includes(mov.tipo)){
       const lote=await prisma.lote.findUnique({where:{id:mov.loteId}});
-      if(lote&&lote.quantidadeDisponivel<mov.quantidade)return res.status(400).json({error:`Estoque insuficiente para aprovar: ${lote.quantidadeDisponivel} disponíveis`});
-      const updateData={quantidadeDisponivel:{decrement:mov.quantidade}};
-      if(['retirada','aplicacao'].includes(mov.tipo))updateData.quantidadeAplicada={increment:mov.quantidade};
-      await prisma.lote.update({where:{id:mov.loteId},data:updateData});
+      const dpu=lote?.dosesPorUnidade||1;
+      if(dpu>1){
+        const totalDoses=lote.quantidadeDisponivel*dpu-(lote.dosesAbertas||0);
+        if(totalDoses<mov.quantidade)return res.status(400).json({error:`Estoque insuficiente: ${totalDoses} doses disponíveis`});
+        const novasDoses=(lote.dosesAbertas||0)+mov.quantidade;
+        const caixas=Math.floor(novasDoses/dpu);const rest=novasDoses%dpu;
+        const ud={dosesAbertas:rest,quantidadeAplicada:{increment:mov.quantidade}};
+        if(caixas>0)ud.quantidadeDisponivel={decrement:caixas};
+        await prisma.lote.update({where:{id:mov.loteId},data:ud});
+      }else{
+        if(lote&&lote.quantidadeDisponivel<mov.quantidade)return res.status(400).json({error:`Estoque insuficiente: ${lote.quantidadeDisponivel} disponíveis`});
+        const updateData={quantidadeDisponivel:{decrement:mov.quantidade}};
+        if(['retirada','aplicacao'].includes(mov.tipo))updateData.quantidadeAplicada={increment:mov.quantidade};
+        await prisma.lote.update({where:{id:mov.loteId},data:updateData});
+      }
       // Check if esgotado
       const updLote=await prisma.lote.findUnique({where:{id:mov.loteId}});
       if(updLote&&updLote.quantidadeDisponivel<=0)await prisma.lote.update({where:{id:mov.loteId},data:{status:'esgotado'}});

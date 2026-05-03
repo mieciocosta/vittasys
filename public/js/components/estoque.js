@@ -43,7 +43,7 @@ async function draw(){wrap.innerHTML='';
       <td class="fw-600">${esc(l.vacina_nome)}<div class="text-sm text-muted">${esc(l.vacina_codigo||'')}</div></td>
       <td class="text-muted">${esc(l.fabricante)}</td>
       <td class="mono">${esc(l.numero_lote)}</td>
-      <td><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div><span class="mono fw-600">${l.quantidade_disponivel}/${l.quantidade_total}</span>${l.doses_por_unidade>1?`<span style="font-size:9px;color:#8b5cf6;margin-left:4px;font-weight:700">(${l.total_doses} doses)</span>`:''}</div></td>
+      <td><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div><span class="mono fw-600">${l.quantidade_disponivel}/${l.quantidade_total}</span>${l.doses_por_unidade>1?`<span style="font-size:9px;color:#8b5cf6;margin-left:4px;font-weight:700">(${l.total_doses} doses${l.doses_abertas>0?' · cx aberta: '+(l.doses_por_unidade-l.doses_abertas)+'/'+l.doses_por_unidade:''})</span>`:''}</div></td>
       <td class="mono">${l.unidades_disponiveis||0}</td>
       <td><span class="badge ${st.cls}">${fmtData(l.validade)}</span><div class="text-sm text-muted">${st.label}</div></td>
       <td class="text-sm">${esc(l.local_armazenamento||'-')}</td>

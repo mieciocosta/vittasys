@@ -58,6 +58,7 @@ model Lote {
   quantidadeReservada   Int      @default(0) @map("quantidade_reservada")
   quantidadeAplicada    Int      @default(0) @map("quantidade_aplicada")
   dosesPorUnidade       Int      @default(1) @map("doses_por_unidade")
+  dosesAbertas          Int      @default(0) @map("doses_abertas") // doses consumed from current open box
   validade              DateTime
   temperaturaArmazenamento String? @default("2-8°C") @map("temperatura_armazenamento")
   localArmazenamento    String?  @default("Câmara Fria Principal") @map("local_armazenamento")
