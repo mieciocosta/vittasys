@@ -1,7 +1,7 @@
 const{Router}=require('express');const r=Router();const prisma=require('../config/database');
 const{logAudit,getRealIP}=require('./auditoria');
 const PERMS={
-  master:['dashboard','retirada','estoque','historico','planos','clientes','financeiro','metas','alertas','aprovacoes','auditoria','agenda','usuarios'],
+  master:['dashboard','retirada','estoque','historico','planos','clientes','financeiro','metas','alertas','aprovacoes','auditoria','agenda','usuarios','relatorios'],
   ativos:['dashboard','retirada','estoque','historico','planos','clientes','alertas','agenda'],
   espontaneos:['dashboard','retirada','estoque','historico','clientes','alertas'],
   atendimento:['dashboard','estoque','historico','planos','clientes','alertas'],

@@ -32,6 +32,7 @@ app.use('/api/ia', require('./routes/ia'));
 app.use('/api/auditoria', require('./routes/auditoria'));
 app.use('/api/agenda', require('./routes/agenda'));
 app.use('/api/usuarios', require('./routes/usuarios'));
+app.use('/api/relatorios', require('./routes/relatorios'));
 // Compat
 app.use('/api/pacotes', require('./routes/planos'));
 

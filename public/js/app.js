@@ -35,7 +35,7 @@
       dashboard:renderDashboard,retirada:renderRetirada,estoque:renderEstoque,
       historico:renderHistorico,planos:renderPlanos,clientes:renderClientes,
       financeiro:renderFinanceiro,metas:renderMetas,agenda:renderAgenda,alertas:renderAlertas,
-      aprovacoes:renderAprovacoes,usuarios:renderUsuarios,
+      aprovacoes:renderAprovacoes,usuarios:renderUsuarios,relatorios:renderRelatorios,
       auditoria:renderAuditoria,
       'cliente-detalhe':renderClienteDetalhe,'plano-detalhe':renderPlanoDetalhe
     };
