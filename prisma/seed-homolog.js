@@ -94,10 +94,6 @@ async function run() {
   const usuarios = [
     { nome: 'Nágila Santos', cargo: 'Gestora', email: 'nagila@vittalis.com', pin: '2305', perfil: 'master' },
     { nome: 'Miécio Costa', cargo: 'Gestor', email: 'miecio@vittalis.com', pin: '2305', perfil: 'master' },
-    { nome: 'Dra. Camila Ferreira', cargo: 'Enfermeira', email: 'camila@vittalis.com', pin: '1234', perfil: 'ativos' },
-    { nome: 'Téc. Rafael Santos', cargo: 'Técnico', email: 'rafael@vittalis.com', pin: '1234', perfil: 'ativos' },
-    { nome: 'Dra. Juliana Mendes', cargo: 'Médica', email: 'juliana@vittalis.com', pin: '1234', perfil: 'espontaneos' },
-    { nome: 'Téc. Bruno Almeida', cargo: 'Técnico', email: 'bruno@vittalis.com', pin: '1234', perfil: 'espontaneos' },
   ];
   for (const u of usuarios) {
     await prisma.usuario.upsert({ where: { email: u.email }, update: {}, create: u });

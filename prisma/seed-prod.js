@@ -14,12 +14,6 @@ async function main() {
   const usuarios = [
     { nome: 'Nágila Santos', cargo: 'Gestora', email: 'nagila@vittalis.com', pin: '2305', perfil: 'master' },
     { nome: 'Miécio Costa', cargo: 'Gestor', email: 'miecio@vittalis.com', pin: '2305', perfil: 'master' },
-    { nome: 'Dra. Camila Ferreira', cargo: 'Enfermeira - Ativos', email: 'camila@vittalis.com', pin: '1234', perfil: 'ativos' },
-    { nome: 'Téc. Rafael Santos', cargo: 'Técnico - Ativos', email: 'rafael@vittalis.com', pin: '1234', perfil: 'ativos' },
-    { nome: 'Dra. Juliana Mendes', cargo: 'Médica - Espontâneos', email: 'juliana@vittalis.com', pin: '1234', perfil: 'espontaneos' },
-    { nome: 'Téc. Bruno Almeida', cargo: 'Técnico - Espontâneos', email: 'bruno@vittalis.com', pin: '1234', perfil: 'espontaneos' },
-    { nome: 'Amanda Costa', cargo: 'Vendedora - Ativos', email: 'amanda@vittalis.com', pin: '1234', perfil: 'ativos' },
-    { nome: 'Enf. Patrícia Lima', cargo: 'Enfermeira - Ativos', email: 'patricia@vittalis.com', pin: '1234', perfil: 'ativos' },
   ];
   let userCreated = 0;
   for (const u of usuarios) {
