@@ -34,7 +34,7 @@ async function reportEstoque(){
   const tbl=h('div',{style:'border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:18px'});
   data.vacinas.forEach(function(v,i){
     var clr=v.totalDoses<=0?'#dc2626':v.totalDoses<=5?'#f97316':'var(--navy)';
-    var row=h('div',{style:'display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #f1f5f9;'+(i%2?'background:#f8fffe':'')});
+    var row=h('div',{style:'display:flex;justify-content:space-between;align-items:center;padding:8px 14px;max-width:500px;border-bottom:1px solid #f1f5f9;'+(i%2?'background:#f8fffe':'')});
     row.appendChild(h('span',{style:'font-weight:600;font-size:13px'},esc(v.nome)));
     row.appendChild(h('span',{style:'font-size:18px;font-weight:800;color:'+clr+';min-width:40px;text-align:right'},String(v.totalDoses).padStart(2,'0')));
     tbl.appendChild(row)});
@@ -77,7 +77,7 @@ function exportPDF(data){
   s+='.kpi{text-align:center}.kpi .val{font-size:22px;font-weight:800}.kpi .lbl{font-size:8px;color:#64748b;text-transform:uppercase}';
   s+='.body{padding:10px 20px}';
   s+='.stitle{font-size:11px;font-weight:800;color:#1B4965;margin:10px 0 4px;padding-bottom:3px;border-bottom:2px solid #2BBCB3}';
-  s+='.vrow{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid #e2e8f0;font-size:12px}';
+  s+='.vrow{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;max-width:420px;margin:0 auto;border-bottom:1px solid #e2e8f0;font-size:12px}';
   s+='.vrow:nth-child(even){background:#f8fffe}';
   s+='.vrow .nm{font-weight:600}.vrow .qt{font-size:16px;font-weight:800;min-width:35px;text-align:right}';
   s+='.zero{color:#dc2626}.low{color:#f97316}.ok{color:#1B4965}';
