@@ -43,7 +43,7 @@ async function draw(){wrap.innerHTML='';
       <td class="fw-600">${esc(l.vacina_nome)}<div class="text-sm text-muted">${esc(l.vacina_codigo||'')}</div></td>
       <td class="text-muted">${esc(l.fabricante)}</td>
       <td class="mono">${esc(l.numero_lote)}</td>
-      <td><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div><span class="mono fw-600">${l.quantidade_disponivel}/${l.quantidade_total}</span></div></td>
+      <td><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill" style="width:${pct}%;background:${bc}"></div></div><span class="mono fw-600">${l.quantidade_disponivel}/${l.quantidade_total}</span>${l.doses_por_unidade>1?`<span style="font-size:9px;color:#8b5cf6;margin-left:4px;font-weight:700">(${l.total_doses} doses)</span>`:''}</div></td>
       <td class="mono">${l.unidades_disponiveis||0}</td>
       <td><span class="badge ${st.cls}">${fmtData(l.validade)}</span><div class="text-sm text-muted">${st.label}</div></td>
       <td class="text-sm">${esc(l.local_armazenamento||'-')}</td>
@@ -55,7 +55,7 @@ async function draw(){wrap.innerHTML='';
       actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'✏️',async e=>{
         e.stopPropagation();
         showModal(`Editar Lote #${l.id} — ${esc(l.vacina_nome)}`,async(body,close)=>{
-          const fd={numero_lote:l.numero_lote,fabricante:l.fabricante,local_armazenamento:l.local_armazenamento,valor_unitario_custo:l.valor_unitario_custo||0,status:l.status,codigo_barras:l.codigo_barras||''};
+          const fd={numero_lote:l.numero_lote,fabricante:l.fabricante,local_armazenamento:l.local_armazenamento,valor_unitario_custo:l.valor_unitario_custo||0,status:l.status,codigo_barras:l.codigo_barras||'',doses_por_unidade:l.doses_por_unidade||1};
           // Read-only info
           body.appendChild(h('div',{style:{padding:'10px 12px',background:'var(--bg-subtle)',borderRadius:'8px',marginBottom:'16px',fontSize:'12px',color:'var(--text-3)'}},
             `Vacina: ${esc(l.vacina_nome)} · Validade: ${fmtData(l.validade)} · Estoque: ${l.quantidade_disponivel}/${l.quantidade_total}`));
@@ -79,6 +79,13 @@ async function draw(){wrap.innerHTML='';
           const cInp=h('input',{className:'input',type:'number',step:'0.01',value:fd.valor_unitario_custo||''});
           cInp.addEventListener('input',ev=>{fd.valor_unitario_custo=parseFloat(ev.target.value)||0});
           dCusto.appendChild(cInp);gr.appendChild(dCusto);
+          // Doses por unidade
+          const dDoses=h('div');dDoses.appendChild(h('label',{className:'label'},'Doses por Caixa'));
+          const dInp=h('input',{className:'input',type:'number',min:'1',value:fd.doses_por_unidade});
+          dInp.addEventListener('input',ev=>{fd.doses_por_unidade=parseInt(ev.target.value)||1});
+          dDoses.appendChild(dInp);
+          if(fd.doses_por_unidade>1){dDoses.appendChild(h('div',{style:'font-size:10px;color:#8b5cf6;margin-top:4px;font-weight:600'},`${l.quantidade_disponivel} cx × ${fd.doses_por_unidade} = ${l.quantidade_disponivel*fd.doses_por_unidade} doses`))}
+          gr.appendChild(dDoses);
           // Status
           const dSt=h('div');dSt.appendChild(h('label',{className:'label'},'Status'));
           dSt.appendChild(buildSelect([['disponivel','Disponível'],['esgotado','Esgotado'],['inativo','Inativo']],fd.status||'',v=>{fd.status=v}));
@@ -134,7 +141,7 @@ function modalDetalheLote(id){showModal('Detalhamento do Lote',async(body,close)
   // ═══ CARDS DE ESTOQUE ═══
   const grid=h('div',{style:'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px'});
   const fld=(label,value,color)=>{const d=h('div',{style:'padding:10px;background:var(--bg-subtle);border-radius:8px'});d.innerHTML=`<div style="font-size:10px;color:var(--text-4);text-transform:uppercase;font-weight:600">${label}</div><div style="font-size:16px;font-weight:700;color:${color||'var(--text-1)'};margin-top:2px">${value}</div>`;return d};
-  grid.appendChild(fld('Disponível',`${l.quantidade_disponivel} / ${l.quantidade_total}`,l.quantidade_disponivel<5?'#dc2626':'#2BBCB3'));
+  grid.appendChild(fld('Disponível',`${l.quantidade_disponivel} / ${l.quantidade_total}${l.doses_por_unidade>1?' ('+l.total_doses+' doses)':''}`,l.quantidade_disponivel<5?'#dc2626':'#2BBCB3'));
   grid.appendChild(fld('Aplicadas',String(l.quantidade_aplicada||0),'var(--primary)'));
   grid.appendChild(fld('Validade',fmtData(l.validade),l.dias_para_vencer<0?'#dc2626':l.dias_para_vencer<30?'#d97706':'#059669'));
   grid.appendChild(fld('Fabricante',esc(l.fabricante)));
@@ -411,6 +418,10 @@ function modalNovoLote(){showModal('Cadastrar Novo Lote',async(body,close)=>{
     const d8=h('div');d8.appendChild(h('label',{className:'label'},'CUSTO UNIT. R$'));
     const i8=h('input',{className:'input',type:'number',value:fd.valor_unitario||0,step:'0.01'});
     i8.addEventListener('input',e=>{fd.valor_unitario=parseFloat(e.target.value)||0});d8.appendChild(i8);gr.appendChild(d8);
+    // Doses por caixa
+    const d9=h('div');d9.appendChild(h('label',{className:'label'},'DOSES POR CAIXA'));
+    const i9=h('input',{className:'input',type:'number',min:'1',value:fd.doses_por_unidade||1,placeholder:'1'});
+    i9.addEventListener('input',e=>{fd.doses_por_unidade=parseInt(e.target.value)||1});d9.appendChild(i9);gr.appendChild(d9);
     formDiv.appendChild(gr);
   }
 

@@ -72,6 +72,8 @@ r.get('/',async(req,res,next)=>{try{
       unidades_disponiveis:ucMap[l.id]||0,
       criado_em:l.criadoEm,
       codigo_barras:l.unidades?.[0]?.codigoBarras||'',
+      doses_por_unidade:l.dosesPorUnidade||1,
+      total_doses:(l.quantidadeDisponivel)*(l.dosesPorUnidade||1),
     };
   });
 
@@ -93,6 +95,7 @@ r.post('/',async(req,res,next)=>{try{
     fabricante:b.fabricante||'',
     quantidadeTotal:qty,
     quantidadeDisponivel:qty,
+    dosesPorUnidade:+(b.doses_por_unidade||1),
     validade:parseValidade(b.validade),
     temperaturaArmazenamento:b.temperatura||'2-8°C',
     localArmazenamento:b.local||'Câmara Fria Principal',
@@ -208,6 +211,8 @@ r.get('/:id',async(req,res,next)=>{try{
     fabricante:l.fabricante,numero_lote:l.numeroLote,
     quantidade_total:l.quantidadeTotal,quantidade_disponivel:l.quantidadeDisponivel,
     quantidade_aplicada:l.quantidadeAplicada,
+    doses_por_unidade:l.dosesPorUnidade||1,
+    total_doses:l.quantidadeDisponivel*(l.dosesPorUnidade||1),
     validade:l.validade,dias_para_vencer:Math.ceil((l.validade-now)/864e5),
     local_armazenamento:l.localArmazenamento,valor_unitario_custo:l.valorUnitarioCusto,
     status:l.status,criado_em:l.criadoEm,
@@ -252,6 +257,7 @@ r.put('/:id',async(req,res,next)=>{try{
   if(b.local_armazenamento)data.localArmazenamento=b.local_armazenamento;
   if(b.valor_unitario_custo!=null)data.valorUnitarioCusto=+b.valor_unitario_custo;
   if(b.status)data.status=b.status;
+  if(b.doses_por_unidade!=null)data.dosesPorUnidade=+b.doses_por_unidade;
   if(Object.keys(data).length)await prisma.lote.update({where:{id},data});
   // Update barcode on ALL units of this lote
   if(b.codigo_barras!=null){
