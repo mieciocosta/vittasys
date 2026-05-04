@@ -66,10 +66,12 @@ function modalNovoPlano(){showModal('Novo Plano Vacinal',async(body,close)=>{
   const planGrid=h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}});
   (templates||[]).forEach(t=>{
     const btn=h('div',{style:{padding:'12px',borderRadius:'10px',border:'2px solid var(--border)',cursor:'pointer',transition:'all .15s'},onClick:()=>{
-      fd.plano_id=t.id;fd.nome_plano=t.nome;fd.idade_inicio=t.idade_inicio;fd.idade_fim=t.idade_fim;fd.valor_bruto=t.valor_tabela;
+      fd.plano_id=t.id;fd.nome_plano=t.nome;fd.idade_inicio=t.idade_inicio;fd.idade_fim=t.idade_fim;fd.valor_bruto=t.valor_tabela;fd.vacinas_custom=null;
       fd._valor_avista=t.valor_avista;fd._valor_cartao=t.valor_cartao;fd._parcelas=t.parcelas;fd._desc_pag=t.desc_pagamento;
       planGrid.querySelectorAll('div[data-plan]').forEach(d=>{d.style.borderColor='var(--border)';d.style.background=''});
       btn.style.borderColor='var(--primary)';btn.style.background='var(--primary-bg)';
+      customBtn.style.borderColor='var(--primary)';customBtn.style.background='';
+      customDiv.style.display='none';
       // Update valor bruto field if it exists
       const vbInput=body.querySelector('#plan-valor-bruto');
       if(vbInput)vbInput.value=t.valor_avista||t.valor_tabela;
@@ -80,7 +82,65 @@ function modalNovoPlano(){showModal('Novo Plano Vacinal',async(body,close)=>{
     btn.innerHTML=`<div style="font-weight:600;font-size:13px">${esc(t.nome)}</div><div style="font-size:11px;margin-top:4px">${t.vacinas?.length||0} vacinas · ${priceHtml}</div>`;
     planGrid.appendChild(btn);
   });
-  s2.appendChild(planGrid);body.appendChild(s2);
+  s2.appendChild(planGrid);
+  // Custom plan option
+  const customBtn=h('div',{style:'margin-top:10px;padding:12px;border-radius:10px;border:2px dashed var(--primary);cursor:pointer;text-align:center;transition:all .15s',
+    onClick:async()=>{
+      planGrid.querySelectorAll('div[data-plan]').forEach(d=>{d.style.borderColor='var(--border)';d.style.background=''});
+      customBtn.style.borderColor='var(--primary)';customBtn.style.background='var(--primary-bg)';
+      fd.plano_id=null;fd.nome_plano='';fd.vacinas_custom=[];
+      customDiv.style.display='';
+    }});
+  customBtn.innerHTML='<div style="font-size:14px">➕</div><div style="font-weight:600;font-size:12px;color:var(--primary)">Plano Personalizado</div><div style="font-size:10px;color:var(--text-3)">Crie um plano sob medida para este cliente</div>';
+  s2.appendChild(customBtn);
+  // Custom plan fields (hidden initially)
+  const customDiv=h('div',{style:'display:none;margin-top:12px;padding:14px;background:#f0fffe;border-radius:10px;border:1px solid var(--primary)'});
+  const cgr=h('div',{className:'form-grid',style:'margin-bottom:10px'});
+  // Name
+  const cnDiv=h('div');cnDiv.appendChild(h('label',{className:'label'},'Nome do Plano *'));
+  const cnInp=h('input',{className:'input',placeholder:'Ex: Plano Vacinal 3 a 5 meses'});
+  cnInp.addEventListener('input',function(e){fd.nome_plano=e.target.value});cnDiv.appendChild(cnInp);cgr.appendChild(cnDiv);
+  // Age range
+  const caDiv=h('div');caDiv.appendChild(h('label',{className:'label'},'Faixa Etária (meses)'));
+  const caRow=h('div',{style:'display:flex;gap:6px;align-items:center'});
+  const caI1=h('input',{className:'input',type:'number',placeholder:'0',style:'width:70px;text-align:center'});
+  caI1.addEventListener('input',function(e){fd.idade_inicio=parseInt(e.target.value)||0});
+  const caI2=h('input',{className:'input',type:'number',placeholder:'18',style:'width:70px;text-align:center'});
+  caI2.addEventListener('input',function(e){fd.idade_fim=parseInt(e.target.value)||18});
+  caRow.appendChild(caI1);caRow.appendChild(h('span',{style:'font-size:12px;color:var(--text-3)'},'a'));caRow.appendChild(caI2);caRow.appendChild(h('span',{style:'font-size:11px;color:var(--text-3)'},'meses'));
+  caDiv.appendChild(caRow);cgr.appendChild(caDiv);
+  customDiv.appendChild(cgr);
+  // Add vaccines
+  customDiv.appendChild(h('label',{className:'label',style:'font-size:12px'},'💉 Vacinas do Plano'));
+  const cvList=h('div',{style:'margin-bottom:8px'});customDiv.appendChild(cvList);
+  function renderCVacs(){cvList.innerHTML='';(fd.vacinas_custom||[]).forEach(function(vc,i){
+    var row=h('div',{style:'display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #d1fae5;font-size:12px'});
+    row.appendChild(h('span',{style:'flex:1;font-weight:600'},esc(vc._nome||'')));
+    row.appendChild(h('span',{style:'font-size:11px;color:var(--text-3)'},vc.doses+' dose(s)'));
+    row.appendChild(h('button',{style:'border:none;background:#dc262610;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px;color:#dc2626',onClick:function(){fd.vacinas_custom.splice(i,1);renderCVacs()}},'✗'));
+    cvList.appendChild(row)})}
+  var cvacinas=[];
+  Api.vacinas().then(function(v){cvacinas=v||[]});
+  var cvRow=h('div',{style:'display:flex;gap:6px;align-items:end'});
+  var cvSelDiv=h('div',{style:'flex:1'});
+  var cvSel=buildSelect([['','— Vacina —']],'',(function(){}));
+  setTimeout(function(){
+    cvSelDiv.innerHTML='';
+    cvSel=buildSelect([['','— Selecione —']].concat((cvacinas||[]).map(function(v){return[v.id,v.nome]})),'',function(){});
+    cvSelDiv.appendChild(cvSel)},500);
+  cvSelDiv.appendChild(cvSel);cvRow.appendChild(cvSelDiv);
+  var cvDoseInp=h('input',{className:'input',type:'number',value:'1',min:'1',style:'width:60px;text-align:center'});
+  cvRow.appendChild(cvDoseInp);
+  cvRow.appendChild(h('button',{className:'btn btn-outline btn-sm',style:'height:38px',onClick:function(){
+    var vid=cvSel.value;if(!vid)return Toast.show('Selecione uma vacina','error');
+    var vac=cvacinas.find(function(v){return v.id==vid});
+    if(!fd.vacinas_custom)fd.vacinas_custom=[];
+    fd.vacinas_custom.push({vacina_id:+vid,doses:parseInt(cvDoseInp.value)||1,mes_inicio:fd.idade_inicio||0,mes_fim:fd.idade_fim||18,_nome:vac?vac.nome:''});
+    cvSel.value='';cvDoseInp.value='1';renderCVacs()
+  }},'+'));
+  customDiv.appendChild(cvRow);
+  s2.appendChild(customDiv);
+  body.appendChild(s2);
 
   // Step 3: Vendor + Financials + Payment method
   const s3=h('div',{style:{marginTop:'16px'}});s3.appendChild(h('label',{className:'label'},'3. VENDEDOR, PAGAMENTO E VALORES'));
@@ -126,7 +186,8 @@ function modalNovoPlano(){showModal('Novo Plano Vacinal',async(body,close)=>{
   // Submit
   body.appendChild(iconBtn('btn btn-primary btn-block btn-lg',null,'Criar Plano Vacinal',async()=>{
     if(!fd.cliente_id)return Toast.show('Selecione um cliente','error');
-    if(!fd.plano_id&&!fd.nome_plano)return Toast.show('Selecione um plano','error');
+    if(!fd.plano_id&&!fd.nome_plano)return Toast.show('Selecione um plano ou crie um personalizado','error');
+    if(fd.vacinas_custom?.length&&!fd.nome_plano)return Toast.show('Informe o nome do plano personalizado','error');
     if(!fd.vendedor_id)return Toast.show('Vendedor é obrigatório','error');
     if(!fd.valor_bruto)return Toast.show('Informe o valor bruto','error');
     const fimPlano=new Date(fd.data_inicio_plano||new Date());fimPlano.setMonth(fimPlano.getMonth()+18);

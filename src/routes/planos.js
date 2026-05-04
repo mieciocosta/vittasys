@@ -127,44 +127,75 @@ r.get('/:id',async(req,res,next)=>{try{
 
 r.post('/',async(req,res,next)=>{try{const b=req.body;
   const vd=(b.valor_bruto||0)*(b.percentual_desconto||0)/100;const vf=(b.valor_bruto||0)-vd;
-  const p=await prisma.planoContratado.create({data:{clienteId:+b.cliente_id,planoId:b.plano_id?+b.plano_id:null,nomePlano:b.nome_plano,idadeInicio:+(b.idade_inicio||0),idadeFim:+(b.idade_fim||18),valorCusto:+(b.valor_custo||0),valorBruto:+(b.valor_bruto||0),valorDesconto:vd,percentualDesconto:+(b.percentual_desconto||0),valorFinal:vf,lucroPrevisto:vf-(+(b.valor_custo||0)),margemLucro:vf>0?((vf-(+(b.valor_custo||0)))/vf*100):0,statusContrato:b.status_contrato||'ativo',formaPagamento:b.forma_pagamento||'avista',vendedorId:b.vendedor_id?+b.vendedor_id:null,vacinadorId:b.vacinador_id?+b.vacinador_id:null,dataVenda:b.data_venda?new Date(b.data_venda):new Date(),dataInicioPlano:b.data_inicio_plano?new Date(b.data_inicio_plano):null,dataFimPlano:b.data_fim_plano?new Date(b.data_fim_plano):null}});
+  
+  // Create the plan
+  let p;
+  try{
+    p=await prisma.planoContratado.create({data:{clienteId:+b.cliente_id,planoId:b.plano_id?+b.plano_id:null,nomePlano:b.nome_plano||'Plano Personalizado',idadeInicio:+(b.idade_inicio||0),idadeFim:+(b.idade_fim||18),valorCusto:+(b.valor_custo||0),valorBruto:+(b.valor_bruto||0),valorDesconto:vd,percentualDesconto:+(b.percentual_desconto||0),valorFinal:vf,lucroPrevisto:vf-(+(b.valor_custo||0)),margemLucro:vf>0?((vf-(+(b.valor_custo||0)))/vf*100):0,statusContrato:b.status_contrato||'ativo',formaPagamento:b.forma_pagamento||'avista',vendedorId:b.vendedor_id?+b.vendedor_id:null,vacinadorId:b.vacinador_id?+b.vacinador_id:null,dataVenda:b.data_venda?new Date(b.data_venda):new Date(),dataInicioPlano:b.data_inicio_plano?new Date(b.data_inicio_plano):null,dataFimPlano:b.data_fim_plano?new Date(b.data_fim_plano):null}});
+  }catch(createErr){
+    if(createErr.code==='P2002')return res.status(409).json({error:'Erro ao criar plano. Tente novamente.'});
+    throw createErr;
+  }
 
   // ═══ REGRA: Espontâneo + Plano = Ativo ═══
-  const cliente=await prisma.cliente.findUnique({where:{id:+b.cliente_id},select:{id:true,tipoCliente:true,codigoCliente:true}});
-  if(cliente&&cliente.tipoCliente==='espontaneo'){
-    const updateData={tipoCliente:'ativo'};
-    // Generate unique VIT-XXX code with retry
-    if(!cliente.codigoCliente||cliente.codigoCliente.startsWith('ESP-')){
-      for(let attempt=0;attempt<5;attempt++){
-        const last=await prisma.cliente.findFirst({where:{codigoCliente:{startsWith:'VIT-'}},orderBy:{codigoCliente:'desc'}});
-        const n=last?parseInt(last.codigoCliente.replace('VIT-',''))+1+attempt:1;
-        const code=`VIT-${String(n).padStart(3,'0')}`;
-        const exists=await prisma.cliente.findFirst({where:{codigoCliente:code}});
-        if(!exists){updateData.codigoCliente=code;break}
+  try{
+    const cliente=await prisma.cliente.findUnique({where:{id:+b.cliente_id},select:{id:true,tipoCliente:true,codigoCliente:true}});
+    if(cliente&&cliente.tipoCliente==='espontaneo'){
+      const updateData={tipoCliente:'ativo'};
+      if(!cliente.codigoCliente||cliente.codigoCliente.startsWith('ESP-')){
+        // Find max VIT number safely
+        const all=await prisma.cliente.findMany({where:{codigoCliente:{startsWith:'VIT-'}},select:{codigoCliente:true}});
+        const nums=all.map(c=>parseInt((c.codigoCliente||'').replace('VIT-',''))||0);
+        const nextNum=nums.length>0?Math.max(...nums)+1:1;
+        for(let attempt=0;attempt<10;attempt++){
+          const code='VIT-'+String(nextNum+attempt).padStart(3,'0');
+          const exists=await prisma.cliente.findFirst({where:{codigoCliente:code}});
+          if(!exists){updateData.codigoCliente=code;break}
+        }
       }
+      await prisma.cliente.update({where:{id:+b.cliente_id},data:updateData});
     }
-    try{await prisma.cliente.update({where:{id:+b.cliente_id},data:updateData})}catch(e){console.log('Aviso: erro ao promover cliente para ativo:',e.message)}
-  }
+  }catch(promErr){console.log('Aviso: erro ao promover cliente:',promErr.message)}
 
   // Auto-create doses from template
   let dosesCreated=0;const alertas=[];
-  if(b.plano_id){const pvs=await prisma.planoVacina.findMany({where:{planoId:+b.plano_id},include:{vacina:{select:{nome:true}}}});const dtI=new Date(b.data_inicio_plano||new Date());
-    for(const pv of pvs){
-      // Check stock coverage
-      const estoqueDisp=await prisma.lote.aggregate({where:{vacinaId:pv.vacinaId,status:{not:'esgotado'}},_sum:{quantidadeDisponivel:true}});
-      const disp=estoqueDisp._sum.quantidadeDisponivel||0;
-      if(disp<pv.doses)alertas.push({vacina:pv.vacina?.nome||'?',necessario:pv.doses,disponivel:disp});
-      for(let dn=1;dn<=pv.doses;dn++){const mp=pv.mesPrevInicio+(pv.mesPrevFim-pv.mesPrevInicio)*((dn-1)/Math.max(1,pv.doses-1))|0;const dc=new Date(dtI);dc.setMonth(dc.getMonth()+mp);
-      await prisma.planoContratadoDose.create({data:{planoContratadoId:p.id,vacinaId:pv.vacinaId,doseNumero:dn,status:'pendente',mesPrevisto:mp,competencia:`${dc.getFullYear()}-${String(dc.getMonth()+1).padStart(2,'0')}`}});dosesCreated++}}}
+  if(b.plano_id){
+    try{
+      const pvs=await prisma.planoVacina.findMany({where:{planoId:+b.plano_id},include:{vacina:{select:{nome:true}}}});
+      const dtI=new Date(b.data_inicio_plano||new Date());
+      for(const pv of pvs){
+        const estoqueDisp=await prisma.lote.aggregate({where:{vacinaId:pv.vacinaId,status:{not:'esgotado'}},_sum:{quantidadeDisponivel:true}});
+        const disp=estoqueDisp._sum.quantidadeDisponivel||0;
+        if(disp<pv.doses)alertas.push({vacina:pv.vacina?.nome||'?',necessario:pv.doses,disponivel:disp});
+        for(let dn=1;dn<=pv.doses;dn++){
+          const mp=pv.mesPrevInicio+(pv.mesPrevFim-pv.mesPrevInicio)*((dn-1)/Math.max(1,pv.doses-1))|0;
+          const dc=new Date(dtI);dc.setMonth(dc.getMonth()+mp);
+          await prisma.planoContratadoDose.create({data:{planoContratadoId:p.id,vacinaId:pv.vacinaId,doseNumero:dn,status:'pendente',mesPrevisto:mp,competencia:dc.getFullYear()+'-'+String(dc.getMonth()+1).padStart(2,'0')}});
+          dosesCreated++;
+        }
+      }
+    }catch(doseErr){console.log('Aviso: erro ao criar doses:',doseErr.message)}
+  }
+  // Custom plan: create doses from vacinas array if provided
+  if(b.vacinas_custom?.length){
+    try{
+      const dtI=new Date(b.data_inicio_plano||new Date());
+      for(const vc of b.vacinas_custom){
+        for(let dn=1;dn<=(vc.doses||1);dn++){
+          const mp=Math.round((+(vc.mes_inicio||0))+(+(vc.mes_fim||18)-(+(vc.mes_inicio||0)))*((dn-1)/Math.max(1,(vc.doses||1)-1)))||0;
+          const dc=new Date(dtI);dc.setMonth(dc.getMonth()+mp);
+          await prisma.planoContratadoDose.create({data:{planoContratadoId:p.id,vacinaId:+vc.vacina_id,doseNumero:dn,status:'pendente',mesPrevisto:mp,competencia:dc.getFullYear()+'-'+String(dc.getMonth()+1).padStart(2,'0')}});
+          dosesCreated++;
+        }
+      }
+    }catch(custErr){console.log('Aviso: erro ao criar doses personalizadas:',custErr.message)}
+  }
   const resp={success:true,id:p.id,doses_criadas:dosesCreated};
   if(alertas.length>0)resp.alertas_estoque=alertas;
   res.json(resp);
 }catch(e){
-  if(e.code==='P2002'){
-    const field=e.meta?.target||[];
-    if(String(field).includes('codigo_cliente'))return res.status(409).json({error:'Erro ao gerar código do cliente. Tente novamente.'});
-    return res.status(409).json({error:'Verifique se este plano já foi criado para este cliente.'});
-  }
+  console.error('Erro criar plano:',e.message,e.code,e.meta);
+  if(e.code==='P2002')return res.status(409).json({error:'Erro de duplicidade. Tente novamente em alguns segundos.'});
   next(e)}});
 
 // ═══ EDITAR PLANO CONTRATADO ═══
