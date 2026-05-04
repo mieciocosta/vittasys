@@ -60,9 +60,9 @@ async function renderLogin() {
 
     const pLabels = {
       master: '👑 Master',
-      ativos: '⭐ Ativos',
-      espontaneos: '📋 Espontâneos',
-      atendimento: '📞 Atendimento',
+      ativos: '⭐ Atend. Home',
+      espontaneos: '📋 Atend. Consultas',
+      atendimento: '💉 Atend. Vacinas',
       operador: '🔧 Operador'
     };
 

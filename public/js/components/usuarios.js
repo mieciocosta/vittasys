@@ -1,5 +1,5 @@
 async function renderUsuarios(){
-const PL={master:'👑 Master',ativos:'⭐ Ativos',espontaneos:'📋 Espontâneos',atendimento:'📞 Atendimento',operador:'🔧 Operador'};
+const PL={master:'👑 Master',ativos:'⭐ Atend. Home',espontaneos:'📋 Atend. Consultas',atendimento:'💉 Atend. Vacinas',operador:'🔧 Operador'};
 const PC={master:'#059669',ativos:'#2BBCB3',espontaneos:'#1B4965',atendimento:'#8b5cf6',operador:'#64748b'};
 const isMaster=AppState.isMaster();
 const wrap=h('div',{className:'fade-in'});
@@ -95,7 +95,7 @@ infoBox.innerHTML=`<strong>Regras de segurança:</strong><br>
   • Exclusão é <strong>soft delete</strong> — o usuário fica inativo mas todas as auditorias são preservadas<br>
   • Apenas o <strong>Master</strong> pode alterar nome, CPF e data de nascimento<br>
   • O próprio usuário pode alterar apenas sua <strong>senha</strong> (precisa informar a atual)<br>
-  • Perfil <strong>Atendimento</strong>: visualiza dados de ativos/espontâneos, planos, e pode cadastrar clientes`;
+  • Perfil <strong>Atend. Vacinas</strong>: atendimento de vacinas, bipagem, planos e cadastro de clientes`;
 wrap.appendChild(infoBox);
 
 return wrap;

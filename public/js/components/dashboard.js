@@ -3,7 +3,7 @@ if(!AppState.isMaster()){
   // Non-master: show simplified welcome
   wrap.appendChild(h('div',{className:'page-header'},h('div',{className:'page-header-left'},
     h('h1',{className:'page-title'},`Olá, ${AppState.usuario.nome.split(' ')[0]}!`),
-    h('p',{className:'page-subtitle'},`Perfil: ${AppState.usuario.perfil==='ativos'?'⭐ Clientes Ativos':'📋 Clientes Espontâneos'}`))));
+    h('p',{className:'page-subtitle'},`Perfil: ${AppState.usuario.perfil==='ativos'?'⭐ Atend. Home':AppState.usuario.perfil==='espontaneos'?'📋 Atend. Consultas':AppState.usuario.perfil==='atendimento'?'💉 Atend. Vacinas':'👑 Master'}`))));
   const tip=h('div',{className:'card',style:{marginBottom:'20px'}});
   tip.innerHTML=`<h3 style="font-size:15px;font-weight:600;margin-bottom:8px">Acesso Rápido</h3><p style="font-size:13px;color:var(--text-3)">Use o menu lateral para acessar seus módulos. Seu perfil tem acesso apenas aos dados de <strong>${AppState.usuario.perfil==='ativos'?'clientes ativos':'clientes espontâneos'}</strong>.</p>`;
   wrap.appendChild(tip);return wrap}
