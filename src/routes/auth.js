@@ -4,7 +4,7 @@ const PERMS={
   master:['dashboard','retirada','estoque','historico','planos','clientes','financeiro','metas','alertas','aprovacoes','auditoria','agenda','usuarios','relatorios'],
   ativos:['dashboard','retirada','estoque','historico','planos','clientes','alertas','agenda'],
   espontaneos:['dashboard','retirada','estoque','historico','clientes','alertas'],
-  atendimento:['dashboard','estoque','historico','planos','clientes','alertas'],
+  atendimento:['dashboard','retirada','estoque','historico','planos','clientes','alertas','agenda'],
   operador:['dashboard','retirada','estoque','historico','planos','clientes','alertas']
 };
 
