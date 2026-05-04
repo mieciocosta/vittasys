@@ -90,7 +90,7 @@ r.get('/',async(req,res,next)=>{try{
     // If plan has no formal doses, use movimentações as progress indicator
     const dosesAplicadas=dt>0?da2:(movMap[p.clienteId]||0);
     const dosesTotal=dt>0?dt:Math.max(dosesAplicadas,1);
-    return{id:p.id,cliente_id:p.clienteId,nome_plano:p.nomePlano,idade_inicio:p.idadeInicio,idade_fim:p.idadeFim,valor_final:p.valorFinal,percentual_desconto:p.percentualDesconto,status_contrato:p.statusContrato,contrato_assinado:p.contratoAssinado,vendedor_id:p.vendedorId,
+    return{id:p.id,cliente_id:p.clienteId,nome_plano:p.nomePlano,idade_inicio:p.idadeInicio,idade_fim:p.idadeFim,valor_bruto:p.valorBruto,valor_final:p.valorFinal,valor_custo:p.valorCusto,percentual_desconto:p.percentualDesconto,forma_pagamento:p.formaPagamento,status_contrato:p.statusContrato,contrato_assinado:p.contratoAssinado,vendedor_id:p.vendedorId,
       cliente_nome:p.cliente.nome,codigo_cliente:p.cliente.codigoCliente,tipo_paciente:p.cliente.tipoPaciente,
       total_pago:tp,saldo_pendente:p.valorFinal-tp,doses_aplicadas:dosesAplicadas,doses_total:dosesTotal,
       vendedor_nome:'',criado_em:p.criadoEm}});

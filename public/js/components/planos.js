@@ -23,14 +23,19 @@ else data.data.forEach(p=>{
   const tr=h('tr',{className:'clickable',onClick:()=>AppState.verPlano(p.id)});
   tr.style.borderLeft='3px solid var(--primary)';
   tr.innerHTML=`<td class="mono text-muted text-sm">#${p.id}</td><td class="fw-600" style="cursor:pointer" onclick="event.stopPropagation();AppState.verCliente(${p.cliente_id})">${esc(p.cliente_nome)}</td><td class="mono text-sm">${esc(p.codigo_cliente||'-')}</td><td class="fw-600">${esc(p.nome_plano)}</td><td class="text-sm">${p.idade_inicio}-${p.idade_fim}m</td><td class="mono fw-600" style="color:#059669">${fmtMoeda(p.valor_final)}</td><td class="mono" style="color:var(--primary)">${fmtMoeda(p.total_pago)}</td><td class="mono" style="color:${p.saldo_pendente>0?'#d97706':'#059669'}">${fmtMoeda(p.saldo_pendente)}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:50px"><div class="prog-fill" style="width:${prog}%;background:${prog===100?'#059669':'var(--primary)'}"></div></div><span class="mono text-sm">${prog}%</span></div></td><td><span class="badge ${p.status_contrato==='ativo'?'badge-green':p.status_contrato==='finalizado'?'badge-primary':p.status_contrato==='pendente'?'badge-orange':'badge-gray'}">${p.status_contrato==='finalizado'?'✓ Finalizado':p.status_contrato}</span></td>`;
-  // Actions: delete only if 0% progress and 0 paid
+  // Actions
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
-  if(AppState.isMaster()&&prog===0&&(p.total_pago||0)===0){
-    actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'Excluir',async e=>{e.stopPropagation();
-      if(!confirm(`Excluir plano "${p.nome_plano}" de ${p.cliente_nome}?`))return;
-      const r=await Api.del(`/planos/${p.id}`);
-      if(r?.success){Toast.show('Plano excluído');draw()}else Toast.show(r?.error||'Erro','error')
+  if(AppState.isMaster()){
+    actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'✏️',async e=>{e.stopPropagation();
+      modalEditarPlano(p);
     }));
+    if(prog===0&&(p.total_pago||0)===0){
+      actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'Excluir',async e=>{e.stopPropagation();
+        if(!confirm(`Excluir plano "${p.nome_plano}" de ${p.cliente_nome}?`))return;
+        const r=await Api.del(`/planos/${p.id}`);
+        if(r?.success){Toast.show('Plano excluído');draw()}else Toast.show(r?.error||'Erro','error')
+      }));
+    }
   }
   tr.appendChild(actTd);tb.appendChild(tr);
 });
@@ -203,7 +208,7 @@ function modalNovoPlano(){showModal('Novo Plano Vacinal',async(body,close)=>{
 // ═══ EDITAR PLANO CONTRATADO ═══
 function modalEditarPlano(pc){showModal('✏️ Editar Plano — '+pc.nome_plano,async(body,close)=>{
   const isMaster=AppState.isMaster();
-  const fd={valor_bruto:pc.valor_bruto||pc.valor_final||0,percentual_desconto:pc.percentual_desconto||pc.percentualDesconto||0,
+  const fd={nome_plano:pc.nome_plano,valor_bruto:pc.valor_bruto||pc.valor_final||0,percentual_desconto:pc.percentual_desconto||pc.percentualDesconto||0,
     valor_custo:pc.valor_custo||pc.valorCusto||0,status_contrato:pc.status_contrato||pc.statusContrato,
     forma_pagamento:pc.forma_pagamento||pc.formaPagamento||'avista',
     _caller_id:AppState.usuario?.id,_caller_perfil:AppState.usuario?.perfil,_caller_nome:AppState.usuario?.nome};
@@ -216,37 +221,42 @@ function modalEditarPlano(pc){showModal('✏️ Editar Plano — '+pc.nome_plano
 
   // Client info
   body.appendChild(h('div',{style:'padding:10px;background:var(--bg-subtle);border-radius:8px;margin-bottom:16px;font-size:12px'},
-    h('strong',null,pc.cliente_nome+' '),h('span',{className:'mono',style:'color:var(--text-3)'},pc.codigo_cliente||'')));
+    h('strong',null,(pc.cliente_nome||'')+' '),h('span',{className:'mono',style:'color:var(--text-3)'},pc.codigo_cliente||'')));
 
   const gr=h('div',{className:'form-grid',style:'margin-bottom:16px'});
+  // Nome do Plano
+  const d0=h('div',{style:'grid-column:1/-1'});d0.appendChild(h('label',{className:'label'},'NOME DO PLANO'));
+  const i0=h('input',{className:'input',value:fd.nome_plano||'',style:'font-weight:600'});
+  i0.addEventListener('input',function(e){fd.nome_plano=e.target.value});d0.appendChild(i0);gr.appendChild(d0);
   // Valor Bruto
   const d1=h('div');d1.appendChild(h('label',{className:'label'},'VALOR BRUTO R$'));
   const i1=h('input',{className:'input',type:'number',value:fd.valor_bruto,step:'0.01'});
-  i1.addEventListener('input',e=>{fd.valor_bruto=parseFloat(e.target.value)||0});d1.appendChild(i1);gr.appendChild(d1);
+  i1.addEventListener('input',function(e){fd.valor_bruto=parseFloat(e.target.value)||0});d1.appendChild(i1);gr.appendChild(d1);
   // Desconto
   const d2=h('div');d2.appendChild(h('label',{className:'label'},'DESCONTO %'));
   const i2=h('input',{className:'input',type:'number',value:fd.percentual_desconto,max:'100'});
-  i2.addEventListener('input',e=>{fd.percentual_desconto=parseFloat(e.target.value)||0});d2.appendChild(i2);gr.appendChild(d2);
+  i2.addEventListener('input',function(e){fd.percentual_desconto=parseFloat(e.target.value)||0});d2.appendChild(i2);gr.appendChild(d2);
   // Custo
   const d3=h('div');d3.appendChild(h('label',{className:'label'},'CUSTO R$'));
   const i3=h('input',{className:'input',type:'number',value:fd.valor_custo,step:'0.01'});
-  i3.addEventListener('input',e=>{fd.valor_custo=parseFloat(e.target.value)||0});d3.appendChild(i3);gr.appendChild(d3);
+  i3.addEventListener('input',function(e){fd.valor_custo=parseFloat(e.target.value)||0});d3.appendChild(i3);gr.appendChild(d3);
   // Forma pagamento
   const d4=h('div');d4.appendChild(h('label',{className:'label'},'FORMA PAGAMENTO'));
-  d4.appendChild(buildSelect([['avista','À Vista'],['cartao','Cartão']], fd.forma_pagamento,v=>{fd.forma_pagamento=v}));
+  d4.appendChild(buildSelect([['avista','À Vista'],['cartao','Cartão']], fd.forma_pagamento,function(v){fd.forma_pagamento=v}));
   gr.appendChild(d4);
   // Status
   const d5=h('div');d5.appendChild(h('label',{className:'label'},'STATUS'));
-  d5.appendChild(buildSelect([['ativo','Ativo'],['finalizado','Finalizado'],['cancelado','Cancelado'],['pendente','Pendente']], fd.status_contrato,v=>{fd.status_contrato=v}));
+  d5.appendChild(buildSelect([['ativo','Ativo'],['finalizado','Finalizado'],['cancelado','Cancelado'],['pendente','Pendente']], fd.status_contrato,function(v){fd.status_contrato=v}));
   gr.appendChild(d5);
   body.appendChild(gr);
 
-  body.appendChild(h('button',{className:'btn btn-primary btn-block',style:'font-size:14px;padding:12px',onClick:async()=>{
+  body.appendChild(h('button',{className:'btn btn-primary btn-block',style:'font-size:14px;padding:12px',onClick:async function(){
     const r=await Api.editarPlano(pc.id,fd);
     if(r?.success){
       Toast.show(r.message||(r.pendente?'Enviado para aprovação':'Plano atualizado'));
       close();
-      // Refresh
+      // Refresh list or detail
+      if(typeof draw==='function')draw();
       if(AppState.modulo==='plano-detalhe')AppState.notify();
     }else Toast.show(r?.error||'Erro','error');
   }},isMaster?'💾 Salvar Alterações':'📤 Enviar para Aprovação'));
