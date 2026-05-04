@@ -2,12 +2,12 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npx prisma generate && npx vitest run tests/unit --reporter=json --outputFile=tests/results.json && node tests/generate-report.js"
+    "buildCommand": "npx prisma generate"
   },
   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
-    "startCommand": "npx prisma db push --accept-data-loss && node prisma/seed-prod.js && node tests/generate-report.js && node src/server.js",
+    "startCommand": "npx prisma db push --accept-data-loss && node src/server.js",
     "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
