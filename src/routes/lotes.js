@@ -289,4 +289,20 @@ r.delete('/:id',async(req,res,next)=>{try{
   }
 }catch(e){next(e)}});
 
+// ═══ ADICIONAR UNIDADES A LOTE EXISTENTE ═══
+r.post('/:id/adicionar',async(req,res,next)=>{try{
+  const id=+req.params.id;const b=req.body;const qty=+(b.quantidade||1);
+  const lote=await prisma.lote.findUnique({where:{id}});
+  if(!lote)return res.status(404).json({error:'Lote não encontrado'});
+  // Create new units
+  for(let i=0;i<qty;i++){
+    const barcode=b.codigo_barras||('7891'+String(Math.floor(Math.random()*9999999999)).padStart(10,'0'));
+    try{await prisma.unidade.create({data:{loteId:id,codigoBarras:barcode,status:'disponivel'}})}
+    catch(e){await prisma.unidade.create({data:{loteId:id,codigoBarras:barcode+'-'+Date.now(),status:'disponivel'}})}
+  }
+  await prisma.lote.update({where:{id},data:{quantidadeTotal:{increment:qty},quantidadeDisponivel:{increment:qty}}});
+  if(lote.status==='esgotado')await prisma.lote.update({where:{id},data:{status:'disponivel'}});
+  res.json({success:true,unidades_adicionadas:qty,novo_total:lote.quantidadeTotal+qty});
+}catch(e){next(e)}});
+
 module.exports=r;
