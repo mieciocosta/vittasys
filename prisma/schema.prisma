@@ -367,6 +367,7 @@ model ExclusaoPendente {
   entidadeId      Int      @map("entidade_id")
   label           String   // ex: "Lote #12 — Coronavac"
   snapshot        String?  // JSON com dados do registro antes de excluir
+  motivo          String?  // justificativa da exclusão
   solicitanteId   Int      @map("solicitante_id")
   solicitanteNome String   @map("solicitante_nome")
   status          String   @default("pendente") // pendente, aprovado, rejeitado

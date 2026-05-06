@@ -33,7 +33,8 @@ if(!isMaster){
 }
 
 // Master view — full user table
-const users=await Api.get('/usuarios/admin')||[];
+const [users, excPendMap]=await Promise.all([Api.get('/usuarios/admin'), Api.exclusoesPorEntidade('usuario')]);
+  const excMap=excPendMap||{};
 
 // Stats
 const st=h('div',{style:'display:flex;gap:8px;margin-bottom:16px'});
@@ -77,12 +78,17 @@ users.forEach(u=>{
     if(!confirm(`Resetar senha de ${u.nome} para 1234?`))return;
     const r=await Api.post(`/usuarios/${u.id}/reset-pin`);Toast.show(r?.message||'Resetado');
   }},'🔑'));
-  if(u.ativo){acts.appendChild(h('button',{style:'border:none;background:#dc262610;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer',title:'Desativar',onClick:async()=>{
+  const excPend=excMap[u.id];
+  if(excPend){
+    acts.appendChild(h('div',{style:'display:flex;align-items:center;gap:4px;padding:4px 8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px'},
+      h('span',null,'⏳'),
+      h('span',{style:'font-size:10px;font-weight:600;color:#92400e'},'Exclusão pendente')
+    ));
+  }else if(u.ativo){acts.appendChild(h('button',{style:'border:none;background:#dc262610;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer',title:'Desativar',onClick:async()=>{
     await confirmarExclusao({
       entidade:'usuario',entidadeId:u.id,
       label:`Usuário ${u.nome}`,
       snapshot:{id:u.id,nome:u.nome,perfil:u.perfil,cargo:u.cargo},
-      confirmMsg:`Desativar ${u.nome}? As auditorias serão preservadas.`,
       deleteFn:()=>Api.delete(`/usuarios/${u.id}`),
       onSuccess:()=>AppState.notify()
     });

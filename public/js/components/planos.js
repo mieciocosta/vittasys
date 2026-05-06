@@ -13,7 +13,9 @@ const fb=h('div',{className:'filters-bar'});
 fb.appendChild(buildSearchBox('Buscar plano ou cliente...',v=>{f.search=v;f.page=1;draw()},f.search));
 fb.appendChild(buildSelect([['','Status'],['ativo','Ativo'],['concluido','Concluído'],['cancelado','Cancelado'],['pendente','Pendente']],f.status_contrato,v=>{f.status_contrato=v;f.page=1;draw()}));
 wrap.appendChild(fb);
-const data=await Api.planos(f);if(!data)return;
+const [data, excPendMap]=await Promise.all([Api.planos(f), Api.exclusoesPorEntidade('plano_contratado')]);
+  if(!data)return;
+  const excMap=excPendMap||{};
 const tw=h('div',{className:'table-wrap'});
 const t=buildSortableTable([['ID','id'],['Cliente','cliente_nome'],['Código','codigo_cliente'],['Plano','nome_plano'],['Faixa',''],['Valor','valor_final'],['Pago',''],['Saldo',''],['Progresso',''],['Status','status_contrato'],['Ações','']],f,draw);
 const tb=h('tbody');
@@ -25,7 +27,16 @@ else data.data.forEach(p=>{
   tr.innerHTML=`<td class="mono text-muted text-sm">#${p.id}</td><td class="fw-600" style="cursor:pointer" onclick="event.stopPropagation();AppState.verCliente(${p.cliente_id})">${esc(p.cliente_nome)}</td><td class="mono text-sm">${esc(p.codigo_cliente||'-')}</td><td class="fw-600">${esc(p.nome_plano)}</td><td class="text-sm">${p.idade_inicio}-${p.idade_fim}m</td><td class="mono fw-600" style="color:#059669">${fmtMoeda(p.valor_final)}</td><td class="mono" style="color:var(--primary)">${fmtMoeda(p.total_pago)}</td><td class="mono" style="color:${p.saldo_pendente>0?'#d97706':'#059669'}">${fmtMoeda(p.saldo_pendente)}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:50px"><div class="prog-fill" style="width:${prog}%;background:${prog===100?'#059669':'var(--primary)'}"></div></div><span class="mono text-sm">${prog}%</span></div></td><td><span class="badge ${p.status_contrato==='ativo'?'badge-green':p.status_contrato==='finalizado'?'badge-primary':p.status_contrato==='pendente'?'badge-orange':'badge-gray'}">${p.status_contrato==='finalizado'?'✓ Finalizado':p.status_contrato}</span></td>`;
   // Actions
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
-  if(AppState.isMaster()){
+  const excPend=excMap[p.id];
+  if(excPend){
+    const badge=h('div',{style:'display:flex;align-items:center;gap:6px;padding:6px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px'});
+    badge.appendChild(h('span',{style:'font-size:14px'},'⏳'));
+    const info=h('div');
+    info.appendChild(h('div',{style:'font-size:11px;font-weight:700;color:#92400e'},'Exclusão pendente'));
+    info.appendChild(h('div',{style:'font-size:10px;color:#92400e;opacity:0.8'},excPend.solicitanteNome));
+    badge.appendChild(info);
+    actTd.appendChild(badge);
+  }else{
     actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'✏️',async e=>{e.stopPropagation();
       modalEditarPlano(p);
     }));

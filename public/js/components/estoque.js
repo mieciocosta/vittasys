@@ -18,8 +18,9 @@ async function draw(){wrap.innerHTML='';
   fb.appendChild(buildSelect([['','Validade'],['proximo','Próx. 30d'],['vencido','Vencidos']],f.vencimento,v=>{f.vencimento=v;f.page=1;draw()}));
   wrap.appendChild(fb);
 
-  const data=await Api.lotes(f);
+  const [data, excPendMap]=await Promise.all([Api.lotes(f), Api.exclusoesPorEntidade('lote')]);
   if(!data||!data.data){wrap.appendChild(h('div',{className:'empty-state'},'Erro ao carregar estoque'));return}
+  const excMap=excPendMap||{};
 
   const tw=h('div',{className:'table-wrap'});
   const isMaster=AppState.usuario?.perfil==='master';
@@ -27,6 +28,7 @@ async function draw(){wrap.innerHTML='';
     ['Estoque','quantidade_disponivel'],['Unid.',''],['Validade','validade'],['Local',''],
     ['Custo','valor_unitario_custo'],['Status','status']];
   if(isMaster)cols.push(['Ações','']);
+  else cols.push(['','']);
   const t=buildSortableTable(cols,f,draw);
 
   const tb=document.createElement('tbody');
@@ -50,9 +52,20 @@ async function draw(){wrap.innerHTML='';
       <td class="mono text-sm">${l.valor_unitario_custo?fmtMoeda(l.valor_unitario_custo):'-'}</td>
       <td><span class="badge ${sm2[l.status]||'badge-gray'}">${l.status}</span></td>`;
     // Master actions
-    if(isMaster){
+    {
       const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
-      actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'✏️',async e=>{
+      const excPend=excMap[l.id];
+      if(excPend){
+        // Record has pending deletion — show locked badge
+        const badge=h('div',{style:'display:flex;align-items:center;gap:6px;padding:6px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px'});
+        badge.appendChild(h('span',{style:'font-size:14px'},'⏳'));
+        const info=h('div');
+        info.appendChild(h('div',{style:'font-size:11px;font-weight:700;color:#92400e'},'Exclusão pendente'));
+        info.appendChild(h('div',{style:'font-size:10px;color:#92400e;opacity:0.8'},excPend.solicitanteNome));
+        badge.appendChild(info);
+        actTd.appendChild(badge);
+      }else if(isMaster){
+        actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'✏️',async e=>{
         e.stopPropagation();
         showModal(`Editar Lote #${l.id} — ${esc(l.vacina_nome)}`,async(body,close)=>{
           const fd={numero_lote:l.numero_lote,fabricante:l.fabricante,local_armazenamento:l.local_armazenamento,valor_unitario_custo:l.valor_unitario_custo||0,status:l.status,codigo_barras:l.codigo_barras||'',doses_por_unidade:l.doses_por_unidade||1};
@@ -112,6 +125,7 @@ async function draw(){wrap.innerHTML='';
           onSuccess:()=>draw()
         });
       }));
+      }
       tr.appendChild(actTd);
     }
     tb.appendChild(tr);

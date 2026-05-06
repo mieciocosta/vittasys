@@ -146,6 +146,13 @@ async function renderAprovacoes(){
           }catch(e){}
         }
         
+        // Motivo
+        if(exc.motivo){
+          const motivoDiv=h('div',{style:'padding:10px;background:#eff6ff;border-radius:8px;margin-bottom:14px;font-size:12px'});
+          motivoDiv.appendChild(h('span',{style:'font-weight:700;color:#1d4ed8'},'Justificativa: '));
+          motivoDiv.appendChild(document.createTextNode(exc.motivo));
+          card.appendChild(motivoDiv);
+        }
         const acts=h('div',{style:'display:flex;gap:10px'});
         acts.appendChild(h('button',{className:'btn btn-primary',style:'flex:1;padding:10px;font-size:13px',onClick:async()=>{
           if(!confirm('Aprovar e executar exclusão de "'+exc.label+'"?'))return;

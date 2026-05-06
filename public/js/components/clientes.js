@@ -32,7 +32,9 @@ if(!perfilFilter){
 fb.appendChild(buildSelect([['','Tipo Paciente'],['bebe','Bebê'],['crianca','Criança'],['adulto','Adulto']],f.tipo_paciente,v=>{f.tipo_paciente=v;f.page=1;draw()}));
 wrap.appendChild(fb);
 
-const data=await Api.clientes(f);if(!data)return;
+const [data, excPendMap]=await Promise.all([Api.clientes(f), Api.exclusoesPorEntidade('cliente')]);
+  if(!data)return;
+  const excMap=excPendMap||{};
 const tw=h('div',{className:'table-wrap'});
 const t=buildSortableTable([['ID','id'],['Código','codigo'],['Cliente','nome'],['Idade','nascimento'],['Tipo','tipo'],['Celular',''],['Planos',''],['Status','status'],['Ações','']],f,draw);
 const tb=h('tbody');
@@ -57,21 +59,33 @@ else data.data.forEach(c=>{
     <td class="mono fw-600" style="color:${(c.planos_ativos||0)>0?'#7c3aed':'#94a3b8'}">${c.planos_ativos||0}</td>
     <td><span class="badge ${c.status==='ativo'?'badge-green':'badge-gray'}">${c.status}</span></td>`;
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
-  actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{
-    e.stopPropagation();editId=c.id;formData={};
-    ['codigo_cliente','nome','data_nascimento','sexo','cpf','telefone','email','tipo_paciente','tipo_cliente','responsavel_nome','responsavel_parentesco','responsavel_cpf','responsavel_telefone','paciente_nome','paciente_nascimento','paciente_sexo','paciente_cpf','vendedor_id','vacinador_id','status','observacoes','observacoes_clinicas','endereco','bairro','cep','regiao_id'].forEach(k=>{if(c[k]!=null)formData[k]=c[k]});
-    showForm=true;draw();
-  },{style:{marginRight:'4px'}}));
-  if((c.planos_ativos||0)===0&&(c.total_movimentacoes||0)===0){
-    actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'Excluir',async e=>{e.stopPropagation();
-      await confirmarExclusao({
-        entidade:'cliente',entidadeId:c.id,
-        label:`Cliente ${c.nome}`,
-        snapshot:{id:c.id,nome:c.nome,cpf:c.cpf,telefone:c.telefone},
-        deleteFn:()=>Api.deletarCliente(c.id),
-        onSuccess:()=>draw()
-      });
-    }));
+  const excPend=excMap[c.id];
+  if(excPend){
+    // Show locked pending badge
+    const badge=h('div',{style:'display:flex;align-items:center;gap:6px;padding:6px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px'});
+    badge.appendChild(h('span',{style:'font-size:14px'},'⏳'));
+    const info=h('div');
+    info.appendChild(h('div',{style:'font-size:11px;font-weight:700;color:#92400e'},'Exclusão pendente'));
+    info.appendChild(h('div',{style:'font-size:10px;color:#92400e;opacity:0.8'},excPend.solicitanteNome));
+    badge.appendChild(info);
+    actTd.appendChild(badge);
+  }else{
+    actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{
+      e.stopPropagation();editId=c.id;formData={};
+      ['codigo_cliente','nome','data_nascimento','sexo','cpf','telefone','email','tipo_paciente','tipo_cliente','responsavel_nome','responsavel_parentesco','responsavel_cpf','responsavel_telefone','paciente_nome','paciente_nascimento','paciente_sexo','paciente_cpf','vendedor_id','vacinador_id','status','observacoes','observacoes_clinicas','endereco','bairro','cep','regiao_id'].forEach(k=>{if(c[k]!=null)formData[k]=c[k]});
+      showForm=true;draw();
+    },{style:{marginRight:'4px'}}));
+    if((c.planos_ativos||0)===0&&(c.total_movimentacoes||0)===0){
+      actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'Excluir',async e=>{e.stopPropagation();
+        await confirmarExclusao({
+          entidade:'cliente',entidadeId:c.id,
+          label:`Cliente ${c.nome}`,
+          snapshot:{id:c.id,nome:c.nome,cpf:c.cpf,telefone:c.telefone},
+          deleteFn:()=>Api.deletarCliente(c.id),
+          onSuccess:()=>draw()
+        });
+      }));
+    }
   }
   tr.appendChild(actTd);tb.appendChild(tr);
 });

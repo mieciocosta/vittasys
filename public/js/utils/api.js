@@ -88,8 +88,9 @@ const Api={
   agendaExcluir(id){return this.delete(`/agenda/${id}`)},
   // ─── Exclusões Pendentes ─────────────────────────────────
   exclusoesPendentes(){return this.get('/exclusoes?status=pendente')},
-  solicitarExclusao(entidade,entidade_id,label,snapshot,solicitante_id,solicitante_nome){
-    return this.post('/exclusoes',{entidade,entidade_id,label,snapshot,solicitante_id,solicitante_nome})
+  exclusoesPorEntidade(entidade){return this.get(`/exclusoes/por-entidade/${entidade}`)},
+  solicitarExclusao(entidade,entidade_id,label,snapshot,motivo,solicitante_id,solicitante_nome){
+    return this.post('/exclusoes',{entidade,entidade_id,label,snapshot,motivo,solicitante_id,solicitante_nome})
   },
   aprovarExclusao(id,aprovador_id,aprovador_nome){
     return this.put(`/exclusoes/${id}/aprovar`,{aprovador_id,aprovador_nome})

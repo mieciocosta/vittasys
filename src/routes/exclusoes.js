@@ -16,9 +16,21 @@ r.get('/',async(req,res,next)=>{try{
   res.json(items);
 }catch(e){next(e)}});
 
+// ─── GET /por-entidade/:entidade — retorna map {id: exclusao} ──
+r.get('/por-entidade/:entidade',async(req,res,next)=>{try{
+  const items=await prisma.exclusaoPendente.findMany({
+    where:{entidade:req.params.entidade,status:'pendente'},
+    select:{id:true,entidadeId:true,label:true,solicitanteNome:true,motivo:true,criadoEm:true}
+  });
+  // Return as map: {[entidadeId]: item}
+  const map={};
+  items.forEach(i=>{ map[i.entidadeId]=i; });
+  res.json(map);
+}catch(e){next(e)}});
+
 // ─── POST — solicitar exclusão ────────────────────────────
 r.post('/',async(req,res,next)=>{try{
-  const{entidade,entidade_id,label,snapshot,solicitante_id,solicitante_nome}=req.body;
+  const{entidade,entidade_id,label,snapshot,motivo,solicitante_id,solicitante_nome}=req.body;
   if(!entidade||!entidade_id||!solicitante_id)
     return res.status(400).json({error:'Campos obrigatórios: entidade, entidade_id, solicitante_id'});
 
@@ -32,6 +44,7 @@ r.post('/',async(req,res,next)=>{try{
     entidade,entidadeId:+entidade_id,
     label:label||`${entidade} #${entidade_id}`,
     snapshot:snapshot?JSON.stringify(snapshot):null,
+    motivo:motivo||null,
     solicitanteId:+solicitante_id,
     solicitanteNome:solicitante_nome||'Desconhecido',
     status:'pendente'
