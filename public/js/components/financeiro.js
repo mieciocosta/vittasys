@@ -10,7 +10,7 @@ if(res){const gr=h('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1f
 const gr2=h('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'12px',marginBottom:'24px'}});
 [['Margem Média',res.margem_media.toFixed(1)+'%','#7c3aed'],['Descontos',fmtMoeda(res.desconto_total),'#d97706'],['Planos Ativos',res.total_planos,'#1B4965'],['Quitados',res.planos_quitados,'#2BBCB3']].forEach(([l,v,c])=>{gr2.appendChild(h('div',{className:'fin-card',innerHTML:`<div class="fin-label">${l}</div><div class="fin-value" style="color:${c}">${v}</div>`}))});wrap.appendChild(gr2)}
 const fb=h('div',{className:'filters-bar'});
-fb.appendChild(buildSearchBox('Buscar cliente ou plano...',v=>{f.search=v;f.page=1;draw()},f.search));
+fb.appendChild(buildSearchBox('Buscar cliente ou plano...',async v=>{f.search=v;f.page=1;await draw()},f.search));
 fb.appendChild(buildSelect([['','Forma Pgto'],['pix','PIX'],['cartao_credito','Cartão Créd.'],['cartao_debito','Cartão Déb.'],['dinheiro','Dinheiro'],['boleto','Boleto']],f.forma_pagamento,v=>{f.forma_pagamento=v;f.page=1;draw()}));
 wrap.appendChild(fb);
 const data=await Api.pagamentos(f);if(!data)return;

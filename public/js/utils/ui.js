@@ -1,4 +1,19 @@
-function buildSearchBox(ph,onInput,val){const w=h('div',{className:'search-box'});w.appendChild(h('span',{className:'s-icon',innerHTML:I.search}));const inp=h('input',{placeholder:ph,value:val||''});inp.addEventListener('input',debounce(e=>onInput(e.target.value),250));w.appendChild(inp);return w}
+function buildSearchBox(ph,onInput,val){
+  const w=h('div',{className:'search-box'});
+  w.appendChild(h('span',{className:'s-icon',innerHTML:I.search}));
+  const inp=h('input',{placeholder:ph,value:val||''});
+  inp.addEventListener('input',debounce(async e=>{
+    const v=e.target.value;
+    await onInput(v);
+    // Restore focus after draw() rebuilds the DOM
+    const newInp=document.querySelector(`.search-box input[placeholder="${ph}"]`);
+    if(newInp&&document.activeElement!==newInp){
+      newInp.focus();
+      try{const l=newInp.value.length;newInp.setSelectionRange(l,l);}catch(_){}
+    }
+  },400));
+  w.appendChild(inp);return w;
+}
 function buildFilterChips(opts,active,onChange){const w=h('div',{className:'filter-chips'});opts.forEach(([v,l])=>w.appendChild(h('button',{className:`filter-chip ${active===v?'active':''}`,onClick:()=>onChange(v)},l)));return w}
 function buildSelect(opts,val,onChange){const s=h('select',{className:'input select'});opts.forEach(([v,l])=>{const o=h('option',{value:v},l);if(v==val)o.selected=true;s.appendChild(o)});s.addEventListener('change',e=>onChange(e.target.value));return s}
 

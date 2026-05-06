@@ -10,7 +10,7 @@ const stats=await Api.planosStats();
 if(stats){const sr=h('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'12px',marginBottom:'24px'}});
 [['Contratos',stats.total_contratos,'#1B4965'],['Aplicadas',stats.doses_aplicadas,'#2BBCB3'],['Pendentes',stats.doses_pendentes,'#d97706'],['Valor Total',fmtMoeda(stats.valor_total),'#059669']].forEach(([l,v,c])=>{sr.appendChild(h('div',{className:'fin-card',innerHTML:`<div class="fin-label">${l}</div><div class="fin-value" style="color:${c}">${v}</div>`}))});wrap.appendChild(sr)}
 const fb=h('div',{className:'filters-bar'});
-fb.appendChild(buildSearchBox('Buscar plano ou cliente...',v=>{f.search=v;f.page=1;draw()},f.search));
+fb.appendChild(buildSearchBox('Buscar plano ou cliente...',async v=>{f.search=v;f.page=1;await draw()},f.search));
 fb.appendChild(buildSelect([['','Status'],['ativo','Ativo'],['concluido','Concluído'],['cancelado','Cancelado'],['pendente','Pendente']],f.status_contrato,v=>{f.status_contrato=v;f.page=1;draw()}));
 wrap.appendChild(fb);
 const [data, excPendMap]=await Promise.all([Api.planos(f), Api.exclusoesPorEntidade('plano_contratado')]);

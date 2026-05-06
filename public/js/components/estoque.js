@@ -13,7 +13,7 @@ async function draw(){wrap.innerHTML='';
   hdr.appendChild(acts);wrap.appendChild(hdr);
 
   const fb=h('div',{className:'filters-bar'});
-  fb.appendChild(buildSearchBox('Buscar por vacina, lote, fabricante ou código de barras...',v=>{f.search=v;f.page=1;draw()},f.search));
+  fb.appendChild(buildSearchBox('Buscar por vacina, lote, fabricante ou código de barras...',async v=>{f.search=v;f.page=1;await draw()},f.search));
   fb.appendChild(buildSelect([['','Status'],['disponivel','Disponível'],['reservado','Reservado'],['esgotado','Esgotado'],['vencido','Vencido']],f.status,v=>{f.status=v;f.page=1;draw()}));
   fb.appendChild(buildSelect([['','Validade'],['proximo','Próx. 30d'],['vencido','Vencidos']],f.vencimento,v=>{f.vencimento=v;f.page=1;draw()}));
   wrap.appendChild(fb);

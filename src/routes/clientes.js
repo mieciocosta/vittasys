@@ -20,7 +20,27 @@ r.get('/',async(req,res,next)=>{try{
   if(tipo_cliente)where.tipoCliente=tipo_cliente;
   if(tipo_paciente)where.tipoPaciente=tipo_paciente;
   if(status)where.status=status;
-  if(search){const s=search.replace(/[\.\-]/g,'');where.OR=[{nome:{contains:search,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:search,mode:'insensitive'}},{responsavelNome:{contains:search,mode:'insensitive'}},{pacienteNome:{contains:search,mode:'insensitive'}},{telefone:{contains:search,mode:'insensitive'}},{responsavelTelefone:{contains:search,mode:'insensitive'}}]}
+  let _searchIds=null;
+  if(search){
+    const s2=search.replace(/[\.\-]/g,'');const qL=`%${search}%`;const sL=`%${s2}%`;
+    try{
+      const rows=await prisma.$queryRaw`SELECT id FROM clientes WHERE (
+        unaccent(nome) ILIKE unaccent(${qL})
+        OR unaccent(coalesce(responsavel_nome,'')) ILIKE unaccent(${qL})
+        OR unaccent(coalesce(paciente_nome,'')) ILIKE unaccent(${qL})
+        OR coalesce(cpf,'') ILIKE ${sL}
+        OR coalesce(codigo_cliente,'') ILIKE ${qL}
+        OR coalesce(telefone,'') ILIKE ${sL}
+        OR coalesce(responsavel_telefone,'') ILIKE ${sL}
+      )`;
+      _searchIds=rows.map(r=>r.id);
+      where.id={in:_searchIds};
+    }catch(unaccentErr){
+      // Fallback if unaccent not available
+      const s2f=search.replace(/[\.\-]/g,'');
+      where.OR=[{nome:{contains:search,mode:'insensitive'}},{cpf:{contains:s2f,mode:'insensitive'}},{codigoCliente:{contains:search,mode:'insensitive'}},{responsavelNome:{contains:search,mode:'insensitive'}},{pacienteNome:{contains:search,mode:'insensitive'}},{telefone:{contains:search,mode:'insensitive'}},{responsavelTelefone:{contains:search,mode:'insensitive'}}];
+    }
+  }
   const sm={id:'id',nome:'nome',codigo:'codigoCliente',tipo:'tipoCliente',nascimento:'dataNascimento',status:'status'};
   const ob=sort&&sm[sort]?{[sm[sort]]:order==='DESC'?'desc':'asc'}:{id:'desc'};
   const[data,total]=await Promise.all([prisma.cliente.findMany({where,orderBy:ob,skip:(+page-1)*+limit,take:+limit,include:{_count:{select:{planosContratados:true,movimentacoes:true}}}}),prisma.cliente.count({where})]);
@@ -29,13 +49,25 @@ r.get('/',async(req,res,next)=>{try{
 }catch(e){next(e)}});
 
 r.get('/busca',async(req,res,next)=>{try{
-  const{q,plano_ativo,somente_ativos}=req.query;if(!q||q.length<2)return res.json([]);
+  const{q,plano_ativo}=req.query;if(!q||q.length<2)return res.json([]);
   const s=q.replace(/[\.\-]/g,'');
-  const where={OR:[{nome:{contains:q,mode:'insensitive'}},{cpf:{contains:s,mode:'insensitive'}},{codigoCliente:{contains:q,mode:'insensitive'}},{responsavelNome:{contains:q,mode:'insensitive'}},{pacienteNome:{contains:q,mode:'insensitive'}},{telefone:{contains:q,mode:'insensitive'}},{responsavelTelefone:{contains:q,mode:'insensitive'}}]};
-  // Always filter out inactive clients in search (for plano selector)
-  where.status='ativo';
+  const qL=`%${q}%`;const sL=`%${s}%`;
+  // Use unaccent for accent-insensitive search (e.g. "joao" finds "João")
+  const ids=await prisma.$queryRaw`
+    SELECT id FROM clientes WHERE status='ativo' AND (
+      unaccent(nome) ILIKE unaccent(${qL})
+      OR unaccent(coalesce(responsavel_nome,'')) ILIKE unaccent(${qL})
+      OR unaccent(coalesce(paciente_nome,'')) ILIKE unaccent(${qL})
+      OR coalesce(cpf,'') ILIKE ${sL}
+      OR coalesce(codigo_cliente,'') ILIKE ${qL}
+      OR coalesce(telefone,'') ILIKE ${sL}
+      OR coalesce(responsavel_telefone,'') ILIKE ${sL}
+    ) ORDER BY id DESC LIMIT 15`;
+  const idList=ids.map(r=>r.id);
+  if(idList.length===0)return res.json([]);
+  let where={id:{in:idList}};
   if(plano_ativo==='true')where.planosContratados={some:{statusContrato:'ativo'}};
-  const data=await prisma.cliente.findMany({where,orderBy:{id:'desc'},take:15,
+  const data=await prisma.cliente.findMany({where,orderBy:{id:'desc'},
     include:{planosContratados:{where:{statusContrato:'ativo'},select:{id:true,nomePlano:true,_count:{select:{doses:true}}}}}});
   res.json(data.map(c=>{const o=mapOut(c);o.planos_ativos=c.planosContratados.length;return o}));
 }catch(e){next(e)}});

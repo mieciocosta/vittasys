@@ -11,7 +11,7 @@ hdr.appendChild(h('div',{className:'page-header-actions'},iconBtn('btn btn-prima
 wrap.appendChild(hdr);
 
 const fb=h('div',{className:'filters-bar'});
-fb.appendChild(buildSearchBox('Buscar por nome, vacina, lote, código...',v=>{f.search=v;f.page=1;draw()},f.search));
+fb.appendChild(buildSearchBox('Buscar por nome, vacina, lote, código...',async v=>{f.search=v;f.page=1;await draw()},f.search));
 fb.appendChild(buildSelect([['','Tipo'],['retirada','Retirada'],['aplicacao','Aplicação'],['entrada','Entrada'],['descarte','Descarte'],['ajuste','Ajuste'],['estorno','Estorno']],f.tipo,v=>{f.tipo=v;f.page=1;draw()}));
 fb.appendChild(buildSelect([['','Status'],['concluido','Concluído'],['pendente_aprovacao','⏳ Pendente'],['reprovado','✗ Reprovado'],['cancelado','Cancelado']],f.status,v=>{f.status=v;f.page=1;draw()}));
 if(!perfilFilter){fb.appendChild(buildSelect([['','Cliente'],['ativo','⭐ Ativo'],['espontaneo','Espontâneo']],f.tipo_cliente,v=>{f.tipo_cliente=v;f.page=1;draw()}))}

@@ -18,12 +18,17 @@ r.get('/',async(req,res,next)=>{try{
   const{page=1,limit=50,search,status,vencimento,sort='validade',order='ASC'}=req.query;
   const where={};const now=new Date();
   if(search){
-    where.OR=[
-      {vacina:{nome:{contains:search,mode:'insensitive'}}},
-      {numeroLote:{contains:search,mode:'insensitive'}},
-      {fabricante:{contains:search,mode:'insensitive'}},
-      {unidades:{some:{codigoBarras:{contains:search,mode:'insensitive'}}}},
-    ];
+    const qL=`%${search}%`;
+    try{
+      const rows=await prisma.$queryRaw`SELECT l.id FROM lotes l LEFT JOIN vacinas v ON l.vacina_id=v.id WHERE
+        unaccent(coalesce(v.nome,'')) ILIKE unaccent(${qL})
+        OR unaccent(coalesce(l.numero_lote,'')) ILIKE unaccent(${qL})
+        OR unaccent(coalesce(l.fabricante,'')) ILIKE unaccent(${qL})
+        OR EXISTS(SELECT 1 FROM unidades u WHERE u.lote_id=l.id AND coalesce(u.codigo_barras,'') ILIKE ${qL})`;
+      where.id={in:rows.map(r=>r.id)};
+    }catch(_){
+      where.OR=[{vacina:{nome:{contains:search,mode:'insensitive'}}},{numeroLote:{contains:search,mode:'insensitive'}},{fabricante:{contains:search,mode:'insensitive'}}];
+    }
   }
   if(status)where.status=status;
   if(vencimento==='proximo'){const d30=new Date();d30.setDate(d30.getDate()+30);where.validade={gte:now,lte:d30}}

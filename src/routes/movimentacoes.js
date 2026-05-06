@@ -13,8 +13,20 @@ r.get('/',async(req,res,next)=>{try{
   if(tipo)where.tipo=tipo;
   if(tipo_cliente)where.tipoCliente=tipo_cliente;
   if(status)where.status=status;
-  if(search){const s=search.replace(/[\.\-]/g,'');
-    where.OR=[{nomeVacina:{contains:search,mode:'insensitive'}},{numeroLote:{contains:search,mode:'insensitive'}},{codigoBarras:{contains:search,mode:'insensitive'}},{cliente:{nome:{contains:search,mode:'insensitive'}}},{cliente:{cpf:{contains:s,mode:'insensitive'}}}]}
+  if(search){
+    const sn=search.replace(/[\.\-]/g,'');const qL=`%${search}%`;const sL=`%${sn}%`;
+    try{
+      const rows=await prisma.$queryRaw`SELECT m.id FROM movimentacoes m LEFT JOIN clientes c ON m.cliente_id=c.id WHERE
+        unaccent(coalesce(m.nome_vacina,'')) ILIKE unaccent(${qL})
+        OR coalesce(m.numero_lote,'') ILIKE ${qL}
+        OR coalesce(m.codigo_barras,'') ILIKE ${qL}
+        OR unaccent(coalesce(c.nome,'')) ILIKE unaccent(${qL})
+        OR coalesce(c.cpf,'') ILIKE ${sL}`;
+      where.id={in:rows.map(r=>r.id)};
+    }catch(_){
+      where.OR=[{nomeVacina:{contains:search,mode:'insensitive'}},{numeroLote:{contains:search,mode:'insensitive'}},{codigoBarras:{contains:search,mode:'insensitive'}},{cliente:{nome:{contains:search,mode:'insensitive'}}},{cliente:{cpf:{contains:sn,mode:'insensitive'}}}];
+    }
+  }
   const sm={id:'id',data_hora:'dataHora',tipo:'tipo',nome_vacina:'nomeVacina',numero_lote:'numeroLote',status:'status',local_aplicacao:'localAplicacao'};
   const ob=sort&&sm[sort]?typeof sm[sort]==='string'?{[sm[sort]]:order==='ASC'?'asc':'desc'}:sm[sort]:{id:'desc'};
   const[data,total]=await Promise.all([

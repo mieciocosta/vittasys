@@ -151,8 +151,26 @@ r.post('/',async(req,res,next)=>{try{const b=req.body;
   try{
     p=await prisma.planoContratado.create({data:{clienteId:+b.cliente_id,planoId:b.plano_id?+b.plano_id:null,nomePlano:b.nome_plano||'Plano Personalizado',idadeInicio:+(b.idade_inicio||0),idadeFim:+(b.idade_fim||18),valorCusto:+(b.valor_custo||0),valorBruto:+(b.valor_bruto||0),valorDesconto:vd,percentualDesconto:+(b.percentual_desconto||0),valorFinal:vf,lucroPrevisto:vf-(+(b.valor_custo||0)),margemLucro:vf>0?((vf-(+(b.valor_custo||0)))/vf*100):0,statusContrato:b.status_contrato||'ativo',formaPagamento:b.forma_pagamento||'avista',vendedorId:b.vendedor_id?+b.vendedor_id:null,vacinadorId:b.vacinador_id?+b.vacinador_id:null,dataVenda:b.data_venda?new Date(b.data_venda):new Date(),dataInicioPlano:b.data_inicio_plano?new Date(b.data_inicio_plano):null,dataFimPlano:b.data_fim_plano?new Date(b.data_fim_plano):null}});
   }catch(createErr){
-    if(createErr.code==='P2002')return res.status(409).json({error:'Conflito ao salvar. Se o problema persistir, tente recarregar a página.',code:'P2002'});
-    throw createErr;
+    if(createErr.code==='P2002'){
+      if(b.forcar&&b.plano_id){
+        // Unique constraint on (clienteId, planoId) — retry as custom plan (no template link)
+        try{
+          p=await prisma.planoContratado.create({data:{clienteId:+b.cliente_id,planoId:null,
+            nomePlano:b.nome_plano||'Plano Personalizado',idadeInicio:+(b.idade_inicio||0),idadeFim:+(b.idade_fim||18),
+            valorCusto:+(b.valor_custo||0),valorBruto:+(b.valor_bruto||0),valorDesconto:vd,percentualDesconto:+(b.percentual_desconto||0),
+            valorFinal:vf,lucroPrevisto:vf-(+(b.valor_custo||0)),margemLucro:vf>0?((vf-(+(b.valor_custo||0)))/vf*100):0,
+            statusContrato:b.status_contrato||'ativo',formaPagamento:b.forma_pagamento||'avista',
+            vendedorId:b.vendedor_id?+b.vendedor_id:null,vacinadorId:b.vacinador_id?+b.vacinador_id:null,
+            dataVenda:b.data_venda?new Date(b.data_venda):new Date(),
+            dataInicioPlano:b.data_inicio_plano?new Date(b.data_inicio_plano):null,
+            dataFimPlano:b.data_fim_plano?new Date(b.data_fim_plano):null}});
+        }catch(retryErr){
+          return res.status(409).json({error:'Não foi possível criar o plano. Tente com "Plano Personalizado".',code:'P2002'});
+        }
+      }else{
+        return res.status(409).json({error:'Conflito de dados. Tente novamente.',code:'P2002'});
+      }
+    }else throw createErr;
   }
 
   // ═══ REGRA: Espontâneo + Plano = Ativo ═══

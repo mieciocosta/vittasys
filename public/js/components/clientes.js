@@ -24,7 +24,7 @@ hdr.appendChild(acts);wrap.appendChild(hdr);
 if(showForm){wrap.appendChild(buildClienteForm(formData,editId,async()=>{showForm=false;editId=null;formData={};draw()}))}
 
 const fb=h('div',{className:'filters-bar'});
-fb.appendChild(buildSearchBox('Buscar por nome, CPF (com ou sem pontuação), código, celular...',v=>{f.search=v;f.page=1;draw()},f.search));
+fb.appendChild(buildSearchBox('Buscar por nome, CPF (com ou sem pontuação), código, celular...',async v=>{f.search=v;f.page=1;await draw()},f.search));
 // Only show type filter if user can see both
 if(!perfilFilter){
   fb.appendChild(buildFilterChips([['','Todos'],['ativo','⭐ Ativos'],['espontaneo','Espontâneos']],f.tipo_cliente,v=>{f.tipo_cliente=v;f.page=1;draw()}));
@@ -73,11 +73,15 @@ else data.data.forEach(c=>{
     actTd.appendChild(badge);
     actTd.appendChild(h('button',{
       style:'margin-left:8px;padding:4px 10px;background:#05966910;border:1px solid #059669;border-radius:6px;font-size:11px;font-weight:600;color:#059669;cursor:pointer',
-      onClick:async()=>{
+      onClick:async(e)=>{
+        e.stopPropagation();
         confirmarSimples('Reativar Cliente','Reativar o cliente '+c.nome+'? Ele voltará a aparecer normalmente no sistema.',async()=>{
-          const r=await Api.reativarCliente(c.id);
-          if(r?.success){Toast.show(r.message||'Cliente reativado');draw();}
-          else Toast.show(r?.error||'Erro ao reativar','error');
+          try{
+            const r=await Api.post('/clientes/'+c.id+'/reativar');
+            if(r&&r.success){Toast.show(r.message||'Cliente reativado com sucesso');}
+            else{Toast.show((r&&r.error)||'Erro ao reativar','error');return;}
+          }catch(err){Toast.show('Erro de conexão','error');return;}
+          await draw();
         },'↩ Reativar','btn btn-primary');
       }
     },'↩ Reativar'));
