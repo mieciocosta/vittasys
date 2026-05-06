@@ -38,7 +38,7 @@ r.get('/', async (req, res, next) => { try {
       // Plano template com calendário vacinal
       plano: {
         select: {
-          planoVacinas: {
+          vacinas: {
             select: {
               vacinaId: true, doses: true,
               mesPrevInicio: true, mesPrevFim: true,
@@ -76,7 +76,7 @@ r.get('/', async (req, res, next) => { try {
     const jaRecebeu = new Set(c.movimentacoes.map(m => m.vacinaId).filter(Boolean));
 
     // Calendário: usar plano template se existir, senão usar doses do contrato
-    const calendario = pc.plano?.planoVacinas ?? [];
+    const calendario = pc.plano?.vacinas ?? [];
 
     if (calendario.length > 0) {
       // Plano padrão: cruzar faixa etária com idade no mês
