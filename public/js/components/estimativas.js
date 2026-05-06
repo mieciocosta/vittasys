@@ -300,11 +300,11 @@ ${detSecs}
 
         // Patient rows header
         const phdr = h('div', { style: 'display:grid;grid-template-columns:1fr 100px 80px 1fr;padding:8px 20px;background:var(--bg-subtle);border-bottom:1px solid var(--border)' });
-        ['Paciente','Idade','Dose','Plano'].forEach(t => phdr.appendChild(h('div', { style: 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3)' }, t)));
+        ['Paciente','Idade','Faixa Prevista','Plano'].forEach(t => phdr.appendChild(h('div', { style: 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3)' }, t)));
         card.appendChild(phdr);
 
         v.pacientes.forEach((p, pi) => {
-          const pr = h('div', { style: `display:grid;grid-template-columns:1fr 100px 80px 1fr;padding:11px 20px;align-items:center;${pi<v.pacientes.length-1?'border-bottom:1px solid var(--border-subtle,#f1f5f9)':''}` });
+          const pr = h('div', { style: `display:grid;grid-template-columns:1fr 100px 120px 1fr;padding:11px 20px;align-items:center;${pi<v.pacientes.length-1?'border-bottom:1px solid var(--border-subtle,#f1f5f9)':''}` });
           pr.addEventListener('mouseenter', ()=>pr.style.background='var(--bg-subtle)');
           pr.addEventListener('mouseleave', ()=>pr.style.background='');
 
@@ -314,7 +314,7 @@ ${detSecs}
             pn.appendChild(h('div', { style: 'font-size:11px;color:var(--text-3)' }, '↳ ' + p.nome_responsavel));
           pr.appendChild(pn);
           pr.appendChild(h('div', { style: 'font-size:12px;color:var(--text-2)' }, p.idade));
-          pr.appendChild(h('span', { style: `font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;background:${getCor(idx)}20;color:${getCor(idx)}` }, 'D' + p.dose_numero));
+          pr.appendChild(h('div', { style: 'font-size:11px;color:var(--text-3)' }, p.faixa || '—'));
           pr.appendChild(h('div', { style: 'font-size:12px;color:var(--text-3)' }, p.plano_nome));
           card.appendChild(pr);
         });
