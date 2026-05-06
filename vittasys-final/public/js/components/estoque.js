@@ -104,13 +104,12 @@ async function draw(){wrap.innerHTML='';
       },{style:{marginRight:'4px'}}));
       actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'🗑',async e=>{
         e.stopPropagation();
-        await confirmarExclusao({
-          entidade:'lote',entidadeId:l.id,
-          label:`Lote #${l.id} — ${l.vacina_nome||''}`,
-          snapshot:{id:l.id,numero_lote:l.numero_lote,vacina_nome:l.vacina_nome,quantidade_disponivel:l.quantidade_disponivel,validade:l.validade},
-          deleteFn:()=>Api.excluirLote(l.id),
-          onSuccess:()=>draw()
-        });
+        const msg=l.quantidade_disponivel>0?
+          `Lote #${l.id} tem ${l.quantidade_disponivel} unidades. Será INATIVADO (histórico preservado). Confirmar?`:
+          `Excluir lote #${l.id} permanentemente?`;
+        if(!confirm(msg))return;
+        const r=await Api.excluirLote(l.id);
+        if(r?.success){Toast.show(r.message);draw()}else Toast.show(r?.error||'Erro','error');
       }));
       tr.appendChild(actTd);
     }

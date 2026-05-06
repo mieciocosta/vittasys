@@ -86,17 +86,6 @@ const Api={
   agendaStatus(id,b){return this.put(`/agenda/${id}/status`,b)},
   agendaEditar(id,b){return this.put(`/agenda/${id}`,b)},
   agendaExcluir(id){return this.delete(`/agenda/${id}`)},
-  // ─── Exclusões Pendentes ─────────────────────────────────
-  exclusoesPendentes(){return this.get('/exclusoes?status=pendente')},
-  solicitarExclusao(entidade,entidade_id,label,snapshot,solicitante_id,solicitante_nome){
-    return this.post('/exclusoes',{entidade,entidade_id,label,snapshot,solicitante_id,solicitante_nome})
-  },
-  aprovarExclusao(id,aprovador_id,aprovador_nome){
-    return this.put(`/exclusoes/${id}/aprovar`,{aprovador_id,aprovador_nome})
-  },
-  rejeitarExclusao(id,motivo,aprovador_id,aprovador_nome){
-    return this.put(`/exclusoes/${id}/rejeitar`,{motivo,aprovador_id,aprovador_nome})
-  },
   agendaVacinas(){return this.get('/agenda/vacinas')},
   regioes(){return this.get('/agenda/regioes')},
   criarRegiao(b){return this.post('/agenda/regioes',b)},

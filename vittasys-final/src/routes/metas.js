@@ -1,0 +1,10 @@
+const{Router}=require('express');const r=Router();const prisma=require('../config/database');
+r.get('/',async(req,res,next)=>{try{const{ano}=req.query;const where={setor:'vacinas'};if(ano)where.competencia={startsWith:ano};
+  const metas=await prisma.metaFinanceira.findMany({where,orderBy:{competencia:'asc'}});
+  const tm=metas.reduce((s,m)=>s+m.valorMeta,0);const tr=metas.reduce((s,m)=>s+m.valorRealizado,0);
+  res.json({metas:metas.map(m=>({...m,valor_meta:m.valorMeta,valor_realizado:m.valorRealizado,percentual_atingido:m.percentualAtingido,valor_faltante:m.valorFaltante})),resumo:{total_meta:tm,total_realizado:tr,percentual:tm>0?tr/tm*100:0,faltante:Math.max(0,tm-tr)}});
+}catch(e){next(e)}});
+r.post('/',async(req,res,next)=>{try{const b=req.body;const pa=b.valor_meta>0?(b.valor_realizado||0)/b.valor_meta*100:0;
+  await prisma.metaFinanceira.create({data:{setor:b.setor||'vacinas',competencia:b.competencia,valorMeta:+b.valor_meta,valorRealizado:+(b.valor_realizado||0),percentualAtingido:pa,valorFaltante:Math.max(0,+b.valor_meta-(+(b.valor_realizado||0))),observacao:b.observacao}});
+  res.json({success:true})}catch(e){next(e)}});
+module.exports=r;

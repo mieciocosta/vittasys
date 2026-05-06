@@ -359,23 +359,3 @@ model Agendamento {
   @@index([status])
   @@map("agendamentos")
 }
-
-// ═══ EXCLUSÕES PENDENTES DE APROVAÇÃO MASTER ═══
-model ExclusaoPendente {
-  id              Int      @id @default(autoincrement())
-  entidade        String   // lote, cliente, plano_contratado, template_plano, usuario
-  entidadeId      Int      @map("entidade_id")
-  label           String   // ex: "Lote #12 — Coronavac"
-  snapshot        String?  // JSON com dados do registro antes de excluir
-  solicitanteId   Int      @map("solicitante_id")
-  solicitanteNome String   @map("solicitante_nome")
-  status          String   @default("pendente") // pendente, aprovado, rejeitado
-  motivoRejeicao  String?  @map("motivo_rejeicao")
-  aprovadorId     Int?     @map("aprovador_id")
-  aprovadorNome   String?  @map("aprovador_nome")
-  resolvidoEm     DateTime? @map("resolvido_em")
-  criadoEm        DateTime @default(now()) @map("criado_em")
-  @@index([status])
-  @@index([entidade, entidadeId])
-  @@map("exclusoes_pendentes")
-}

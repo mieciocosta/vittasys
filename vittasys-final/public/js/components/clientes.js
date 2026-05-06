@@ -63,15 +63,8 @@ else data.data.forEach(c=>{
     showForm=true;draw();
   },{style:{marginRight:'4px'}}));
   if((c.planos_ativos||0)===0&&(c.total_movimentacoes||0)===0){
-    actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'Excluir',async e=>{e.stopPropagation();
-      await confirmarExclusao({
-        entidade:'cliente',entidadeId:c.id,
-        label:`Cliente ${c.nome}`,
-        snapshot:{id:c.id,nome:c.nome,cpf:c.cpf,telefone:c.telefone},
-        deleteFn:()=>Api.deletarCliente(c.id),
-        onSuccess:()=>draw()
-      });
-    }));
+    actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'Excluir',async e=>{e.stopPropagation();if(!confirm(`Desativar ${c.nome}?`))return;
+      const r=await Api.deletarCliente(c.id);if(r?.success){Toast.show('Desativado');draw()}else Toast.show(r?.error||'Erro','error')}));
   }
   tr.appendChild(actTd);tb.appendChild(tr);
 });

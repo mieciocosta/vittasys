@@ -9,13 +9,12 @@ async function renderAprovacoes(){
 
     const data=await Api.movimentacoesPendentes()||[];
     const planAlts=await Api.alteracoesPendentes()||[];
-    const excPendentes=await Api.exclusoesPendentes()||[];
 
-    if(!data.length&&!planAlts.length&&!excPendentes.length){
+    if(!data.length&&!planAlts.length){
       wrap.appendChild(h('div',{className:'empty-state',style:{padding:'60px 20px',textAlign:'center'}},
         h('div',{style:{fontSize:'48px',marginBottom:'16px'}},'✅'),
         h('div',{style:{fontSize:'18px',fontWeight:'700',color:'var(--text-2)'}},'Nenhuma aprovação pendente'),
-        h('div',{style:{fontSize:'13px',color:'var(--text-3)',marginTop:'8px'}},'Todas as movimentações, alterações e exclusões estão resolvidas')));
+        h('div',{style:{fontSize:'13px',color:'var(--text-3)',marginTop:'8px'}},'Todas as movimentações e alterações estão resolvidas')));
       return;
     }
 
@@ -115,53 +114,6 @@ async function renderAprovacoes(){
         wrap.appendChild(card2);
       });
     }
-
-    // ═══ EXCLUSÕES PENDENTES ═══
-    if(excPendentes.length){
-      wrap.appendChild(h('div',{style:'margin-top:24px;margin-bottom:12px'},
-        h('h2',{style:'font-size:16px;font-weight:700;color:#dc2626'},'🗑️ Exclusões Pendentes de Aprovação ('+excPendentes.length+')')));
-      excPendentes.forEach(exc=>{
-        const card=h('div',{style:'background:var(--card-bg);border-radius:12px;padding:20px;margin-bottom:12px;border:1px solid var(--border);border-left:4px solid #dc2626'});
-        
-        const entidadeLabel={lote:'📦 Lote',cliente:'👤 Cliente',plano_contratado:'📋 Plano Contratado',template_plano:'📄 Modelo de Plano',usuario:'👥 Usuário'}[exc.entidade]||exc.entidade;
-        
-        card.appendChild(h('div',{style:'display:flex;justify-content:space-between;align-items:center;margin-bottom:14px'},
-          h('div',null,
-            h('span',{style:'padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;color:white;background:#dc2626;margin-right:8px'},entidadeLabel),
-            h('span',{style:'font-weight:700;font-size:14px'},esc(exc.label)),
-            h('span',{className:'badge badge-orange',style:'margin-left:8px'},'Exclusão Pendente')),
-          h('div',{style:'font-size:11px;color:var(--text-3)'},'Solicitado por: '+esc(exc.solicitante_nome)+' — '+fmtDataHora(exc.criado_em))
-        ));
-        
-        // Snapshot preview
-        if(exc.snapshot){
-          try{
-            const snap=JSON.parse(exc.snapshot);
-            const snapDiv=h('div',{style:'padding:10px;background:#fef2f2;border-radius:8px;margin-bottom:14px;font-size:12px'});
-            snapDiv.appendChild(h('div',{style:'font-weight:600;color:#dc2626;margin-bottom:4px'},'📋 Dados do registro:'));
-            Object.entries(snap).forEach(([k,v])=>{
-              if(v!=null)snapDiv.appendChild(h('span',{style:'margin-right:12px;color:var(--text-2)'},`${k}: `+h('strong',null,String(v)).outerHTML));
-            });
-            card.appendChild(snapDiv);
-          }catch(e){}
-        }
-        
-        const acts=h('div',{style:'display:flex;gap:10px'});
-        acts.appendChild(h('button',{className:'btn btn-primary',style:'flex:1;padding:10px;font-size:13px',onClick:async()=>{
-          if(!confirm('Aprovar e executar exclusão de "'+exc.label+'"?'))return;
-          const r=await Api.aprovarExclusao(exc.id,AppState.usuario?.id,AppState.usuario?.nome);
-          if(r?.success){Toast.show('✅ '+r.message);draw()}else Toast.show(r?.error||'Erro','error');
-        }},'✓ Aprovar e Excluir'));
-        acts.appendChild(h('button',{className:'btn btn-red',style:'flex:1;padding:10px;font-size:13px',onClick:async()=>{
-          const motivo=prompt('Motivo da rejeição:');if(!motivo)return;
-          const r=await Api.rejeitarExclusao(exc.id,motivo,AppState.usuario?.id,AppState.usuario?.nome);
-          if(r?.success){Toast.show(r.message);draw()}else Toast.show(r?.error||'Erro','error');
-        }},'✗ Rejeitar'));
-        card.appendChild(acts);
-        wrap.appendChild(card);
-      });
-    }
-
   }
 
   function modalAprovar(m){showModal(`Aprovar ${m.tipo} #${m.id}`,async(body,close)=>{

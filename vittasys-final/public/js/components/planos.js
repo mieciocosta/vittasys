@@ -31,13 +31,9 @@ else data.data.forEach(p=>{
     }));
     if(prog===0&&(p.total_pago||0)===0){
       actTd.appendChild(iconBtn('btn btn-red btn-sm',null,'Excluir',async e=>{e.stopPropagation();
-        await confirmarExclusao({
-          entidade:'plano_contratado',entidadeId:p.id,
-          label:`Plano "${p.nome_plano}" de ${p.cliente_nome}`,
-          snapshot:{id:p.id,nome_plano:p.nome_plano,cliente_nome:p.cliente_nome,valor_final:p.valor_final},
-          deleteFn:()=>Api.del(`/planos/${p.id}`),
-          onSuccess:()=>draw()
-        });
+        if(!confirm(`Excluir plano "${p.nome_plano}" de ${p.cliente_nome}?`))return;
+        const r=await Api.del(`/planos/${p.id}`);
+        if(r?.success){Toast.show('Plano excluído');draw()}else Toast.show(r?.error||'Erro','error')
       }));
     }
   }
@@ -281,7 +277,8 @@ function modalTemplates(){showModal('⚙ Modelos de Plano Vacinal',async(body,cl
         row.appendChild(info);
         row.appendChild(h('button',{style:'border:none;background:var(--bg-subtle);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px',onClick:()=>editTemplate(t)},'✏️'));
         if(AppState.isMaster()){row.appendChild(h('button',{style:'border:none;background:#dc262610;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px',onClick:async()=>{
-          await confirmarExclusao({entidade:'template_plano',entidadeId:t.id,label:`Modelo "${t.nome}"`,snapshot:{id:t.id,nome:t.nome},deleteFn:()=>Api.excluirTemplate(t.id),onSuccess:()=>listTemplates()});
+          if(!confirm('Desativar modelo "'+t.nome+'"?'))return;
+          await Api.excluirTemplate(t.id);Toast.show('Modelo desativado');listTemplates()
         }},'🗑'))}
         body.appendChild(row);
       });

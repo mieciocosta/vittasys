@@ -78,14 +78,8 @@ users.forEach(u=>{
     const r=await Api.post(`/usuarios/${u.id}/reset-pin`);Toast.show(r?.message||'Resetado');
   }},'🔑'));
   if(u.ativo){acts.appendChild(h('button',{style:'border:none;background:#dc262610;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer',title:'Desativar',onClick:async()=>{
-    await confirmarExclusao({
-      entidade:'usuario',entidadeId:u.id,
-      label:`Usuário ${u.nome}`,
-      snapshot:{id:u.id,nome:u.nome,perfil:u.perfil,cargo:u.cargo},
-      confirmMsg:`Desativar ${u.nome}? As auditorias serão preservadas.`,
-      deleteFn:()=>Api.delete(`/usuarios/${u.id}`),
-      onSuccess:()=>AppState.notify()
-    });
+    if(!confirm(`Desativar ${u.nome}? As auditorias serão preservadas.`))return;
+    const r=await Api.delete(`/usuarios/${u.id}`);if(r?.success){Toast.show(r.message);AppState.notify()}else Toast.show(r?.error||'Erro','error');
   }},'🚫'))}
   else{acts.appendChild(h('button',{style:'border:none;background:#05966910;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer',title:'Reativar',onClick:async()=>{
     const r=await Api.post(`/usuarios/${u.id}/reativar`);if(r?.success){Toast.show(r.message);AppState.notify()}else Toast.show(r?.error||'Erro','error');
