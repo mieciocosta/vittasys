@@ -4,127 +4,173 @@ const r = Router();
 
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-// ─── Calcular idade em meses numa data de referência ───────────────────────
 function idadeMeses(nascimento, refDate) {
   if (!nascimento) return null;
-  const d = new Date(refDate);
-  const n = new Date(nascimento);
-  return Math.floor((d - n) / (1000 * 60 * 60 * 24 * 30.44));
+  return Math.floor((new Date(refDate) - new Date(nascimento)) / (1000*60*60*24*30.44));
+}
+function fmtIdade(m) {
+  if (m === null || m < 0) return '-';
+  if (m < 24) return m + (m===1?' mês':' meses');
+  const a = Math.floor(m/12);
+  return a + (a===1?' ano':' anos');
 }
 
-function fmtIdade(meses) {
-  if (meses === null || meses < 0) return '-';
-  if (meses < 24) return meses + (meses === 1 ? ' mês' : ' meses');
-  const anos = Math.floor(meses / 12);
-  return anos + (anos === 1 ? ' ano' : ' anos');
-}
-
-// ═══ GET /api/estimativas ═══════════════════════════════════════════════════
 r.get('/', async (req, res, next) => { try {
   const { mes } = req.query;
   if (!mes || !/^\d{4}-\d{2}$/.test(mes))
     return res.status(400).json({ error: 'Use formato YYYY-MM' });
 
   const [anoN, mesN] = mes.split('-').map(Number);
-  const refDate = new Date(anoN, mesN - 1, 1); // primeiro dia do mês alvo
+  const refDate  = new Date(anoN, mesN - 1, 1);
   const mesExtenso = `${MESES_PT[mesN - 1]} de ${anoN}`;
 
   // ──────────────────────────────────────────────────────────────────────
-  // FONTE 1: Planos contratados ativos → doses previstas para o mês
-  // Usa competencia (se preenchida) OU calcula data_inicio_plano + mes_previsto
+  // FONTE 1 — planos contratados: todos os doses pendentes de planos ativos
+  // Filtragem de mês feita em JS para evitar problemas de SQL dinâmico
   // ──────────────────────────────────────────────────────────────────────
-  const dosesPlano = await prisma.$queryRaw`
-    SELECT
-      pcd.id          AS dose_id,
-      pcd.dose_numero,
-      pcd.mes_previsto,
-      pcd.competencia,
-      v.id            AS vacina_id,
-      v.nome          AS vacina_nome,
-      v.fabricante,
-      pc.nome_plano,
-      pc.data_inicio_plano,
-      c.id            AS cliente_id,
-      c.nome          AS cliente_nome,
-      COALESCE(c.paciente_nome, c.nome)    AS nome_paciente,
-      COALESCE(c.paciente_nascimento, c.data_nascimento) AS data_nascimento,
-      c.tipo_cliente,
-      'plano'         AS fonte
-    FROM plano_contratado_doses pcd
-    JOIN planos_contratados pc ON pcd.plano_contratado_id = pc.id
-    JOIN clientes c            ON pc.cliente_id = c.id
-    JOIN vacinas v             ON pcd.vacina_id = v.id
-    WHERE pcd.status = 'pendente'
-      AND pc.status_contrato = 'ativo'
-      AND c.status = 'ativo'
-      AND (
-        pcd.competencia = ${mes}
-        OR (
-          pcd.competencia IS NULL
-          AND pc.data_inicio_plano IS NOT NULL
-          AND pcd.mes_previsto IS NOT NULL
-          AND to_char(
-            (pc.data_inicio_plano::date + (pcd.mes_previsto || ' months')::interval),
-            'YYYY-MM'
-          ) = ${mes}
-        )
-      )
-    ORDER BY v.nome, c.nome
-  `;
+  const todasDoses = await prisma.planoContratadoDose.findMany({
+    where: {
+      status: 'pendente',
+      planoContratado: { statusContrato: 'ativo', cliente: { status: 'ativo' } }
+    },
+    select: {
+      id: true, doseNumero: true, mesPrevisto: true, competencia: true, vacinaId: true,
+      vacina: { select: { id: true, nome: true, fabricante: true } },
+      planoContratado: {
+        select: {
+          id: true, nomePlano: true, dataInicioPlano: true,
+          cliente: {
+            select: {
+              id: true, nome: true, tipoCliente: true,
+              dataNascimento: true, pacienteNome: true, pacienteNascimento: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Filtrar: competencia = mes OU calcular por data_inicio_plano + mes_previsto
+  const dosesDoMes = todasDoses.filter(d => {
+    if (d.competencia) return d.competencia === mes;
+    const ini = d.planoContratado.dataInicioPlano;
+    if (!ini || d.mesPrevisto == null) return false;
+    const calc = new Date(ini);
+    calc.setMonth(calc.getMonth() + d.mesPrevisto);
+    const calcMes = calc.getFullYear() + '-' + String(calc.getMonth()+1).padStart(2,'0');
+    return calcMes === mes;
+  });
 
   // ──────────────────────────────────────────────────────────────────────
-  // FONTE 2: Clientes sem plano ativo — previsão por faixa de idade
-  // Pega todos os clientes ativos SEM plano ativo e verifica quais vacinas
-  // do calendário vacinal (plano_vacinas) se aplicam à idade deles no mês
+  // FONTE 2 — clientes sem plano ativo: previsão por calendário vacinal
   // ──────────────────────────────────────────────────────────────────────
-  const dosesEspontaneos = await prisma.$queryRaw`
-    SELECT DISTINCT
-      NULL            AS dose_id,
-      1               AS dose_numero,
-      pv.mes_previsto_inicio AS mes_previsto,
-      NULL            AS competencia,
-      v.id            AS vacina_id,
-      v.nome          AS vacina_nome,
-      v.fabricante,
-      'Calendário Vacinal' AS nome_plano,
-      NULL            AS data_inicio_plano,
-      c.id            AS cliente_id,
-      c.nome          AS cliente_nome,
-      COALESCE(c.paciente_nome, c.nome)    AS nome_paciente,
-      COALESCE(c.paciente_nascimento, c.data_nascimento) AS data_nascimento,
-      c.tipo_cliente,
-      'espontaneo'    AS fonte
-    FROM clientes c
-    JOIN plano_vacinas pv ON (
-      FLOOR(
-        EXTRACT(EPOCH FROM (
-          DATE ${mes + '-01'} - COALESCE(c.paciente_nascimento, c.data_nascimento)::date
-        )) / (60.0 * 60 * 24 * 30.44)
-      ) BETWEEN COALESCE(pv.mes_previsto_inicio, 0) AND COALESCE(pv.mes_previsto_fim, 999)
-    )
-    JOIN vacinas v ON pv.vacina_id = v.id
-    WHERE c.status = 'ativo'
-      AND COALESCE(c.paciente_nascimento, c.data_nascimento) IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM planos_contratados pc2
-        WHERE pc2.cliente_id = c.id AND pc2.status_contrato = 'ativo'
-      )
-      -- Excluir vacinas já aplicadas neste cliente
-      AND NOT EXISTS (
-        SELECT 1 FROM movimentacoes m
-        WHERE m.cliente_id = c.id
-          AND m.vacina_id = v.id
-          AND m.status = 'concluido'
-      )
-    ORDER BY v.nome, c.nome
-  `;
+
+  // 2a) IDs de clientes que JÁ têm plano ativo
+  const comPlano = await prisma.planoContratado.findMany({
+    where: { statusContrato: 'ativo' }, select: { clienteId: true }
+  });
+  const comPlanoIds = new Set(comPlano.map(p => p.clienteId));
+
+  // 2b) Clientes sem plano ativo e com data de nascimento
+  const clientesSemPlano = await prisma.cliente.findMany({
+    where: {
+      status: 'ativo',
+      id: { notIn: comPlanoIds.size > 0 ? [...comPlanoIds] : [0] },
+      OR: [
+        { dataNascimento: { not: null } },
+        { pacienteNascimento: { not: null } }
+      ]
+    },
+    select: {
+      id: true, nome: true, tipoCliente: true,
+      dataNascimento: true, pacienteNome: true, pacienteNascimento: true,
+      movimentacoes: {
+        where: { status: 'concluido' },
+        select: { vacinaId: true }
+      }
+    }
+  });
+
+  // 2c) Calendário vacinal: todos os planoVacina com faixas etárias
+  const calendario = await prisma.planoVacina.findMany({
+    select: {
+      vacinaId: true, mesPrevInicio: true, mesPrevFim: true,
+      vacina: { select: { id: true, nome: true, fabricante: true } }
+    }
+  });
+
+  // Construir mapa vacina_id → faixas etárias (deduplicar por vacina)
+  const vacinaFaixas = {};
+  for (const pv of calendario) {
+    const vid = pv.vacinaId;
+    if (!vacinaFaixas[vid]) {
+      vacinaFaixas[vid] = { vacina: pv.vacina, faixas: [] };
+    }
+    vacinaFaixas[vid].faixas.push({
+      min: pv.mesPrevInicio ?? 0,
+      max: pv.mesPrevFim ?? 999
+    });
+  }
+
+  // 2d) Para cada cliente sem plano: verificar quais vacinas cabem na sua idade
+  const dosesEspontaneas = [];
+  for (const c of clientesSemPlano) {
+    const nasc = c.pacienteNascimento || c.dataNascimento;
+    if (!nasc) continue;
+    const idade = idadeMeses(nasc, refDate);
+    if (idade === null || idade < 0 || idade > 1200) continue; // ignorar > 100 anos
+
+    const jaRecebeu = new Set(c.movimentacoes.map(m => m.vacinaId).filter(Boolean));
+
+    for (const [vid, vf] of Object.entries(vacinaFaixas)) {
+      if (jaRecebeu.has(Number(vid))) continue; // já recebeu
+      const dentroFaixa = vf.faixas.some(f => idade >= f.min && idade <= f.max);
+      if (!dentroFaixa) continue;
+      dosesEspontaneas.push({
+        dose_id: null,
+        dose_numero: 1,
+        mes_previsto: null,
+        competencia: null,
+        vacina: vf.vacina,
+        vacina_id: Number(vid),
+        plano_nome: 'Calendário Vacinal',
+        data_inicio_plano: null,
+        cliente: c,
+        nome_paciente: c.pacienteNome || c.nome,
+        data_nascimento: nasc,
+        fonte: 'espontaneo'
+      });
+    }
+  }
 
   // ──────────────────────────────────────────────────────────────────────
-  // AGREGAR resultados
+  // JUNTAR + DEDUPLICAR (cliente+vacina: preferir plano sobre espontâneo)
   // ──────────────────────────────────────────────────────────────────────
-  const todos = [...dosesPlano, ...dosesEspontaneos];
+  const todos = [
+    ...dosesDoMes.map(d => ({
+      vacina_id: d.vacinaId,
+      vacina: d.vacina,
+      plano_nome: d.planoContratado.nomePlano,
+      cliente_id: d.planoContratado.cliente.id,
+      cliente_nome: d.planoContratado.cliente.nome,
+      nome_paciente: d.planoContratado.cliente.pacienteNome || d.planoContratado.cliente.nome,
+      data_nascimento: d.planoContratado.cliente.pacienteNascimento || d.planoContratado.cliente.dataNascimento,
+      dose_numero: d.doseNumero,
+      fonte: 'plano'
+    })),
+    ...dosesEspontaneas.map(d => ({
+      vacina_id: d.vacina_id,
+      vacina: d.vacina,
+      plano_nome: d.plano_nome,
+      cliente_id: d.cliente.id,
+      cliente_nome: d.cliente.nome,
+      nome_paciente: d.nome_paciente,
+      data_nascimento: d.data_nascimento,
+      dose_numero: 1,
+      fonte: 'espontaneo'
+    }))
+  ];
 
-  // Deduplicar: um cliente pode aparecer em plano E espontâneo → preferir plano
   const seen = new Set();
   const dedup = todos.filter(d => {
     const key = `${d.vacina_id}-${d.cliente_id}`;
@@ -136,51 +182,41 @@ r.get('/', async (req, res, next) => { try {
   // Agrupar por vacina
   const vacinaMap = {};
   for (const d of dedup) {
-    const vId = Number(d.vacina_id);
-    const nasc = d.data_nascimento;
-    const idadeMes = nasc ? idadeMeses(nasc, refDate) : null;
-
-    if (!vacinaMap[vId]) {
-      vacinaMap[vId] = {
-        vacina_id: vId,
-        vacina_nome: d.vacina_nome,
-        fabricante: d.fabricante || '',
-        qtd_plano: 0,
-        qtd_espontaneo: 0,
-        quantidade: 0,
+    const vid = d.vacina_id;
+    const idade = idadeMeses(d.data_nascimento, refDate);
+    if (!vacinaMap[vid]) {
+      vacinaMap[vid] = {
+        vacina_id: vid, vacina_nome: d.vacina.nome,
+        fabricante: d.vacina.fabricante || '',
+        quantidade: 0, qtd_plano: 0, qtd_espontaneo: 0,
         pacientes: []
       };
     }
-    const v = vacinaMap[vId];
+    const v = vacinaMap[vid];
     v.quantidade++;
-    if (d.fonte === 'plano') v.qtd_plano++;
-    else v.qtd_espontaneo++;
-
+    if (d.fonte === 'plano') v.qtd_plano++; else v.qtd_espontaneo++;
     v.pacientes.push({
-      cliente_id: Number(d.cliente_id),
+      cliente_id: d.cliente_id,
       nome_responsavel: d.cliente_nome,
       nome_paciente: d.nome_paciente,
-      idade: fmtIdade(idadeMes),
-      dose_numero: Number(d.dose_numero) || 1,
-      plano_nome: d.nome_plano,
-      fonte: d.fonte,
+      idade: fmtIdade(idade),
+      dose_numero: d.dose_numero,
+      plano_nome: d.plano_nome,
+      fonte: d.fonte
     });
   }
 
   const vacinas = Object.values(vacinaMap).sort((a, b) => b.quantidade - a.quantidade);
-  const qtdPlanoTotal = dedup.filter(d => d.fonte === 'plano').length;
-  const qtdEspTotal = dedup.filter(d => d.fonte === 'espontaneo').length;
 
   res.json({
-    mes,
-    mes_extenso: mesExtenso,
+    mes, mes_extenso: mesExtenso,
     total_doses: dedup.length,
-    total_pacientes: new Set(dedup.map(d => Number(d.cliente_id))).size,
+    total_pacientes: new Set(dedup.map(d => d.cliente_id)).size,
     total_vacinas: vacinas.length,
-    qtd_plano: qtdPlanoTotal,
-    qtd_espontaneo: qtdEspTotal,
+    qtd_plano: dedup.filter(d => d.fonte === 'plano').length,
+    qtd_espontaneo: dedup.filter(d => d.fonte === 'espontaneo').length,
     vacinas
   });
-} catch (e) { console.error('estimativas error:', e.message, e); next(e) }});
+} catch (e) { console.error('estimativas:', e.message); next(e) }});
 
 module.exports = r;
