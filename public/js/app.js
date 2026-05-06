@@ -37,6 +37,7 @@
       financeiro:renderFinanceiro,metas:renderMetas,agenda:renderAgenda,alertas:renderAlertas,
       aprovacoes:renderAprovacoes,usuarios:renderUsuarios,relatorios:renderRelatorios,
       auditoria:renderAuditoria,
+      estimativas:renderEstimativas,
       'cliente-detalhe':renderClienteDetalhe,'plano-detalhe':renderPlanoDetalhe
     };
 

@@ -23,6 +23,7 @@ app.use('/api/vacinas', require('./routes/vacinas'));
 app.use('/api/lotes', require('./routes/lotes'));
 app.use('/api/unidades', require('./routes/unidades'));
 app.use('/api/clientes', require('./routes/clientes'));
+app.use('/api/estimativas', require('./routes/estimativas'));
 app.use('/api/planos', require('./routes/planos'));
 app.use('/api/financeiro', require('./routes/financeiro'));
 app.use('/api/movimentacoes', require('./routes/movimentacoes'));
