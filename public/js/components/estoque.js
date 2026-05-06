@@ -65,10 +65,11 @@ async function draw(){wrap.innerHTML='';
         actTd.appendChild(h('button',{
           style:'padding:4px 10px;background:#05966910;border:1px solid #059669;border-radius:6px;font-size:11px;font-weight:600;color:#059669;cursor:pointer',
           onClick:async()=>{
-            if(!confirm('Reativar lote '+l.numero_lote+'?'))return;
-            const r=await Api.atualizarLote(l.id,{status:'disponivel'});
-            if(r?.success!==false&&!r?.error){Toast.show('Lote reativado');draw();}
-            else Toast.show(r?.error||'Erro','error');
+            confirmarSimples('Reativar Lote','Reativar o lote '+l.numero_lote+' ('+l.vacina_nome+')? Ele voltará a aparecer disponível no estoque.',async()=>{
+              const r=await Api.atualizarLote(l.id,{status:'disponivel'});
+              if(r?.success!==false&&!r?.error){Toast.show('Lote reativado');draw();}
+              else Toast.show(r?.error||'Erro','error');
+            },'↩ Reativar','btn btn-primary');
           }
         },'↩ Reativar'));
       }else if(excPend){

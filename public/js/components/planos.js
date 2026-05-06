@@ -217,7 +217,25 @@ function modalNovoPlano(){showModal('Novo Plano Vacinal',async(body,close)=>{
     fd.data_fim_plano=fimPlano.toISOString().split('T')[0];
     fd.data_venda=fd.data_inicio_plano;
     const r=await Api.criarPlano(fd);
-    if(r?.success){Toast.show('Plano criado com sucesso!');close();draw();}
+    if(r?.aviso){
+      // Client already has plans — show warning and let user decide
+      const planosStr=(r.planos_existentes||[]).map(p=>`• ${p.nome} (${p.faixa})`).join('\n');
+      showModal('⚠️ Atenção — Plano Existente',(wBody,wClose)=>{
+        wBody.appendChild(h('div',{style:'padding:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;margin-bottom:16px'},
+          h('div',{style:'font-weight:700;color:#92400e;margin-bottom:8px'},r.mensagem),
+          h('div',{style:'font-size:12px;color:#92400e;white-space:pre-line'},planosStr)
+        ));
+        wBody.appendChild(h('p',{style:'font-size:13px;color:var(--text-2);margin-bottom:16px'},'Isso é normal quando há familiares ou múltiplos pacientes. Clique em "Criar mesmo assim" para continuar.'));
+        const row=h('div',{style:'display:flex;gap:10px'});
+        row.appendChild(h('button',{className:'btn btn-outline',style:'flex:1',onClick:()=>wClose()},'Cancelar'));
+        row.appendChild(h('button',{className:'btn btn-primary',style:'flex:1',onClick:async()=>{
+          const r2=await Api.criarPlano({...fd,forcar:true});
+          if(r2?.success){Toast.show('Plano criado com sucesso!');wClose();close();draw();}
+          else Toast.show(r2?.error||'Erro ao criar plano','error');
+        }},'✅ Criar mesmo assim'));
+        wBody.appendChild(row);
+      },'500px');
+    }else if(r?.success){Toast.show('Plano criado com sucesso!');close();draw();}
     else Toast.show(r?.error||'Erro ao criar plano','error');
   },{style:{marginTop:'20px'}}));
 

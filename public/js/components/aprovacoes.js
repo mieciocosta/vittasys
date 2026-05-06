@@ -102,14 +102,25 @@ async function renderAprovacoes(){
         card2.appendChild(grid2);
         // Actions
         const acts2=h('div',{style:'display:flex;gap:10px'});
-        acts2.appendChild(h('button',{className:'btn btn-primary',style:'flex:1;padding:10px;font-size:13px',onClick:async()=>{
-          const r=await Api.aprovarAlteracaoPlano(pa.plano_id,{audit_id:pa.audit_id,aprovado:true,_caller_nome:AppState.usuario?.nome});
-          if(r?.success){Toast.show(r.message);draw()}else Toast.show(r?.error||'Erro','error')
+        acts2.appendChild(h('button',{className:'btn btn-primary',style:'flex:1;padding:10px;font-size:13px',onClick:()=>{
+          confirmarSimples('Aprovar Alteração','Confirmar aprovação da alteração do plano de '+esc(pa.cliente)+'?',async()=>{
+            const r=await Api.aprovarAlteracaoPlano(pa.plano_id,{audit_id:pa.audit_id,aprovado:true,_caller_nome:AppState.usuario?.nome});
+            if(r?.success){Toast.show(r.message);draw()}else Toast.show(r?.error||'Erro','error');
+          },'✓ Aprovar');
         }},'✓ Aprovar'));
-        acts2.appendChild(h('button',{className:'btn btn-red',style:'flex:1;padding:10px;font-size:13px',onClick:async()=>{
-          const motivo=prompt('Motivo da rejeição:');if(!motivo)return;
-          const r=await Api.aprovarAlteracaoPlano(pa.plano_id,{audit_id:pa.audit_id,aprovado:false,motivo,_caller_nome:AppState.usuario?.nome});
-          if(r?.success){Toast.show(r.message);draw()}else Toast.show(r?.error||'Erro','error')
+        acts2.appendChild(h('button',{className:'btn btn-red',style:'flex:1;padding:10px;font-size:13px',onClick:()=>{
+          showModal('Rejeitar Alteração',(body2,close2)=>{
+            body2.appendChild(h('label',{className:'label'},'Motivo da rejeição *'));
+            const ta2=h('textarea',{className:'input',rows:'3',placeholder:'Descreva o motivo...',style:'resize:vertical;width:100%;box-sizing:border-box'});
+            body2.appendChild(ta2);
+            body2.appendChild(h('div',{style:'margin-top:12px'}));
+            body2.appendChild(h('button',{className:'btn btn-red btn-block',onClick:async()=>{
+              const motivo=ta2.value.trim();
+              if(motivo.length<3)return Toast.show('Informe o motivo','error');
+              const r=await Api.aprovarAlteracaoPlano(pa.plano_id,{audit_id:pa.audit_id,aprovado:false,motivo,_caller_nome:AppState.usuario?.nome});
+              if(r?.success){Toast.show(r.message);close2();draw();}else Toast.show(r?.error||'Erro','error');
+            }},'✗ Confirmar Rejeição'));
+          },'460px');
         }},'✗ Rejeitar'));
         card2.appendChild(acts2);
         wrap.appendChild(card2);
@@ -160,15 +171,26 @@ async function renderAprovacoes(){
           card.appendChild(motivoDiv);
         }
         const acts=h('div',{style:'display:flex;gap:10px'});
-        acts.appendChild(h('button',{className:'btn btn-primary',style:'flex:1;padding:10px;font-size:13px',onClick:async()=>{
-          if(!confirm('Aprovar e executar exclusão de "'+exc.label+'"?'))return;
-          const r=await Api.aprovarExclusao(exc.id,AppState.usuario?.id,AppState.usuario?.nome);
-          if(r?.success){Toast.show('✅ '+r.message);draw()}else Toast.show(r?.error||'Erro','error');
+        acts.appendChild(h('button',{className:'btn btn-primary',style:'flex:1;padding:10px;font-size:13px',onClick:()=>{
+          confirmarSimples('Aprovar Exclusão','Confirmar aprovação e execução da exclusão de "'+exc.label+'"? Esta ação não pode ser desfeita.',async()=>{
+            const r=await Api.aprovarExclusao(exc.id,AppState.usuario?.id,AppState.usuario?.nome);
+            if(r?.success){Toast.show('✅ '+r.message);draw();}else Toast.show(r?.error||'Erro','error');
+          },'🗑 Aprovar e Excluir','btn btn-red');
         }},'✓ Aprovar e Excluir'));
-        acts.appendChild(h('button',{className:'btn btn-red',style:'flex:1;padding:10px;font-size:13px',onClick:async()=>{
-          const motivo=prompt('Motivo da rejeição:');if(!motivo)return;
-          const r=await Api.rejeitarExclusao(exc.id,motivo,AppState.usuario?.id,AppState.usuario?.nome);
-          if(r?.success){Toast.show(r.message);draw()}else Toast.show(r?.error||'Erro','error');
+        acts.appendChild(h('button',{className:'btn btn-red',style:'flex:1;padding:10px;font-size:13px',onClick:()=>{
+          showModal('Rejeitar Exclusão',(bodyR,closeR)=>{
+            bodyR.appendChild(h('p',{style:'font-size:13px;color:var(--text-2);margin-bottom:12px'},'Rejeitar a exclusão de "'+exc.label+'"'));
+            bodyR.appendChild(h('label',{className:'label'},'Motivo *'));
+            const taR=h('textarea',{className:'input',rows:'3',placeholder:'Descreva o motivo da rejeição...',style:'resize:vertical;width:100%;box-sizing:border-box'});
+            bodyR.appendChild(taR);
+            bodyR.appendChild(h('div',{style:'margin-top:12px'}));
+            bodyR.appendChild(h('button',{className:'btn btn-red btn-block',onClick:async()=>{
+              const motivo=taR.value.trim();
+              if(motivo.length<3)return Toast.show('Informe o motivo (mín. 3 caracteres)','error');
+              const r=await Api.rejeitarExclusao(exc.id,motivo,AppState.usuario?.id,AppState.usuario?.nome);
+              if(r?.success){Toast.show(r.message);closeR();draw();}else Toast.show(r?.error||'Erro','error');
+            }},'✗ Confirmar Rejeição'));
+          },'460px');
         }},'✗ Rejeitar'));
         card.appendChild(acts);
         wrap.appendChild(card);

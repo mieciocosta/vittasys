@@ -127,13 +127,31 @@ r.get('/:id',async(req,res,next)=>{try{
 
 r.post('/',async(req,res,next)=>{try{const b=req.body;
   const vd=(b.valor_bruto||0)*(b.percentual_desconto||0)/100;const vf=(b.valor_bruto||0)-vd;
-  
+
+  // ═══ AVISO: cliente já tem planos — retornar aviso se não for forçado ═══
+  if(b.cliente_id&&!b.forcar){
+    const planosExistentes=await prisma.planoContratado.findMany({
+      where:{clienteId:+b.cliente_id,statusContrato:'ativo'},
+      select:{id:true,nomePlano:true,idadeInicio:true,idadeFim:true,dataInicioPlano:true},
+      take:5
+    });
+    if(planosExistentes.length>0){
+      const cliente=await prisma.cliente.findUnique({where:{id:+b.cliente_id},select:{nome:true,pacienteNome:true,responsavelNome:true}});
+      const nomePaciente=cliente?.pacienteNome||cliente?.nome||'este cliente';
+      return res.status(200).json({
+        aviso:true,
+        mensagem:`O paciente ${nomePaciente} já possui ${planosExistentes.length} plano(s) ativo(s). Deseja continuar assim mesmo?`,
+        planos_existentes:planosExistentes.map(p=>({id:p.id,nome:p.nomePlano,faixa:`${p.idadeInicio}-${p.idadeFim} meses`}))
+      });
+    }
+  }
+
   // Create the plan
   let p;
   try{
     p=await prisma.planoContratado.create({data:{clienteId:+b.cliente_id,planoId:b.plano_id?+b.plano_id:null,nomePlano:b.nome_plano||'Plano Personalizado',idadeInicio:+(b.idade_inicio||0),idadeFim:+(b.idade_fim||18),valorCusto:+(b.valor_custo||0),valorBruto:+(b.valor_bruto||0),valorDesconto:vd,percentualDesconto:+(b.percentual_desconto||0),valorFinal:vf,lucroPrevisto:vf-(+(b.valor_custo||0)),margemLucro:vf>0?((vf-(+(b.valor_custo||0)))/vf*100):0,statusContrato:b.status_contrato||'ativo',formaPagamento:b.forma_pagamento||'avista',vendedorId:b.vendedor_id?+b.vendedor_id:null,vacinadorId:b.vacinador_id?+b.vacinador_id:null,dataVenda:b.data_venda?new Date(b.data_venda):new Date(),dataInicioPlano:b.data_inicio_plano?new Date(b.data_inicio_plano):null,dataFimPlano:b.data_fim_plano?new Date(b.data_fim_plano):null}});
   }catch(createErr){
-    if(createErr.code==='P2002')return res.status(409).json({error:'Erro ao criar plano. Tente novamente.'});
+    if(createErr.code==='P2002')return res.status(409).json({error:'Conflito ao salvar. Se o problema persistir, tente recarregar a página.',code:'P2002'});
     throw createErr;
   }
 

@@ -75,8 +75,9 @@ users.forEach(u=>{
   const acts=h('div',{style:'display:flex;gap:4px'});
   acts.appendChild(h('button',{style:'border:none;background:var(--bg-subtle);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer',title:'Editar',onClick:()=>modalUser(u)},'✏️'));
   acts.appendChild(h('button',{style:'border:none;background:#f59e0b20;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer',title:'Resetar senha para 1234',onClick:async()=>{
-    if(!confirm(`Resetar senha de ${u.nome} para 1234?`))return;
-    const r=await Api.post(`/usuarios/${u.id}/reset-pin`);Toast.show(r?.message||'Resetado');
+    confirmarSimples('Resetar Senha',`Resetar a senha de ${u.nome} para 1234?`,async()=>{
+      const r=await Api.post(`/usuarios/${u.id}/reset-pin`);Toast.show(r?.message||'Resetado');
+    },'🔑 Resetar','btn btn-primary');
   }},'🔑'));
   const excPend=excMap[u.id];
   const isMasterUser=AppState.isMaster();

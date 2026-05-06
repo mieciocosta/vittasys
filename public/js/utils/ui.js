@@ -102,3 +102,17 @@ function confirmarExclusao({entidade, entidadeId, label, snapshot, deleteFn, onS
     }},btnLabel));
   },'480px');
 }
+
+// ═══════════════════════════════════════════════════════════
+// confirmarSimples — substitui confirm() do browser
+// Uso: confirmarSimples('Título','Mensagem', ()=>callback(), 'Confirmar')
+// ═══════════════════════════════════════════════════════════
+function confirmarSimples(titulo, mensagem, onConfirm, btnLabel='Confirmar', btnClass='btn btn-primary'){
+  showModal(titulo,(body,close)=>{
+    body.appendChild(h('p',{style:'margin:0 0 20px;font-size:14px;color:var(--text-1);line-height:1.5'},mensagem));
+    const row=h('div',{style:'display:flex;gap:10px'});
+    row.appendChild(h('button',{className:'btn btn-outline',style:'flex:1',onClick:()=>close()},'Cancelar'));
+    row.appendChild(h('button',{className:btnClass,style:'flex:1',onClick:()=>{close();onConfirm();}},(btnLabel)));
+    body.appendChild(row);
+  },'400px');
+}

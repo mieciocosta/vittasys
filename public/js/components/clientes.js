@@ -74,10 +74,11 @@ else data.data.forEach(c=>{
     actTd.appendChild(h('button',{
       style:'margin-left:8px;padding:4px 10px;background:#05966910;border:1px solid #059669;border-radius:6px;font-size:11px;font-weight:600;color:#059669;cursor:pointer',
       onClick:async()=>{
-        if(!confirm('Reativar cliente '+c.nome+'?'))return;
-        const r=await Api.reativarCliente(c.id);
-        if(r?.success!==false&&!r?.error){Toast.show('Cliente reativado');draw();}
-        else Toast.show(r?.error||'Erro ao reativar','error');
+        confirmarSimples('Reativar Cliente','Reativar o cliente '+c.nome+'? Ele voltará a aparecer normalmente no sistema.',async()=>{
+          const r=await Api.reativarCliente(c.id);
+          if(r?.success){Toast.show(r.message||'Cliente reativado');draw();}
+          else Toast.show(r?.error||'Erro ao reativar','error');
+        },'↩ Reativar','btn btn-primary');
       }
     },'↩ Reativar'));
   }else if(excPend){
