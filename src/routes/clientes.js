@@ -108,6 +108,13 @@ r.put('/:id',async(req,res,next)=>{try{
   await prisma.cliente.update({where:{id:+req.params.id},data:d});res.json({success:true});
 }catch(e){next(e)}});
 
+
+// ─── REATIVAR CLIENTE (master) ─────────────────────────────
+r.post('/:id/reativar',async(req,res,next)=>{try{
+  await prisma.cliente.update({where:{id:+req.params.id},data:{status:'ativo'}});
+  res.json({success:true,message:'Cliente reativado com sucesso'});
+}catch(e){next(e)}});
+
 r.delete('/:id',async(req,res,next)=>{try{
   const[movs,plans]=await Promise.all([prisma.movimentacao.count({where:{clienteId:+req.params.id}}),prisma.planoContratado.count({where:{clienteId:+req.params.id,statusContrato:'ativo'}})]);
   if(movs>0||plans>0)return res.status(400).json({error:`Não é possível: ${movs} movimentações, ${plans} planos ativos`});

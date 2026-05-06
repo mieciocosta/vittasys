@@ -60,16 +60,37 @@ else data.data.forEach(c=>{
     <td><span class="badge ${c.status==='ativo'?'badge-green':'badge-gray'}">${c.status}</span></td>`;
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   const excPend=excMap[c.id];
-  if(excPend){
-    // Show locked pending badge
+  const isInativo=c.status==='inativo';
+  const isMasterUser=AppState.isMaster();
+
+  if(isInativo&&!isMasterUser){
+    // Non-master: skip inativo rows entirely — row already added to table, hide it
+    tr.style.display='none';
+  }else if(isInativo&&isMasterUser){
+    // Master: inativo record → show Reativar only
+    const badge=h('div',{style:'display:flex;align-items:center;gap:6px'});
+    badge.appendChild(h('span',{style:'font-size:11px;color:#64748b;font-style:italic'},'inativo'));
+    actTd.appendChild(badge);
+    actTd.appendChild(h('button',{
+      style:'margin-left:8px;padding:4px 10px;background:#05966910;border:1px solid #059669;border-radius:6px;font-size:11px;font-weight:600;color:#059669;cursor:pointer',
+      onClick:async()=>{
+        if(!confirm('Reativar cliente '+c.nome+'?'))return;
+        const r=await Api.reativarCliente(c.id);
+        if(r?.success!==false&&!r?.error){Toast.show('Cliente reativado');draw();}
+        else Toast.show(r?.error||'Erro ao reativar','error');
+      }
+    },'↩ Reativar'));
+  }else if(excPend){
+    // Pending deletion — locked badge
     const badge=h('div',{style:'display:flex;align-items:center;gap:6px;padding:6px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px'});
     badge.appendChild(h('span',{style:'font-size:14px'},'⏳'));
     const info=h('div');
     info.appendChild(h('div',{style:'font-size:11px;font-weight:700;color:#92400e'},'Exclusão pendente'));
-    info.appendChild(h('div',{style:'font-size:10px;color:#92400e;opacity:0.8'},excPend.solicitanteNome));
+    info.appendChild(h('div',{style:'font-size:10px;color:#92400e;opacity:0.8'},excPend.solicitanteNome||'—'));
     badge.appendChild(info);
     actTd.appendChild(badge);
   }else{
+    // Normal: edit + delete
     actTd.appendChild(iconBtn('btn btn-outline btn-sm',null,'Editar',e=>{
       e.stopPropagation();editId=c.id;formData={};
       ['codigo_cliente','nome','data_nascimento','sexo','cpf','telefone','email','tipo_paciente','tipo_cliente','responsavel_nome','responsavel_parentesco','responsavel_cpf','responsavel_telefone','paciente_nome','paciente_nascimento','paciente_sexo','paciente_cpf','vendedor_id','vacinador_id','status','observacoes','observacoes_clinicas','endereco','bairro','cep','regiao_id'].forEach(k=>{if(c[k]!=null)formData[k]=c[k]});

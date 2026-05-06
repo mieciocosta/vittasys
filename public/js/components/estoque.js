@@ -55,13 +55,29 @@ async function draw(){wrap.innerHTML='';
     {
       const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
       const excPend=excMap[l.id];
-      if(excPend){
-        // Record has pending deletion — show locked badge
+      const isInativo=l.status==='inativo';
+
+      if(isInativo&&!isMaster){
+        // Non-master: hide entire row
+        tr.style.display='none';
+      }else if(isInativo&&isMaster){
+        // Master: reativar only
+        actTd.appendChild(h('button',{
+          style:'padding:4px 10px;background:#05966910;border:1px solid #059669;border-radius:6px;font-size:11px;font-weight:600;color:#059669;cursor:pointer',
+          onClick:async()=>{
+            if(!confirm('Reativar lote '+l.numero_lote+'?'))return;
+            const r=await Api.atualizarLote(l.id,{status:'disponivel'});
+            if(r?.success!==false&&!r?.error){Toast.show('Lote reativado');draw();}
+            else Toast.show(r?.error||'Erro','error');
+          }
+        },'↩ Reativar'));
+      }else if(excPend){
+        // Pending deletion — locked badge
         const badge=h('div',{style:'display:flex;align-items:center;gap:6px;padding:6px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px'});
         badge.appendChild(h('span',{style:'font-size:14px'},'⏳'));
         const info=h('div');
         info.appendChild(h('div',{style:'font-size:11px;font-weight:700;color:#92400e'},'Exclusão pendente'));
-        info.appendChild(h('div',{style:'font-size:10px;color:#92400e;opacity:0.8'},excPend.solicitanteNome));
+        info.appendChild(h('div',{style:'font-size:10px;color:#92400e;opacity:0.8'},excPend.solicitanteNome||'—'));
         badge.appendChild(info);
         actTd.appendChild(badge);
       }else if(isMaster){

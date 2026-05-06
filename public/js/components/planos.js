@@ -28,12 +28,15 @@ else data.data.forEach(p=>{
   // Actions
   const actTd=document.createElement('td');actTd.style.whiteSpace='nowrap';
   const excPend=excMap[p.id];
+  const isInativoPlano=p.status_contrato==='cancelado'||p.status_contrato==='inativo';
+  const isMasterUser=AppState.isMaster();
+  if(isInativoPlano&&!isMasterUser){tr.style.display='none';}
   if(excPend){
     const badge=h('div',{style:'display:flex;align-items:center;gap:6px;padding:6px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px'});
     badge.appendChild(h('span',{style:'font-size:14px'},'⏳'));
     const info=h('div');
     info.appendChild(h('div',{style:'font-size:11px;font-weight:700;color:#92400e'},'Exclusão pendente'));
-    info.appendChild(h('div',{style:'font-size:10px;color:#92400e;opacity:0.8'},excPend.solicitanteNome));
+    info.appendChild(h('div',{style:'font-size:10px;color:#92400e;opacity:0.8'},excPend.solicitanteNome||'—'));
     badge.appendChild(info);
     actTd.appendChild(badge);
   }else{

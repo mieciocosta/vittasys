@@ -79,7 +79,24 @@ users.forEach(u=>{
     const r=await Api.post(`/usuarios/${u.id}/reset-pin`);Toast.show(r?.message||'Resetado');
   }},'🔑'));
   const excPend=excMap[u.id];
-  if(excPend){
+  const isMasterUser=AppState.isMaster();
+
+  if(!u.ativo&&!isMasterUser){
+    // Non-master: hide inactive users entirely
+    row.style.display='none';
+  }else if(!u.ativo&&isMasterUser){
+    // Master: inactive user → reativar only
+    acts.appendChild(h('button',{
+      style:'border:none;background:#05966910;border:1px solid #059669;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:#059669;cursor:pointer',
+      title:'Reativar usuário',
+      onClick:async()=>{
+        const r=await Api.post(`/usuarios/${u.id}/reativar`);
+        if(r?.success){Toast.show(r.message);AppState.notify();}
+        else Toast.show(r?.error||'Erro','error');
+      }
+    },'↩ Reativar'));
+  }else if(excPend){
+    // Pending deletion — locked badge
     acts.appendChild(h('div',{style:'display:flex;align-items:center;gap:4px;padding:4px 8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px'},
       h('span',null,'⏳'),
       h('span',{style:'font-size:10px;font-weight:600;color:#92400e'},'Exclusão pendente')
