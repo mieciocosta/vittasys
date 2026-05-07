@@ -213,6 +213,31 @@ td small{font-size:9px;color:#94a3b8;display:block;margin-top:1px}
             e se as doses do plano têm "mês previsto" configurado.
           </div>
         </div>`;
+      emp.appendChild(h('div',{style:'margin-top:16px'}));
+      emp.appendChild(h('button',{
+        className:'btn btn-outline btn-sm',
+        style:'font-size:11px',
+        onClick: async()=>{
+          try{
+            const dbg = await Api.get('/estimativas/debug');
+            showModal('🔍 Diagnóstico do Banco de Dados',(body)=>{
+              body.appendChild(h('div',{style:'font-size:12px;line-height:1.8;background:var(--bg-subtle);padding:14px;border-radius:8px;font-family:monospace;max-height:500px;overflow-y:auto'},
+                h('div',null,'Total de doses no DB: '+dbg.totalDoses),
+                h('div',null,'Doses pendentes: '+dbg.dosesPendentes),
+                h('div',{style:'margin-top:8px;font-weight:700'},'Meses com doses pendentes:'),
+                ...(dbg.mesesDoses||[]).map(m=>h('div',null,'  '+m.competencia+': '+m._count.id+' doses')),
+                h('div',{style:'margin-top:8px;font-weight:700'},'Amostra (5 planos):'),
+                ...(dbg.amostra||[]).map(p=>h('div',null,
+                  '  Plano #'+p.id+' — '+p.nomePlano+
+                  ' | Nasc: '+(p.cliente.pacienteNascimento||p.cliente.dataNascimento||'N/A')+
+                  ' | Doses: '+p.doses.length+
+                  (p.doses[0]?' (mp='+p.doses[0].mesPrevisto+', comp='+p.doses[0].competencia+')':'')
+                ))
+              ));
+            },'600px');
+          }catch(e){ Toast.show('Erro ao buscar diagnóstico','error'); }
+        }
+      },'🔍 Ver diagnóstico do banco'));
       wrap.appendChild(emp);return;
     }
 

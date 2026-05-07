@@ -123,22 +123,32 @@ r.get('/', async (req, res, next) => { try {
         for (const dose of sorted) {
           if (dose.status === 'aplicada') continue;
           const dn = dose.doseNumero || 1;
-          if (dn <= jaAplic) continue; // já foi aplicada
+          if (dn <= jaAplic) continue;
 
-          // Calcular data usando NASCIMENTO + mesPrevisto (não dataInicioPlano)
-          const mesDose = addMeses(nasc, dose.mesPrevisto);
+          // Tentativa 1: nascimento + mesPrevisto (cálculo correto por idade)
+          let mesDose = (dose.mesPrevisto != null) ? addMeses(nasc, dose.mesPrevisto) : null;
+          // Tentativa 2: competencia já armazenada (calculada na criação do plano)
+          if (!mesDose || mesDose !== mes) {
+            if (dose.competencia === mes) mesDose = mes;
+          }
+
           if (mesDose === mes) {
+            const dataPrev = (() => {
+              const d = new Date(nasc);
+              d.setMonth(d.getMonth() + (dose.mesPrevisto || 0));
+              return d.toISOString().slice(0, 10);
+            })();
             previsoes.push({
               vacinaId: vid, vacinaNome: dose.vacina?.nome || `Vacina #${vid}`,
               clienteId: pc.cliente.id, clienteNome: pc.cliente.nome,
               pacienteNome: pc.cliente.pacienteNome || pc.cliente.nome,
               planoNome: pc.nomePlano, doseNumero: dn, totalDoses: sorted.length,
-              idadeEsperada: dose.mesPrevisto,
-              dataPrevista: (() => { const d=new Date(nasc);d.setMonth(d.getMonth()+dose.mesPrevisto);return d.toISOString().slice(0,10); })()
+              idadeEsperada: dose.mesPrevisto || 0, dataPrevista: dataPrev
             });
             break;
           }
-          if (mesDose > mes) break;
+          // Só para de buscar quando passa do mês alvo em AMBAS as estimativas
+          if (mesDose && mesDose > mes && (!dose.competencia || dose.competencia > mes)) break;
         }
       }
     }
@@ -202,5 +212,44 @@ r.get('/', async (req, res, next) => { try {
     debug: { ...debug, previsoes_brutas: previsoes.length, previsoes_dedup: dedup.length }
   });
 } catch (e) { console.error('estimativas:', e.message, e.stack); next(e) }});
+
+
+// ═══ DEBUG: ver dados reais dos planos ═══
+r.get('/debug', async (req, res, next) => { try {
+  // Contar doses existentes
+  const totalDoses = await prisma.planoContratadoDose.count({
+    where: { planoContratado: { statusContrato: 'ativo' } }
+  });
+  const dosesPendentes = await prisma.planoContratadoDose.count({
+    where: { status: 'pendente', planoContratado: { statusContrato: 'ativo' } }
+  });
+
+  // Primeiros 5 planos com doses
+  const amostra = await prisma.planoContratado.findMany({
+    where: { statusContrato: 'ativo' },
+    take: 5,
+    select: {
+      id: true, nomePlano: true, planoId: true,
+      dataInicioPlano: true,
+      cliente: { select: { id: true, nome: true, dataNascimento: true, pacienteNascimento: true } },
+      doses: {
+        take: 3,
+        select: { id: true, doseNumero: true, mesPrevisto: true, competencia: true, status: true,
+          vacina: { select: { nome: true } } }
+      }
+    }
+  });
+
+  // Distribuição de meses das doses pendentes
+  const mesesDoses = await prisma.planoContratadoDose.groupBy({
+    by: ['competencia'],
+    where: { status: 'pendente', planoContratado: { statusContrato: 'ativo' }, competencia: { not: null } },
+    _count: { id: true },
+    orderBy: { competencia: 'asc' }
+  });
+
+  res.json({ totalDoses, dosesPendentes, mesesDoses: mesesDoses.slice(0,20), amostra });
+} catch (e) { res.status(500).json({ error: e.message }) }});
+
 
 module.exports = r;
