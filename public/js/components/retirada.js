@@ -162,7 +162,7 @@ async function renderRetirada(){
           lc.appendChild(pc);
         }
       }
-      const locais=[['Deltóide D','💪 Deltóide Direito'],['Deltóide E','💪 Deltóide Esquerdo'],['VL Coxa D','🦵 VL Coxa Direita'],['VL Coxa E','🦵 VL Coxa Esquerda'],['Glúteo D','Glúteo Direito'],['Glúteo E','Glúteo Esquerdo'],['Oral','👄 Via Oral']];
+      const locais=[['Deltóide D','💪 Deltóide Direito'],['Deltóide E','💪 Deltóide Esquerdo'],['VL Coxa D','🦵 VL Coxa Direita'],['VL Coxa E','🦵 VL Coxa Esquerda'],['Glúteo D','Glúteo Direito'],['Glúteo E','Glúteo Esquerdo'],['Subcutânea','💉 Via Subcutânea'],['Oral','👄 Via Oral']];
       const lg=h('div',{className:'applicator-grid'});
       locais.forEach(([val,label])=>{lg.appendChild(h('button',{className:`applicator-card${localAplicacao===val?' active':''}`,onClick:()=>{localAplicacao=val;etapa='aplicador';draw()}},h('div',{style:{fontWeight:'600',fontSize:'13px'}},label)))});
       lc.appendChild(lg);wrap.appendChild(lc);

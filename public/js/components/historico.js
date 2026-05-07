@@ -172,7 +172,7 @@ function modalNovaMovimentacao(){showModal('Nova Movimentação',async(body,clos
 
   // Local aplicação
   const dLoc=h('div');dLoc.appendChild(h('label',{className:'label'},'Local de Aplicação'));
-  dLoc.appendChild(buildSelect([['','— Não se aplica —'],['Deltóide D','Deltóide D'],['Deltóide E','Deltóide E'],['VL Coxa D','VL Coxa D'],['VL Coxa E','VL Coxa E'],['Glúteo D','Glúteo D'],['Oral','Oral']],fd.local_aplicacao||'',v=>{fd.local_aplicacao=v}));
+  dLoc.appendChild(buildSelect([['','— Não se aplica —'],['Deltóide D','Deltóide D'],['Deltóide E','Deltóide E'],['VL Coxa D','VL Coxa D'],['VL Coxa E','VL Coxa E'],['Glúteo D','Glúteo D'],['Subcutânea','Subcutânea'],['Oral','Oral']],fd.local_aplicacao||'',v=>{fd.local_aplicacao=v}));
   gr.appendChild(dLoc);
 
   // Data/hora
