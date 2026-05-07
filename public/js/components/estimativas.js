@@ -159,7 +159,7 @@ td small{font-size:9px;color:#94a3b8;display:block;margin-top:1px}
     wrap.appendChild(h('div',{className:'page-header'},
       h('div',{className:'page-header-left'},
         h('h1',{className:'page-title'},'💊 Estimativa de Compra de Vacinas'),
-        h('p',{className:'page-subtitle'},'Doses previstas por planos vacinais ativos · ' + (data ? `${data.debug?.planos_ativos_total||0} planos · ${data.debug?.doses_pendentes_total||0} doses pendentes` : 'Selecione um mês'))
+        h('p',{className:'page-subtitle'},'Cálculo dinâmico: nascimento + calendário vacinal do plano · ' + (data ? `${data.debug?.planos_ativos_total||0} planos ativos · ${data.debug?.planos_calculados||0} com calendário calculado` : 'Selecione um mês'))
       )
     ));
 
@@ -200,13 +200,14 @@ td small{font-size:9px;color:#94a3b8;display:block;margin-top:1px}
       const d=data.debug||{};
       emp.innerHTML=`<div style="font-size:48px;margin-bottom:14px">📭</div>
         <h3 style="font-size:17px;font-weight:700;margin-bottom:8px">Nenhuma dose prevista para ${data.mes_extenso}</h3>
-        <div style="font-size:12px;color:var(--text-3);max-width:500px;margin:0 auto;line-height:2">
-          <div>📋 Planos ativos no sistema: <strong>${d.planos_ativos_total||0}</strong></div>
+        <div style="font-size:12px;color:var(--text-3);max-width:540px;margin:0 auto;line-height:2.1">
+          <div>📋 Planos ativos: <strong>${d.planos_ativos_total||0}</strong></div>
           <div>👤 Planos com cliente ativo: <strong>${d.planos_cliente_ativo||0}</strong></div>
-          <div>💉 Doses pendentes no sistema: <strong>${d.doses_pendentes_total||0}</strong></div>
-          <div>📅 Doses com mês calculado: <strong>${d.doses_com_mes_calculado||0}</strong></div>
-          <div>❓ Doses sem data calculável: <strong>${d.doses_sem_mes||0}</strong></div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text-4)">Meses disponíveis: ${(d.meses_disponiveis||[]).join(', ')||'(nenhum)'}</div>
+          <div>📅 Planos calculados (com nascimento + calendário): <strong>${d.planos_calculados||0}</strong></div>
+          <div>❓ Sem data de nascimento: <strong>${d.planos_sem_nascimento||0}</strong></div>
+          <div>❓ Sem calendário vacinal (plano sem template): <strong>${d.planos_sem_calendario||0}</strong></div>
+          <div>🔢 Previsões brutas geradas: <strong>${d.previsoes_brutas||0}</strong></div>
+          <div>✅ Após deduplicação: <strong>${d.previsoes_dedup||0}</strong></div>
         </div>`;
       wrap.appendChild(emp);return;
     }
@@ -296,7 +297,7 @@ td small{font-size:9px;color:#94a3b8;display:block;margin-top:1px}
     wrap.appendChild(tblWrap);
 
     wrap.appendChild(h('div',{style:'margin-top:14px;padding:10px 16px;background:var(--bg-subtle);border-radius:8px;font-size:11px;color:var(--text-4);text-align:center'},
-      `⚡ ${data.debug?.planos_ativos_total||0} planos ativos · ${data.debug?.doses_pendentes_total||0} doses pendentes no sistema · ${data.debug?.doses_previstas_mes||data.totais?.doses_previstas||0} previstas para ${data.mes_extenso}`
+      `⚡ ${data.debug?.planos_ativos_total||0} planos · ${data.debug?.planos_calculados||0} com calendário + nascimento · ${data.totais?.doses_previstas||0} doses calculadas para ${data.mes_extenso}`
     ));
   }
 
