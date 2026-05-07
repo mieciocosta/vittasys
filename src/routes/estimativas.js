@@ -5,19 +5,12 @@ const r = Router();
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-// Adiciona N meses inteiros a uma data, retorna nova Date
-function somarMeses(base, n) {
+function addMeses(base, n) {
   const d = new Date(base);
   d.setMonth(d.getMonth() + Math.round(n));
-  return d;
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
 }
 
-// Retorna 'YYYY-MM' de uma data
-function toMesStr(d) {
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 r.get('/', async (req, res, next) => { try {
   const { mes } = req.query;
   if (!mes || !/^\d{4}-\d{2}$/.test(mes))
@@ -27,247 +20,187 @@ r.get('/', async (req, res, next) => { try {
   const mesExtenso   = `${MESES_PT[mesN - 1]} de ${anoN}`;
   const refInicio    = new Date(anoN, mesN - 1, 1);
 
-  // ── 1. Todos os planos ativos com vacinas do calendário ───────────────
+  // ── Busca todos os planos ativos com tudo que precisamos ──────────────
   const planos = await prisma.planoContratado.findMany({
     where: { statusContrato: 'ativo' },
     select: {
-      id: true,
-      nomePlano: true,
-      idadeInicio: true,
-      idadeFim: true,
-      // Vacinas do template (calendário vacinal do plano)
+      id: true, nomePlano: true, planoId: true,
+      // Calendário do template (para planos com template)
       plano: {
         select: {
           vacinas: {
             select: {
-              vacinaId: true,
-              doses: true,
-              mesPrevInicio: true,
-              mesPrevFim: true,
+              vacinaId: true, doses: true,
+              mesPrevInicio: true, mesPrevFim: true,
               vacina: { select: { id: true, nome: true } }
             }
           }
         }
       },
-      // Cliente com data de nascimento
+      // Doses já programadas (para planos personalizados SEM template)
+      doses: {
+        select: {
+          vacinaId: true, doseNumero: true, mesPrevisto: true, status: true,
+          vacina: { select: { id: true, nome: true } }
+        }
+      },
       cliente: {
         select: {
-          id: true,
-          nome: true,
-          status: true,
+          id: true, nome: true, status: true,
           dataNascimento: true,
-          pacienteNome: true,
-          pacienteNascimento: true,
-          // Doses já aplicadas a este cliente (para não contar novamente)
+          pacienteNome: true, pacienteNascimento: true,
+          // Vacinas já aplicadas
           movimentacoes: {
             where: { tipo: 'aplicacao', status: { in: ['concluido', 'aprovado'] } },
-            select: { vacinaId: true, id: true }
+            select: { vacinaId: true }
           }
         }
       }
     }
   });
 
-  // ── 2. Para cada plano, calcular quais vacinas estão previstas no mês ─
-  const previsoes = []; // { vacinaId, vacinaNome, clienteId, ..., dataPrevista }
-
-  let dbgSemNascimento = 0;
-  let dbgSemCalendario = 0;
-  let dbgTotalCalc     = 0;
+  const previsoes = [];
+  const debug = { planos: planos.length, sem_nascimento: 0, com_template: 0, sem_template: 0, calculados: 0 };
 
   for (const pc of planos) {
-    if (pc.cliente.status !== 'ativo') continue;
-
     // Data de nascimento do paciente
     const nasc = pc.cliente.pacienteNascimento || pc.cliente.dataNascimento;
-    if (!nasc) { dbgSemNascimento++; continue; }
+    if (!nasc) { debug.sem_nascimento++; continue; }
 
-    // Calendário vacinal do plano (template)
-    const calendario = pc.plano?.vacinas || [];
-    if (!calendario.length) { dbgSemCalendario++; continue; }
-
-    // Vacinas já aplicadas a este cliente (Set de vacinaId)
-    // Para decidir qual dose vem a seguir, contar por vacina
-    const aplicadasCount = {};
+    // Contagem de vacinas já aplicadas
+    const aplicadas = {};
     for (const m of pc.cliente.movimentacoes) {
-      if (m.vacinaId) aplicadasCount[m.vacinaId] = (aplicadasCount[m.vacinaId] || 0) + 1;
+      if (m.vacinaId) aplicadas[m.vacinaId] = (aplicadas[m.vacinaId] || 0) + 1;
     }
 
-    dbgTotalCalc++;
+    debug.calculados++;
 
-    for (const pv of calendario) {
-      const vid          = pv.vacinaId;
-      const totalDoses   = pv.doses || 1;
-      const inicio       = pv.mesPrevInicio ?? 0;
-      const fim          = pv.mesPrevFim    ?? inicio;
-      const jaAplicadas  = aplicadasCount[vid] || 0;
+    // ── CASO A: plano tem template → usar PlanoVacina (calendário) ───
+    const calendario = pc.plano?.vacinas || [];
+    if (calendario.length > 0) {
+      debug.com_template++;
+      for (const pv of calendario) {
+        const vid        = pv.vacinaId;
+        const totalDoses = pv.doses || 1;
+        const inicio     = pv.mesPrevInicio ?? 0;
+        const fim        = pv.mesPrevFim    ?? inicio;
+        const jaAplic    = aplicadas[vid]   || 0;
 
-      if (jaAplicadas >= totalDoses) continue; // todas as doses já foram aplicadas
+        for (let dn = jaAplic + 1; dn <= totalDoses; dn++) {
+          const idadeEsp = totalDoses === 1 ? inicio
+            : inicio + (fim - inicio) * (dn - 1) / (totalDoses - 1);
+          const mesDose = addMeses(nasc, idadeEsp);
 
-      // Para cada dose ainda pendente, calcular se cai no mês alvo
-      for (let doseNum = jaAplicadas + 1; doseNum <= totalDoses; doseNum++) {
-        // Interpola a idade esperada para esta dose
-        // doses=1: idade = inicio
-        // doses=2: D1=inicio, D2=fim
-        // doses=3: D1=inicio, D2=meio, D3=fim
-        const idadeEsperada = totalDoses === 1
-          ? inicio
-          : inicio + (fim - inicio) * (doseNum - 1) / (totalDoses - 1);
-
-        // Data prevista = nascimento + idadeEsperada meses
-        const dataPrev  = somarMeses(nasc, idadeEsperada);
-        const mesDose   = toMesStr(dataPrev);
-
-        if (mesDose === mes) {
-          previsoes.push({
-            vacinaId:       vid,
-            vacinaNome:     pv.vacina.nome,
-            clienteId:      pc.cliente.id,
-            clienteNome:    pc.cliente.nome,
-            pacienteNome:   pc.cliente.pacienteNome || pc.cliente.nome,
-            planoNome:      pc.nomePlano,
-            doseNumero:     doseNum,
-            totalDoses,
-            idadeEsperada:  Math.round(idadeEsperada),
-            dataPrevista:   dataPrev.toISOString().slice(0, 10),
-            mesDose
-          });
-          // Só adicionar a próxima dose pendente (não todas as futuras)
-          break;
+          if (mesDose === mes) {
+            previsoes.push({
+              vacinaId: vid, vacinaNome: pv.vacina.nome,
+              clienteId: pc.cliente.id, clienteNome: pc.cliente.nome,
+              pacienteNome: pc.cliente.pacienteNome || pc.cliente.nome,
+              planoNome: pc.nomePlano, doseNumero: dn, totalDoses,
+              idadeEsperada: Math.round(idadeEsp),
+              dataPrevista: (() => { const d=new Date(nasc);d.setMonth(d.getMonth()+Math.round(idadeEsp));return d.toISOString().slice(0,10); })()
+            });
+            break;
+          }
+          if (mesDose > mes) break;
         }
+      }
+    } else {
+      // ── CASO B: plano SEM template → usar doses programadas com dataNasc + mesPrevisto ─
+      debug.sem_template++;
+      const dosesPorVacina = {};
+      for (const d of pc.doses) {
+        if (!d.vacinaId || d.mesPrevisto == null) continue;
+        if (!dosesPorVacina[d.vacinaId]) dosesPorVacina[d.vacinaId] = [];
+        dosesPorVacina[d.vacinaId].push(d);
+      }
 
-        // Se a dose esperada já passou do mês alvo, não há mais doses futuras neste mês
-        if (mesDose > mes) break;
+      for (const [vidStr, doses] of Object.entries(dosesPorVacina)) {
+        const vid     = parseInt(vidStr);
+        const jaAplic = aplicadas[vid] || 0;
+        const sorted  = doses.sort((a,b) => (a.mesPrevisto||0) - (b.mesPrevisto||0));
+
+        for (const dose of sorted) {
+          if (dose.status === 'aplicada') continue;
+          const dn = dose.doseNumero || 1;
+          if (dn <= jaAplic) continue; // já foi aplicada
+
+          // Calcular data usando NASCIMENTO + mesPrevisto (não dataInicioPlano)
+          const mesDose = addMeses(nasc, dose.mesPrevisto);
+          if (mesDose === mes) {
+            previsoes.push({
+              vacinaId: vid, vacinaNome: dose.vacina?.nome || `Vacina #${vid}`,
+              clienteId: pc.cliente.id, clienteNome: pc.cliente.nome,
+              pacienteNome: pc.cliente.pacienteNome || pc.cliente.nome,
+              planoNome: pc.nomePlano, doseNumero: dn, totalDoses: sorted.length,
+              idadeEsperada: dose.mesPrevisto,
+              dataPrevista: (() => { const d=new Date(nasc);d.setMonth(d.getMonth()+dose.mesPrevisto);return d.toISOString().slice(0,10); })()
+            });
+            break;
+          }
+          if (mesDose > mes) break;
+        }
       }
     }
   }
 
-  // ── 3. Deduplicar: um cliente+vacina conta apenas uma vez no mês ─────
-  const seen    = new Set();
-  const dedupPrevisoes = previsoes.filter(p => {
-    const key = `${p.vacinaId}-${p.clienteId}`;
-    if (seen.has(key)) return false;
-    seen.add(key); return true;
+  // Deduplicar: mesma vacina + mesmo cliente conta 1 vez
+  const seen = new Set();
+  const dedup = previsoes.filter(p => {
+    const k = `${p.vacinaId}-${p.clienteId}`;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
   });
 
-  // ── 4. Estoque atual por vacina ───────────────────────────────────────
+  // Estoque atual por vacina
   const lotes = await prisma.lote.findMany({
     where: { status: { not: 'inativo' } },
-    select: {
-      id: true, numeroLote: true, validade: true,
-      quantidadeDisponivel: true,
-      vacina: { select: { id: true, nome: true } }
-    }
+    select: { id: true, numeroLote: true, validade: true,
+      quantidadeDisponivel: true, vacina: { select: { id: true, nome: true } } }
   });
-  const estoqueMap  = {};
-  const vencendoMap = {};
+  const estMap  = {};
+  const vencMap = {};
   for (const l of lotes) {
     const vid = l.vacina.id;
-    if (!estoqueMap[vid]) { estoqueMap[vid] = 0; vencendoMap[vid] = []; }
-    estoqueMap[vid] += l.quantidadeDisponivel;
+    if (!estMap[vid]) { estMap[vid] = 0; vencMap[vid] = []; }
+    estMap[vid] += l.quantidadeDisponivel;
     if (l.validade) {
-      const dias = (new Date(l.validade) - refInicio) / (1000*60*60*24);
-      if (dias > 0 && dias <= 60)
-        vencendoMap[vid].push(`${l.numeroLote} (${new Date(l.validade).toLocaleDateString('pt-BR')})`);
+      const dias = (new Date(l.validade) - refInicio) / (864e5);
+      if (dias > 0 && dias <= 60) vencMap[vid].push(`${l.numeroLote} vence ${new Date(l.validade).toLocaleDateString('pt-BR')}`);
     }
   }
 
-  // ── 5. Reservas: total de doses previstas a partir do mês alvo ────────
-  // Para cada vacina, soma todas as previsões futuras (este mês + meses seguintes)
-  // Representa estoque já comprometido
-  const reservasPorVacina = {};
-  for (const pc of planos) {
-    if (pc.cliente.status !== 'ativo') continue;
-    const nasc = pc.cliente.pacienteNascimento || pc.cliente.dataNascimento;
-    if (!nasc || !pc.plano?.vacinas?.length) continue;
-    const aplicadasCount = {};
-    for (const m of pc.cliente.movimentacoes) {
-      if (m.vacinaId) aplicadasCount[m.vacinaId] = (aplicadasCount[m.vacinaId] || 0) + 1;
-    }
-    for (const pv of pc.plano.vacinas) {
-      const vid = pv.vacinaId;
-      const totalDoses  = pv.doses || 1;
-      const inicio      = pv.mesPrevInicio ?? 0;
-      const fim         = pv.mesPrevFim    ?? inicio;
-      const jaAplicadas = aplicadasCount[vid] || 0;
-      for (let dn = jaAplicadas + 1; dn <= totalDoses; dn++) {
-        const idadeEsp = totalDoses === 1 ? inicio : inicio + (fim - inicio) * (dn - 1) / (totalDoses - 1);
-        const mDose    = toMesStr(somarMeses(nasc, idadeEsp));
-        if (mDose >= mes) {
-          reservasPorVacina[vid] = (reservasPorVacina[vid] || 0) + 1;
-        }
-      }
-    }
-  }
-
-  // ── 6. Agrupar previsões por vacina ───────────────────────────────────
+  // Agrupar por vacina
   const vacinaMap = {};
-  for (const p of dedupPrevisoes) {
-    const vid = p.vacinaId;
-    if (!vacinaMap[vid]) {
-      vacinaMap[vid] = {
-        vacina_id: vid,
-        nome:      p.vacinaNome,
-        quantidade: 0,
-        pacientes: []
-      };
-    }
-    vacinaMap[vid].quantidade++;
-    vacinaMap[vid].pacientes.push({
-      paciente_nome:    p.pacienteNome,
-      responsavel:      p.clienteNome,
-      plano_nome:       p.planoNome,
-      dose_numero:      p.doseNumero,
-      total_doses:      p.totalDoses,
-      idade_esperada:   p.idadeEsperada,
-      data_prevista:    p.dataPrevista
+  for (const p of dedup) {
+    if (!vacinaMap[p.vacinaId]) vacinaMap[p.vacinaId] = { vacina_id: p.vacinaId, nome: p.vacinaNome, quantidade: 0, pacientes: [] };
+    vacinaMap[p.vacinaId].quantidade++;
+    vacinaMap[p.vacinaId].pacientes.push({
+      paciente_nome: p.pacienteNome, responsavel: p.clienteNome,
+      plano_nome: p.planoNome, dose_numero: p.doseNumero,
+      idade_esperada: p.idadeEsperada, data_prevista: p.dataPrevista
     });
   }
 
-  // ── 7. Montar tabela final ────────────────────────────────────────────
   const tabela = Object.values(vacinaMap).map(v => {
-    const estAtual   = estoqueMap[v.vacina_id] || 0;
-    const reserv     = reservasPorVacina[v.vacina_id] || 0;
-    const disponivel = Math.max(0, estAtual - reserv);
-    const sugestao   = Math.max(0, v.quantidade - disponivel);
-    const venc       = vencendoMap[v.vacina_id] || [];
-
+    const est  = estMap[v.vacina_id]  || 0;
+    const sug  = Math.max(0, v.quantidade - est);
     let status = 'ok';
-    if (sugestao >= v.quantidade) status = 'urgente';
-    else if (sugestao > 0 || venc.length) status = 'atencao';
-
-    v.pacientes.sort((a, b) =>
-      (a.data_prevista || '').localeCompare(b.data_prevista || '') ||
-      a.paciente_nome.localeCompare(b.paciente_nome));
-
-    return { ...v, estoque_atual: estAtual, doses_reservadas: reserv,
-      estoque_disponivel: disponivel, sugestao_compra: sugestao,
-      status, lotes_vencendo: venc };
-  }).sort((a, b) => {
-    const ord = { urgente:0, atencao:1, ok:2 };
-    return (ord[a.status] - ord[b.status]) || (b.sugestao_compra - a.sugestao_compra);
-  });
+    if (sug >= v.quantidade) status = 'urgente';
+    else if (sug > 0 || (vencMap[v.vacina_id]||[]).length) status = 'atencao';
+    v.pacientes.sort((a,b) => (a.data_prevista||'').localeCompare(b.data_prevista||'') || a.paciente_nome.localeCompare(b.paciente_nome));
+    return { ...v, estoque_atual: est, sugestao_compra: sug, status, lotes_vencendo: vencMap[v.vacina_id]||[] };
+  }).sort((a,b) => ({ urgente:0, atencao:1, ok:2 }[a.status] - { urgente:0, atencao:1, ok:2 }[b.status]) || b.sugestao_compra - a.sugestao_compra);
 
   res.json({
     mes, mes_extenso: mesExtenso,
-    totais: {
-      vacinas: tabela.length,
-      doses_previstas: dedupPrevisoes.length,
+    totais: { vacinas: tabela.length, doses_previstas: dedup.length,
       urgentes: tabela.filter(v=>v.status==='urgente').length,
-      atencao:  tabela.filter(v=>v.status==='atencao').length,
-      ok:       tabela.filter(v=>v.status==='ok').length
-    },
+      atencao: tabela.filter(v=>v.status==='atencao').length,
+      ok: tabela.filter(v=>v.status==='ok').length },
     tabela,
-    debug: {
-      planos_ativos_total:   planos.length,
-      planos_cliente_ativo:  planos.filter(p=>p.cliente.status==='ativo').length,
-      planos_sem_nascimento: dbgSemNascimento,
-      planos_sem_calendario: dbgSemCalendario,
-      planos_calculados:     dbgTotalCalc,
-      previsoes_brutas:      previsoes.length,
-      previsoes_dedup:       dedupPrevisoes.length
-    }
+    debug: { ...debug, previsoes_brutas: previsoes.length, previsoes_dedup: dedup.length }
   });
-} catch (e) { console.error('estimativas error:', e.message, e.stack); next(e) }});
+} catch (e) { console.error('estimativas:', e.message, e.stack); next(e) }});
 
 module.exports = r;
