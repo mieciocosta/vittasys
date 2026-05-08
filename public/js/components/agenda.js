@@ -152,7 +152,7 @@ Object.entries(groups).forEach(([rn,gr])=>{
 
 // ═══ MODAL CRIAR ═══
 function modalCriarAg(dateISO){showModal('+ Novo Agendamento',async(body,close)=>{
-  const fd={data:dateISO,horario:'09:00',cliente_id:'',vacina_id:'',regiao_id:'',observacoes:'',usuario_id:AppState.usuario?.id};
+  const fd={data:dateISO,horario:'09:00',cliente_id:'',vacina_ids:[],regiao_id:'',observacoes:'',usuario_id:AppState.usuario?.id};
   let selCliente=null;
   body.style.maxWidth='560px';
 
@@ -192,13 +192,18 @@ function modalCriarAg(dateISO){showModal('+ Novo Agendamento',async(body,close)=
   const hi=h('input',{className:'input',type:'time',value:fd.horario,style:'font-size:14px;padding:10px'});hi.addEventListener('change',e=>{fd.horario=e.target.value});d2.appendChild(hi);row.appendChild(d2);
   body.appendChild(row);
 
-  // Vaccine as BUTTONS
-  const vd=h('div',{style:'margin-bottom:16px'});vd.appendChild(h('label',{className:'label',style:'font-size:13px'},'💉 VACINA'));
+  // Vaccine MULTI-SELECT
+  const vd=h('div',{style:'margin-bottom:16px'});
+  const vLabelRow=h('div',{style:'display:flex;align-items:center;gap:8px;margin-bottom:6px'});
+  vLabelRow.appendChild(h('label',{className:'label',style:'font-size:13px;margin-bottom:0'},'💉 VACINAS'));
+  const vCounter=h('span',{style:'font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;background:var(--primary-bg);color:var(--primary)'},'selecione uma ou mais');
+  vLabelRow.appendChild(vCounter);vd.appendChild(vLabelRow);
+  function updateVCounter(){const n=fd.vacina_ids.length;vCounter.textContent=n===0?'selecione uma ou mais':n===1?'1 selecionada':n+' selecionadas';vCounter.style.background=n>0?'var(--primary)':'var(--primary-bg)';vCounter.style.color=n>0?'white':'var(--primary)';}
   const vGrid=h('div',{style:'display:flex;gap:4px;flex-wrap:wrap'});
-  vacinasCache.forEach(v=>{vGrid.appendChild(h('button',{type:'button','data-vid':v.id,
-    className:`btn btn-sm ${fd.vacina_id==v.id?'btn-primary':'btn-outline'}`,style:'font-size:10px;padding:4px 8px',
-    onClick:()=>{fd.vacina_id=v.id;vGrid.querySelectorAll('.btn').forEach(b=>b.className='btn btn-sm btn-outline');
-      vGrid.querySelector(`[data-vid="${v.id}"]`).className='btn btn-sm btn-primary'}},v.nome))});
+  vacinasCache.forEach(v=>{
+    const btn=h('button',{type:'button','data-vid':v.id,className:'btn btn-sm btn-outline',style:'font-size:10px;padding:4px 8px',
+      onClick:()=>{const i=fd.vacina_ids.indexOf(v.id);if(i>=0){fd.vacina_ids.splice(i,1);btn.className='btn btn-sm btn-outline';}else{fd.vacina_ids.push(v.id);btn.className='btn btn-sm btn-primary';}updateVCounter();}},v.nome);
+    vGrid.appendChild(btn);});
   vd.appendChild(vGrid);body.appendChild(vd);
 
   // Region
@@ -216,7 +221,14 @@ function modalCriarAg(dateISO){showModal('+ Novo Agendamento',async(body,close)=
 
   body.appendChild(h('button',{className:'btn btn-primary btn-block',style:'font-size:14px;padding:12px',onClick:async()=>{
     if(!fd.cliente_id)return Toast.show('Selecione um paciente','error');
-    const r=await Api.agendaCriar(fd);if(r?.success){Toast.show('Agendamento criado!');close();draw()}else Toast.show(r?.error||'Erro','error')
+    if(!fd.vacina_ids.length)return Toast.show('Selecione ao menos uma vacina','error');
+    let ok=0,err=0;
+    for(const vid of fd.vacina_ids){
+      const r=await Api.agendaCriar({...fd,vacina_id:vid});
+      if(r?.success)ok++;else err++;
+    }
+    if(ok>0){Toast.show(ok===1?'Agendamento criado!':ok+' agendamentos criados!');close();draw();}
+    else Toast.show('Erro ao criar agendamentos','error');
   }},'✓ Agendar'));
 },'560px')}
 
