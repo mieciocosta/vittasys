@@ -226,8 +226,10 @@ function modalCriarAg(dateISO){showModal('+ Novo Agendamento',async(body,close)=
     // Desabilitar imediatamente para evitar cliques duplos
     btnAgendar.disabled=true;btnAgendar.textContent='Aguarde...';
     let ok=0,err=0;
+    // Extrair vacina_ids do fd para não enviar o array ao backend (evita duplicação)
+    const{vacina_ids:_vids,...fdBase}=fd;
     for(const vid of vacinasUnicas){
-      const r=await Api.agendaCriar({...fd,vacina_id:vid});
+      const r=await Api.agendaCriar({...fdBase,vacina_id:vid});
       if(r?.success)ok++;else err++;
     }
     if(ok>0){Toast.show(ok===1?'Agendamento criado!':ok+' agendamentos criados!');close();draw();}
