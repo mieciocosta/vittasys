@@ -124,8 +124,12 @@ r.post('/gerar',async(req,res,next)=>{try{
 // CRIAR MANUAL
 r.post('/',async(req,res,next)=>{try{const b=req.body;
   if(!b.cliente_id||!b.data)return res.status(400).json({error:'Cliente e data obrigatórios'});
-  const vacinas=b.vacina_ids||[];
-  if(b.vacina_id)vacinas.push(+b.vacina_id);
+  // Consolidar vacinas sem duplicatas
+  const _vacinaSet=new Set([
+    ...(Array.isArray(b.vacina_ids)?b.vacina_ids.map(Number):[]),
+    ...(b.vacina_id?[+b.vacina_id]:[])
+  ]);
+  const vacinas=[..._vacinaSet].filter(v=>v>0);
   if(!vacinas.length)return res.status(400).json({error:'Selecione ao menos uma vacina'});
   const created=[];
   for(let i=0;i<vacinas.length;i++){
