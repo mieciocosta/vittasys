@@ -219,17 +219,21 @@ function modalCriarAg(dateISO){showModal('+ Novo Agendamento',async(body,close)=
   const od=h('div',{style:'margin-bottom:16px'});od.appendChild(h('label',{className:'label',style:'font-size:13px'},'💬 OBS'));
   const oi=h('input',{className:'input',style:'font-size:13px;padding:10px',placeholder:'Observações...'});oi.addEventListener('input',e=>{fd.observacoes=e.target.value});od.appendChild(oi);body.appendChild(od);
 
-  body.appendChild(h('button',{className:'btn btn-primary btn-block',style:'font-size:14px;padding:12px',onClick:async()=>{
+  const btnAgendar=h('button',{className:'btn btn-primary btn-block',style:'font-size:14px;padding:12px',onClick:async()=>{
     if(!fd.cliente_id)return Toast.show('Selecione um paciente','error');
-    if(!fd.vacina_ids.length)return Toast.show('Selecione ao menos uma vacina','error');
+    const vacinasUnicas=[...new Set(fd.vacina_ids)];
+    if(!vacinasUnicas.length)return Toast.show('Selecione ao menos uma vacina','error');
+    // Desabilitar imediatamente para evitar cliques duplos
+    btnAgendar.disabled=true;btnAgendar.textContent='Aguarde...';
     let ok=0,err=0;
-    for(const vid of fd.vacina_ids){
+    for(const vid of vacinasUnicas){
       const r=await Api.agendaCriar({...fd,vacina_id:vid});
       if(r?.success)ok++;else err++;
     }
     if(ok>0){Toast.show(ok===1?'Agendamento criado!':ok+' agendamentos criados!');close();draw();}
-    else Toast.show('Erro ao criar agendamentos','error');
-  }},'✓ Agendar'));
+    else{Toast.show('Erro ao criar agendamentos','error');btnAgendar.disabled=false;btnAgendar.textContent='✓ Agendar';}
+  }},'✓ Agendar');
+  body.appendChild(btnAgendar);
 },'560px')}
 
 // ═══ MODAL EDITAR ═══
