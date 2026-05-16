@@ -118,7 +118,7 @@ const sb=h('div',{style:'display:flex;gap:6px;margin-bottom:12px;align-items:cen
 [['📋',sts.agendado,'Agend.','#3b82f6'],['✓',sts.confirmado,'Conf.','#2BBCB3'],['✅',sts.realizado,'Feitos','#059669'],['✗',sts.faltou,'Faltas','#dc2626']].forEach(([ic,v,l,c])=>{
   sb.appendChild(h('div',{style:`padding:6px 10px;background:${c}10;border-left:3px solid ${c};border-radius:8px;flex:1;display:flex;align-items:center;gap:6px`},
     h('span',{style:`font-size:15px;font-weight:800;color:${c}`},String(v)),h('span',{style:'font-size:9px;color:var(--text-3)'},l)))});
-sb.appendChild(h('button',{className:'btn btn-primary btn-sm',style:'height:auto;white-space:nowrap',onClick:()=>modalCriarAg(fI(sel))},'+ Novo'));
+if(AppState.isMaster()||['atendimento','operador'].includes(AppState.usuario?.perfil)){sb.appendChild(h('button',{className:'btn btn-primary btn-sm',style:'height:auto;white-space:nowrap',onClick:()=>modalCriarAg(fI(sel))},'+ Novo'));}
 wrap.appendChild(sb);
 if(!items.length){wrap.appendChild(h('div',{style:'text-align:center;padding:40px;color:var(--text-3)'},h('div',{style:'font-size:36px'},'📅'),h('div',{style:'font-size:14px;font-weight:600;margin-top:8px'},'Nenhum agendamento'),h('div',{style:'font-size:11px;margin-top:4px'},'Clique "+ Novo" para agendar')));return}
 const groups={};items.forEach(i=>{const k=i.regiao_nome||'Sem região';if(!groups[k])groups[k]={cor:i.regiao_cor||'#94a3b8',items:[]};groups[k].items.push(i)});
