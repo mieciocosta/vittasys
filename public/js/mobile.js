@@ -1,185 +1,124 @@
-// ══════════════════════════════════════════════════════════════
-// VITTASYS MOBILE — Hamburger, Segurança e Responsividade
-// ══════════════════════════════════════════════════════════════
-(function() {
+// ═══════════════════════════════════════════════════════════════
+// VITTASYS MOBILE — Responsivo, Segurança, Câmera, Localização
+// ═══════════════════════════════════════════════════════════════
+(function(){
   'use strict';
 
-  const isMobile = () => window.innerWidth <= 768;
+  function isMob(){ return window.innerWidth <= 768; }
 
-  // ── 1. Hamburger + Sidebar Drawer ───────────────────────────
-  function initSidebar() {
-    if (!isMobile()) return;
+  // ── 1. Hamburger + Sidebar Drawer ─────────────────────────────
+  function initSidebar(){
+    if(!isMob()) return;
+    if(document.getElementById('mob-ham')) return; // já existe
 
     const ham = document.createElement('button');
-    ham.id = 'mobile-hamburger';
-    ham.setAttribute('aria-label', 'Menu');
+    ham.id = 'mob-ham'; ham.setAttribute('aria-label','Menu');
     ham.innerHTML = '<span></span><span></span><span></span>';
     document.body.appendChild(ham);
 
-    const overlay = document.createElement('div');
-    overlay.id = 'sidebar-overlay';
-    document.body.appendChild(overlay);
+    const ov = document.createElement('div');
+    ov.id = 'mob-ov'; document.body.appendChild(ov);
 
-    function openSidebar() {
+    function open(){
       const sb = document.querySelector('.sidebar');
-      if (sb) sb.classList.add('open');
-      overlay.classList.add('show');
+      if(sb){ sb.classList.add('aberta'); ov.classList.add('on'); }
     }
-    function closeSidebar() {
+    function close(){
       const sb = document.querySelector('.sidebar');
-      if (sb) sb.classList.remove('open');
-      overlay.classList.remove('show');
+      if(sb){ sb.classList.remove('aberta'); ov.classList.remove('on'); }
     }
 
-    ham.addEventListener('click', openSidebar);
-    overlay.addEventListener('click', closeSidebar);
+    ham.addEventListener('click', open);
+    ov.addEventListener('click', close);
 
-    // Fechar ao navegar
-    document.addEventListener('click', function(e) {
-      const sb = document.querySelector('.sidebar');
-      if (sb && sb.classList.contains('open')) {
-        const item = e.target.closest('.sb-item, .sb-brand');
-        if (item) closeSidebar();
+    // Fechar ao clicar num item do menu
+    document.addEventListener('click', function(e){
+      if(document.querySelector('.sidebar.aberta') && e.target.closest('.sb-item, .sb-brand')){
+        setTimeout(close, 120);
       }
     });
   }
 
-  // ── 2. Segurança — Bloquear Print + Screenshot attempt ──────
-  function initSecurity() {
-    if (!isMobile()) return;
+  // ── 2. Segurança — Overlay ao sair do app ─────────────────────
+  function initSecurity(){
+    if(!isMob()) return;
+    if(document.getElementById('sec-ov')) return;
 
-    // Criar overlay de segurança
-    const overlay = document.createElement('div');
-    overlay.id = 'security-overlay';
-    overlay.innerHTML = `
-      <div class="sec-icon">🔒</div>
-      <div class="sec-title">Conteúdo Protegido</div>
-      <div class="sec-sub">Capturas de tela são bloqueadas neste sistema por segurança das informações.</div>
-    `;
-    document.body.appendChild(overlay);
+    const ov = document.createElement('div');
+    ov.id = 'sec-ov';
+    ov.innerHTML = '<div class="ic">🔒</div><div class="tt">Conteúdo Protegido</div><div class="sb">Capturas de tela são bloqueadas por segurança.</div>';
+    document.body.appendChild(ov);
 
-    function showOverlay() { overlay.style.display = 'flex'; }
-    function hideOverlay() { overlay.style.display = 'none'; }
+    const show = () => ov.classList.add('on');
+    const hide = () => setTimeout(()=>ov.classList.remove('on'), 700);
 
-    // Bloquear print
-    window.addEventListener('beforeprint', function(e) {
-      showOverlay();
-      e.stopImmediatePropagation();
-      setTimeout(hideOverlay, 3000);
-    });
-
-    // Detectar quando app perde foco (tentativa de screenshot ou troca de app)
-    document.addEventListener('visibilitychange', function() {
-      if (document.hidden) {
-        showOverlay();
-      } else {
-        // Pequeno delay para cobrir o retorno da screenshot
-        setTimeout(hideOverlay, 800);
-      }
-    });
-
-    // Detectar blur da janela (iOS screenshot gesture)
-    window.addEventListener('blur', function() {
-      if (isMobile()) {
-        showOverlay();
-        setTimeout(hideOverlay, 1000);
-      }
-    });
-
-    // CSS anti-screenshot (obscurece em background)
-    const style = document.createElement('style');
-    style.textContent = `
-      @media print { body { display: none !important; } }
-      @media (prefers-color-scheme: no-preference) {}
-    `;
-    document.head.appendChild(style);
+    document.addEventListener('visibilitychange', () => document.hidden ? show() : hide());
+    window.addEventListener('blur', () => { if(isMob()) show(); });
+    window.addEventListener('focus', hide);
+    window.addEventListener('beforeprint', show);
   }
 
-  // ── 3. Watermark com nome do usuário ────────────────────────
-  function initWatermark() {
-    if (!isMobile()) return;
+  // ── 3. Watermark com nome do usuário ──────────────────────────
+  function initWatermark(){
+    if(!isMob()) return;
+    if(document.getElementById('wm')) return;
 
-    const wm = document.createElement('div');
-    wm.id = 'watermark';
+    const wm = document.createElement('div'); wm.id = 'wm';
     const canvas = document.createElement('canvas');
-    wm.appendChild(canvas);
-    document.body.appendChild(wm);
+    wm.appendChild(canvas); document.body.appendChild(wm);
 
-    function drawWatermark() {
+    function draw(){
       const user = window.AppState?.usuario?.nome || 'VittaSys';
       const W = window.innerWidth, H = window.innerHeight;
       canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, W, H);
-      ctx.font = '14px Arial';
+      ctx.clearRect(0,0,W,H);
+      ctx.font = '13px Arial';
       ctx.fillStyle = '#1e40af';
       ctx.save();
       ctx.translate(W/2, H/2);
-      ctx.rotate(-35 * Math.PI / 180);
-      const text = `${user} • VittaSys`;
-      const step = 180;
-      for (let x = -W; x < W; x += step) {
-        for (let y = -H; y < H; y += step) {
-          ctx.fillText(text, x, y);
-        }
-      }
+      ctx.rotate(-30 * Math.PI / 180);
+      const t = `${user} • VittaSys`;
+      for(let x=-W; x<W; x+=180) for(let y=-H; y<H; y+=120) ctx.fillText(t,x,y);
       ctx.restore();
     }
 
-    // Atualizar watermark quando usuário logar
-    setInterval(() => {
-      if (window.AppState?.usuario) drawWatermark();
-    }, 3000);
-
-    window.addEventListener('resize', drawWatermark);
-    drawWatermark();
+    setInterval(()=>{ if(window.AppState?.usuario) draw(); }, 4000);
+    window.addEventListener('resize', draw);
+    draw();
   }
 
-  // ── 4. Agenda mobile — Navegação por dia fácil ─────────────
-  // A agenda já tem navegação por dia; no mobile vamos garantir
-  // que o botão "Hoje" fica sempre visível no topo
-
-
-  // ── 6. Solicitar permissões de câmera e localização ──────────
-  function requestPermissions() {
-    if (!isMobile()) return;
-    // Geolocation
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        () => {}, // success
-        () => {}  // denied — ok, não bloquear
-      );
+  // ── 4. Câmera e Geolocalização ────────────────────────────────
+  function initPermissions(){
+    // Geolocation — solicitar suavemente
+    if('geolocation' in navigator){
+      navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, {timeout:5000});
     }
-    // Camera — só solicitar quando precisar (não forçar na abertura)
-    // Mas registrar a disponibilidade
-    if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
-      window._cameraAvailable = true;
-    }
+    // Camera API — disponível para uso quando necessário
+    window._cameraAvailable = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   }
 
-  // ── 5. Inicialização ────────────────────────────────────────
-  function init() {
+  // ── 5. Inicialização ──────────────────────────────────────────
+  function init(){
     initSidebar();
     initSecurity();
     initWatermark();
-    requestPermissions();
+    initPermissions();
   }
 
-  // Aguardar DOM
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+  // Aguardar app renderizar
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', ()=>setTimeout(init, 600));
   } else {
-    setTimeout(init, 500); // aguardar app renderizar
+    setTimeout(init, 600);
   }
 
-  // Re-init ao redimensionar (tablet → mobile)
-  let lastMobile = isMobile();
-  window.addEventListener('resize', function() {
-    const nowMobile = isMobile();
-    if (nowMobile !== lastMobile) {
-      lastMobile = nowMobile;
-      if (nowMobile) init();
-    }
+  // Re-init se virar mobile
+  let wasM = isMob();
+  window.addEventListener('resize', ()=>{
+    const m = isMob();
+    if(m && !wasM){ init(); }
+    wasM = m;
   });
 
 })();
