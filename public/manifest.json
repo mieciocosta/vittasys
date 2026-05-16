@@ -1,0 +1,27 @@
+{
+  "name": "VittaSys — Vittalis Saúde",
+  "short_name": "VittaSys",
+  "description": "Sistema de Gestão de Vacinação — Vittalis Saúde",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1a2e",
+  "theme_color": "#2BBCB3",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/assets/logos/logo-icon-color.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/logos/logo-icon-color.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["medical", "health", "business"]
+}

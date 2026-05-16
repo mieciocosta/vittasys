@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta charset="UTF-8"><link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2BBCB3">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VittaSys">
+  <link rel="apple-touch-icon" href="/assets/logos/logo-icon-color.png">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>VittaSys — Vittalis Saúde</title>
   <link rel="icon" href="assets/logos/logo-icon-color.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,5 +45,12 @@
   <script src="js/components/camera-audit.js"></script>
   <script src="js/app.js"></script>
   <script src="js/mobile.js"></script>
+  <script>
+    if('serviceWorker' in navigator){
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(()=>{});
+      });
+    }
+  </script>
 </body>
 </html>
