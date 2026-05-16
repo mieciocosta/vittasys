@@ -16,6 +16,31 @@
   <link rel="stylesheet" href="css/mobile.css">
 </head>
 <body>
+  <!-- ══ SPLASH SCREEN — aparece enquanto JS carrega ══ -->
+  <div id="app-splash" style="
+    position:fixed;inset:0;z-index:99999;
+    background:#0f1a2e;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:24px;
+    transition:opacity .4s ease;
+  ">
+    <img src="/assets/logos/logo-vertical-color.png" alt="Vittalis Saúde"
+      style="width:min(240px,65vw);height:auto;object-fit:contain;
+             filter:drop-shadow(0 4px 24px rgba(43,188,179,.3));
+             animation:splashPulse 1.8s ease-in-out infinite alternate;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div style="width:40px;height:3px;border-radius:2px;background:#2BBCB3;
+                  animation:splashBar 1.2s ease-in-out infinite;"></div>
+      <p style="color:#64748b;font-size:12px;font-family:sans-serif;margin:0;letter-spacing:.05em">
+        Carregando sistema...
+      </p>
+    </div>
+  </div>
+  <style>
+    @keyframes splashPulse{from{opacity:.85;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+    @keyframes splashBar{0%{width:20px;opacity:.4}50%{width:48px;opacity:1}100%{width:20px;opacity:.4}}
+  </style>
+
   <div id="app"></div>
   <script src="js/utils/api.js"></script>
   <script src="js/utils/helpers.js"></script>
@@ -51,6 +76,28 @@
         navigator.serviceWorker.register('/sw.js').catch(()=>{});
       });
     }
+  </script>
+  <script>
+    // Esconder splash quando o conteúdo principal renderizar
+    (function(){
+      var splash = document.getElementById('app-splash');
+      if(!splash) return;
+      // Aguardar o #app ter conteúdo real (não vazio)
+      var obs = new MutationObserver(function(){
+        var app = document.getElementById('app');
+        if(app && app.children.length > 0){
+          splash.style.opacity = '0';
+          setTimeout(function(){ splash.style.display='none'; }, 420);
+          obs.disconnect();
+        }
+      });
+      obs.observe(document.body, {childList:true, subtree:true});
+      // Fallback: remover após 5s de qualquer forma
+      setTimeout(function(){
+        splash.style.opacity='0';
+        setTimeout(function(){splash.style.display='none';},420);
+      }, 5000);
+    })();
   </script>
 </body>
 </html>

@@ -10,18 +10,22 @@
   "lang": "pt-BR",
   "icons": [
     {
-      "src": "/assets/logos/logo-icon-color.png",
+      "src": "/assets/logos/logo-icon-pwa.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/assets/logos/logo-icon-color.png",
+      "src": "/assets/logos/logo-icon-pwa.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ],
   "screenshots": [],
-  "categories": ["medical", "health", "business"]
+  "categories": [
+    "medical",
+    "health",
+    "business"
+  ]
 }
