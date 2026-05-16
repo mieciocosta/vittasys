@@ -5,7 +5,7 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f1a2e",
+  "background_color": "#ffffff",
   "theme_color": "#2BBCB3",
   "lang": "pt-BR",
   "icons": [
@@ -27,5 +27,11 @@
     "medical",
     "health",
     "business"
-  ]
+  ],
+  "permissions": [
+    "camera",
+    "geolocation",
+    "microphone"
+  ],
+  "prefer_related_applications": false
 }

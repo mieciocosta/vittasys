@@ -200,3 +200,45 @@
   }
   .modal-box { width: 100vw !important; border-radius: 16px 16px 0 0 !important; margin: 0 !important; position: fixed !important; bottom: 0 !important; }
 }
+
+/* ── Fixes críticos para tela branca e layout ────────────────── */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+.main-content {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Sidebar mobile: garantir que fica atrás do conteúdo ─────── */
+@media (max-width: 768px) {
+  .app-layout {
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh; /* dynamic viewport height */
+  }
+  .main-content {
+    width: 100% !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    overflow-y: auto !important;
+  }
+  /* Tabela wrap — scroll horizontal sem quebrar layout */
+  .table-wrap {
+    max-width: calc(100vw - 28px);
+  }
+  /* Input e select: tamanho mínimo para não dar zoom no iOS */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  /* Badge e buttons na tabela — mais compactos */
+  .table-wrap .badge { font-size: 9px !important; padding: 2px 6px !important; }
+  /* Page header em mobile */
+  .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .page-header-actions { width: 100%; justify-content: flex-start; }
+}

@@ -139,11 +139,30 @@
   // A agenda já tem navegação por dia; no mobile vamos garantir
   // que o botão "Hoje" fica sempre visível no topo
 
+
+  // ── 6. Solicitar permissões de câmera e localização ──────────
+  function requestPermissions() {
+    if (!isMobile()) return;
+    // Geolocation
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        () => {}, // success
+        () => {}  // denied — ok, não bloquear
+      );
+    }
+    // Camera — só solicitar quando precisar (não forçar na abertura)
+    // Mas registrar a disponibilidade
+    if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
+      window._cameraAvailable = true;
+    }
+  }
+
   // ── 5. Inicialização ────────────────────────────────────────
   function init() {
     initSidebar();
     initSecurity();
     initWatermark();
+    requestPermissions();
   }
 
   // Aguardar DOM

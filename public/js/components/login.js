@@ -107,6 +107,9 @@ async function renderLogin() {
     const pi = h('input', {
       className: 'pin-input',
       type: 'password',
+      inputMode: 'numeric',
+      pattern: '[0-9]*',
+      autoComplete: 'one-time-code',
       maxLength: '4',
       placeholder: '• • • •'
     });
