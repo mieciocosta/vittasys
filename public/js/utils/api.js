@@ -99,6 +99,7 @@ const Api={
     return this.put(`/exclusoes/${id}/rejeitar`,{motivo,aprovador_id,aprovador_nome})
   },
   agendaVacinas(){return this.get('/agenda/vacinas')},
+  usuarioVerPin(id){return this.get(`/usuarios/${id}/pin`)},
   regioes(){return this.get('/agenda/regioes')},
   criarRegiao(b){return this.post('/agenda/regioes',b)},
   editarRegiao(id,b){return this.put(`/agenda/regioes/${id}`,b)},

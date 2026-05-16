@@ -84,6 +84,14 @@ r.put('/:id',async(req,res,next)=>{try{
 }catch(e){next(e)}});
 
 // RESET PIN (master only) → back to 1234
+r.get('/:id/pin',async(req,res,next)=>{try{
+  if(req.user?.perfil!=='master')
+    return res.status(403).json({error:'Apenas master'});
+  const u=await prisma.usuario.findUnique({where:{id:+req.params.id},select:{id:true,nome:true,pin:true}});
+  if(!u)return res.status(404).json({error:'Não encontrado'});
+  res.json({id:u.id,nome:u.nome,pin:u.pin});
+}catch(e){next(e)}});
+
 r.post('/:id/reset-pin',async(req,res,next)=>{try{
   await prisma.usuario.update({where:{id:+req.params.id},data:{pin:'1234'}});
   res.json({success:true,message:'Senha resetada para 1234'});

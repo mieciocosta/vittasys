@@ -18,9 +18,9 @@ if(!isMaster){
   const row=h('div',{style:'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end'});
   const fd={pin_atual:'',pin_novo:''};
   const d1=h('div');d1.appendChild(h('label',{className:'label'},'PIN Atual'));
-  const i1=h('input',{className:'input',type:'password',maxLength:'4',placeholder:'••••'});i1.addEventListener('input',e=>{fd.pin_atual=e.target.value});d1.appendChild(i1);row.appendChild(d1);
+  const i1=h('input',{className:'input',type:'password',inputMode:'numeric',pattern:'[0-9]*',maxLength:'4',placeholder:'••••'});i1.addEventListener('input',e=>{fd.pin_atual=e.target.value});d1.appendChild(i1);row.appendChild(d1);
   const d2=h('div');d2.appendChild(h('label',{className:'label'},'Novo PIN'));
-  const i2=h('input',{className:'input',type:'password',maxLength:'4',placeholder:'••••'});i2.addEventListener('input',e=>{fd.pin_novo=e.target.value});d2.appendChild(i2);row.appendChild(d2);
+  const i2=h('input',{className:'input',type:'password',inputMode:'numeric',pattern:'[0-9]*',maxLength:'4',placeholder:'••••'});i2.addEventListener('input',e=>{fd.pin_novo=e.target.value});d2.appendChild(i2);row.appendChild(d2);
   row.appendChild(h('button',{className:'btn btn-primary',style:'padding:10px',onClick:async()=>{
     if(!fd.pin_atual||!fd.pin_novo)return Toast.show('Preencha ambos os campos','error');
     if(!/^\d{4}$/.test(fd.pin_novo))return Toast.show('PIN deve ter 4 dígitos','error');
@@ -79,6 +79,18 @@ users.forEach(u=>{
       const r=await Api.post(`/usuarios/${u.id}/reset-pin`);Toast.show(r?.message||'Resetado');
     },'🔑 Resetar','btn btn-primary');
   }},'🔑'));
+  if(AppState.isMaster()) acts.appendChild(h('button',{style:'border:none;background:#6366f120;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;color:#6366f1',title:'Ver PIN atual',onClick:async()=>{
+    const r=await Api.usuarioVerPin(u.id);
+    if(r?.pin){
+      showModal(`🔐 PIN — ${u.nome}`,(body)=>{
+        body.appendChild(h('div',{style:'text-align:center;padding:24px 16px'},
+          h('div',{style:'font-size:13px;color:var(--text-3);margin-bottom:12px'},'PIN atual do usuário:'),
+          h('div',{style:'font-size:48px;font-weight:800;letter-spacing:16px;color:var(--primary);font-family:monospace;padding:16px;background:var(--bg-subtle);border-radius:12px'},r.pin),
+          h('div',{style:'margin-top:14px;font-size:11px;color:var(--text-4)'},'⚠️ Não compartilhe este PIN com terceiros')
+        ));
+      },'380px');
+    } else Toast.show(r?.error||'Erro ao buscar PIN','error');
+  }},'👁'));
   const excPend=excMap[u.id];
   const isMasterUser=AppState.isMaster();
 
