@@ -1,6 +1,6 @@
 async function renderUsuarios(){
-const PL={master:'👑 Master',ativos:'⭐ Atend. Home',espontaneos:'📋 Atend. Consultas',atendimento:'💉 Atend. Vacinas',operador:'🔧 Operador'};
-const PC={master:'#059669',ativos:'#2BBCB3',espontaneos:'#1B4965',atendimento:'#8b5cf6',operador:'#64748b'};
+const PL={master:'👑 Master',ativos:'⭐ Atend. Home',espontaneos:'📋 Atend. Consultas',atendimento:'💉 Atend. Vacinas',operador:'🔧 Operador',vendas:'🛒 Vendas'};
+const PC={master:'#059669',ativos:'#2BBCB3',espontaneos:'#1B4965',atendimento:'#8b5cf6',operador:'#64748b',vendas:'#f59e0b'};
 const isMaster=AppState.isMaster();
 const wrap=h('div',{className:'fade-in'});
 
@@ -137,7 +137,8 @@ infoBox.innerHTML=`<strong>Regras de segurança:</strong><br>
   • Exclusão é <strong>soft delete</strong> — o usuário fica inativo mas todas as auditorias são preservadas<br>
   • Apenas o <strong>Master</strong> pode alterar nome, CPF e data de nascimento<br>
   • O próprio usuário pode alterar apenas sua <strong>senha</strong> (precisa informar a atual)<br>
-  • Perfil <strong>Atend. Vacinas</strong>: atendimento de vacinas, bipagem, planos e cadastro de clientes`;
+  • Perfil <strong>Atend. Vacinas</strong>: atendimento de vacinas, bipagem, planos e cadastro de clientes<br>
+  • Perfil <strong>Vendas</strong>: gestão de clientes, planos, financeiro e relatórios (sem acesso a operações)`;
 wrap.appendChild(infoBox);
 
 return wrap;

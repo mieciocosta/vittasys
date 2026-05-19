@@ -25,7 +25,7 @@ r.get('/:id',async(req,res,next)=>{try{
 r.post('/',async(req,res,next)=>{try{
   const{nome,cargo,email,cpf,data_nascimento,perfil}=req.body;
   if(!nome||!cargo)return res.status(400).json({error:'Nome e cargo são obrigatórios'});
-  if(!['master','ativos','espontaneos','atendimento','operador'].includes(perfil))
+  if(!['master','ativos','espontaneos','atendimento','operador','vendas'].includes(perfil))
     return res.status(400).json({error:'Perfil inválido'});
   // Check email uniqueness
   if(email){const ex=await prisma.usuario.findUnique({where:{email}});if(ex)return res.status(400).json({error:'Email já cadastrado'})}
