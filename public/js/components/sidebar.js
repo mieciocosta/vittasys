@@ -26,8 +26,8 @@ function renderSidebar(alertCount) {
     { key: 'auditoria', icon: I.history, label: 'Auditoria' },
     { sep: 'Sistema' },
     { key: 'alertas', icon: I.alert, label: 'Alertas', count: alertCount || 0 },
-    { key: 'relatorios', icon: I.history, label: 'Relatórios' },
     { key: 'vendas', icon: I.shoppingCart, label: 'Vendas' },
+    { key: 'relatorios', icon: I.history, label: 'Relatórios' },
     { key: 'estimativas', icon: I.target, label: 'Estimativa Vacinal' },
     { key: 'usuarios', icon: I.users, label: 'Usuários' },
   ];
