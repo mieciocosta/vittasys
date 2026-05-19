@@ -7,7 +7,7 @@
   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
-    "startCommand": "npx prisma db push --accept-data-loss && node src/server.js",
+    "startCommand": "node -e \"process.env.SKIP_DB_PUSH==='true'||require('child_process').execSync('npx prisma db push --accept-data-loss',{stdio:'inherit'})\" && node src/server.js",
     "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
