@@ -4,9 +4,9 @@ const PERMS={
   master:['dashboard','retirada','estoque','historico','planos','clientes','financeiro','metas','alertas','aprovacoes','auditoria','agenda','usuarios','relatorios'],
   ativos:['dashboard','retirada','estoque','historico','planos','clientes','alertas','agenda'],
   espontaneos:['dashboard','retirada','estoque','historico','clientes','alertas'],
-  atendimento:['dashboard','retirada','estoque','historico','planos','clientes','alertas','agenda','relatorios','estimativas'],
+  atendimento:['dashboard','retirada','estoque','historico','planos','clientes','alertas','agenda','relatorios','estimativas','vendas'],
   operador:['dashboard','retirada','estoque','historico','planos','clientes','alertas'],
-  vendas:['dashboard','clientes','planos','agenda','financeiro','relatorios','estimativas','alertas']
+  vendas:['dashboard','clientes','planos','agenda','financeiro','relatorios','estimativas','alertas','vendas']
 };
 
 r.post('/login',async(req,res,next)=>{try{

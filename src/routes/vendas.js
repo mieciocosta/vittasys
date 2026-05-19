@@ -7,7 +7,7 @@ r.get('/produtos', async (req, res, next) => { try {
   const [vacinas, planos] = await Promise.all([
     prisma.vacina.findMany({
       where: { ativo: true },
-      select: { id:true, nome:true, categoria:true, valorVendaSugerido:true },
+      select: { id:true, nome:true, categoria:true, valorVendaSugerido:true, fabricante:true, laboratorio:true },
       orderBy: { nome: 'asc' }
     }),
     prisma.plano.findMany({
@@ -21,6 +21,30 @@ r.get('/produtos', async (req, res, next) => { try {
     })
   ]);
   res.json({ vacinas, planos });
+} catch(e) { next(e) }});
+
+
+// GET /api/vendas/buscar-cliente — busca rápida sem acento, maiúscula ou máscara
+r.get('/buscar-cliente', async (req, res, next) => { try {
+  const { q } = req.query;
+  if (!q || q.length < 2) return res.json({ clientes: [] });
+  const qNorm = q.replace(/[^\d]/g,'');
+  const like = '%' + q + '%';
+  const likeN = '%' + qNorm + '%';
+  const clientes = await prisma.$queryRaw`
+    SELECT id, nome, paciente_nome, telefone, cpf, codigo_cliente,
+           data_nascimento, paciente_nascimento
+    FROM clientes
+    WHERE status = 'ativo' AND (
+      unaccent(UPPER(nome)) LIKE unaccent(UPPER(${like}))
+      OR unaccent(UPPER(COALESCE(paciente_nome,''))) LIKE unaccent(UPPER(${like}))
+      OR REGEXP_REPLACE(COALESCE(cpf,''),'[^0-9]','','g') LIKE ${likeN}
+      OR REGEXP_REPLACE(COALESCE(telefone,''),'[^0-9]','','g') LIKE ${likeN}
+      OR COALESCE(codigo_cliente,'') ILIKE ${like}
+    )
+    LIMIT 8
+  `;
+  res.json({ clientes });
 } catch(e) { next(e) }});
 
 // POST /api/vendas/fechar — fechar venda
@@ -40,8 +64,6 @@ r.post('/fechar', async (req, res, next) => { try {
       pacienteNome: cliente.paciente_nome || cliente.nome,
       pacienteNascimento: data_nascimento_paciente ? new Date(data_nascimento_paciente) : null,
       status: 'ativo',
-      tipo_paciente: 'plano',
-      tipo_cliente: 'ativo',
     }});
   }
 
@@ -69,7 +91,7 @@ r.post('/fechar', async (req, res, next) => { try {
         valorBruto: valor,
         valorFinal: valor,
         statusContrato: 'ativo',
-        formaPagemento: forma_pagamento || 'avista',
+        formaPagamento: forma_pagamento || 'avista',
         vendedorId: vendedor_id || null,
       }});
 

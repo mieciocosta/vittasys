@@ -101,6 +101,7 @@ const Api={
   agendaVacinas(){return this.get('/agenda/vacinas')},
   usuarioVerPin(id){return this.get(`/usuarios/${id}/pin`)},
   vendasProdutos(){return this.get('/vendas/produtos')},
+  vendasBuscarCliente(q){return this.get('/vendas/buscar-cliente',{q})},
   vendasFechar(b){return this.post('/vendas/fechar',b)},
   vendasComissao(p){return this.get('/vendas/comissao',p)},
   regioes(){return this.get('/agenda/regioes')},
