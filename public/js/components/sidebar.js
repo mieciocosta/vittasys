@@ -7,7 +7,8 @@ function renderSidebar(alertCount) {
     ativos: '⭐ Atend. Home',
     espontaneos: '📋 Atend. Consultas',
     atendimento: '💉 Atend. Vacinas',
-    operador: '🔧 Operador'
+    operador: '🔧 Operador',
+    vendas: '🛒 Vendas'
   };
 
   const allItems = [
