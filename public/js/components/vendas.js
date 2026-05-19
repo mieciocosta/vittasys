@@ -5,6 +5,14 @@
 async function renderVendas() {
   const W = h('div', { className:'fade-in' });
 
+
+  // ── Máscaras e validações ──────────────────────────────────
+  const maskCPF = v => v.replace(/\D/g,'').slice(0,11).replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  const maskTel = v => { const n=v.replace(/\D/g,'').slice(0,11); if(n.length<=2)return '('+n; if(n.length<=6)return '('+n.slice(0,2)+') '+n.slice(2); if(n.length<=10)return '('+n.slice(0,2)+') '+n.slice(2,6)+'-'+n.slice(6); return '('+n.slice(0,2)+') '+n.slice(2,7)+'-'+n.slice(7); };
+  const maskDate = v => { const n=v.replace(/\D/g,'').slice(0,8); if(n.length<=2)return n; if(n.length<=4)return n.slice(0,2)+'/'+n.slice(2); return n.slice(0,2)+'/'+n.slice(2,4)+'/'+n.slice(4); };
+  const validCPF = v => { const n=v.replace(/\D/g,''); if(n.length!==11||/^(\d)\1+$/.test(n))return false; let s=0; for(let i=0;i<9;i++)s+=+n[i]*(10-i); let r=11-s%11; const d1=r>9?0:r; s=0; for(let i=0;i<10;i++)s+=+n[i]*(11-i); r=11-s%11; return d1===+n[9]&&(r>9?0:r)===+n[10]; };
+  const parseDate = v => { const[d,m,a]=v.split('/'); if(!a||!m||!d)return null; const dt=new Date(+a,+m-1,+d); return isNaN(dt)?null:dt; };
+
   // ── Estado global da sessão de venda ─────────────────────────
   let _prods = null;
   let cliente = null;
@@ -28,14 +36,24 @@ async function renderVendas() {
   }
 
   // Pacotes por faixa etária (padrão vacinação Brasil)
+  // Pacotes baseados no PDF comercial Vittalis Saúde — Plano 0-9 meses
   const PACOTES = [
-    { id:'pkg2', label:'👶 2 Meses', meses:2, nomes:['Hexacelular','Hexavalente','Pneumocóci','Pneumo','Rotavírus','Rotaviru','Meningoc.*B','Meningo.*B'] },
-    { id:'pkg3', label:'👶 3 Meses', meses:3, nomes:['ACWY','Nimenrix','Meningo.*ACWY','Meningocócica ACWY'] },
-    { id:'pkg4', label:'👶 4 Meses', meses:4, nomes:['Hexacelular','Hexavalente','Pneumocóci','Pneumo','Rotavírus','Rotaviru'] },
-    { id:'pkg5', label:'👶 5 Meses', meses:5, nomes:['ACWY','Meningo.*ACWY','Meningoc.*B','Meningo.*B'] },
-    { id:'pkg6', label:'👶 6 Meses', meses:6, nomes:['Hexacelular','Hexavalente','Pneumocóci','Pneumo','Rotavírus','Influen'] },
-    { id:'pkg12', label:'👶 12 Meses', meses:12, nomes:['Tríplice','Triple','Hepatite A','Varicela'] },
-    { id:'pkg15', label:'👶 15 Meses', meses:15, nomes:['Tetraviral','Pneumo.*Refco','Pneumo.*refor'] },
+    { id:'pkg2', label:'👶 2 meses', meses:2,
+      nomes:['Hexacelular','Hexavalente','Hexaxim','Rotavírus','Rotavirus','Pneumo.*20','20-val','Meningoc.*B','Bexsero'] },
+    { id:'pkg3', label:'👶 3 meses', meses:3,
+      nomes:['Meningoc.*B','Bexsero','ACWY','Nimenrix'] },
+    { id:'pkg4', label:'👶 4 meses', meses:4,
+      nomes:['Pentacelular','Pentavalente','Hexacelular','Hexaxim','Rotavírus','Rotavirus','Pneumo.*20','20-val'] },
+    { id:'pkg5', label:'👶 5 meses', meses:5,
+      nomes:['Meningoc.*B','Bexsero','ACWY','Nimenrix'] },
+    { id:'pkg6', label:'👶 6 meses', meses:6,
+      nomes:['Pentacelular','Pentavalente','Hexacelular','Hexaxim','Rotavírus','Rotavirus','Pneumo.*20','20-val','Influen'] },
+    { id:'pkg7', label:'👶 7 meses', meses:7,
+      nomes:['Influen'] },
+    { id:'pkg9', label:'👶 9 meses', meses:9,
+      nomes:['Febre.*Amarela','Stamaril'] },
+    { id:'pkg12', label:'👶 12 meses', meses:12,
+      nomes:['Tríplice.*Viral','Triple.*Viral','Hepatite.*A','Varicela','Varivax'] },
   ];
 
   function vacinasDoPacote(pkg) {
@@ -393,33 +411,103 @@ async function renderVendas() {
     }
   }
 
-  // ── Modal cadastro rápido ───────────────────────────────────
+  // ── Modal cadastro rápido com máscaras ──────────────────────
   function modalCadCliente() {
     showModal('👤 Identificar Cliente',(body,close)=>{
-      const fd={};
-      const mkF=(lbl,key,ph,req=false,type='text',im='text')=>{
-        const d=h('div',{style:'margin-bottom:10px'});
-        d.appendChild(h('label',{className:'label',style:'font-size:11px'},lbl+(req?' *':'')));
-        const inp=h('input',{className:'input',placeholder:ph,type,inputMode:im,style:'font-size:14px'});
-        inp.addEventListener('input',e=>{fd[key]=e.target.value;});
-        d.appendChild(inp); return d;
-      };
-      body.appendChild(mkF('Nome do responsável','nome','Nome completo',true));
-      const g=h('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:8px'});
-      g.appendChild(mkF('WhatsApp','telefone','(98) 9...','','tel','tel'));
-      g.appendChild(mkF('Nasc. paciente','data_nascimento','DD/MM/AAAA'));
-      body.appendChild(g);
-      body.appendChild(mkF('Nome do paciente/bebê','paciente_nome','Nome do bebê'));
-      body.appendChild(h('div',{style:'height:8px'}));
-      body.appendChild(h('button',{className:'btn btn-primary btn-block',style:'padding:12px',onClick:()=>{
-        if(!fd.nome?.trim())return Toast.show('Nome obrigatório','error');
+      const fd={nome:'',telefone:'',cpf:'',paciente_nome:'',data_nascimento:'',cpfRaw:'',telRaw:'',dnRaw:''};
+      let cpfOk=true, telOk=true, dnOk=true;
+
+      body.style.display='flex'; body.style.flexDirection='column'; body.style.gap='0';
+
+      // Nome responsável
+      const mkLabel=(txt,obrig=false)=>h('label',{style:'font-size:11px;font-weight:700;color:var(--text-2);margin-bottom:3px;display:block'},txt+(obrig?' *':''));
+
+      const nomeWrap=h('div',{style:'margin-bottom:10px'});
+      nomeWrap.appendChild(mkLabel('Nome do responsável',true));
+      const nomeInp=h('input',{className:'input',placeholder:'Nome completo',style:'font-size:15px',autocomplete:'name'});
+      nomeInp.addEventListener('input',e=>{fd.nome=e.target.value.trim();});
+      nomeWrap.appendChild(nomeInp);
+      body.appendChild(nomeWrap);
+
+      // Tel + CPF
+      const row1=h('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px'});
+
+      const telWrap=h('div');
+      telWrap.appendChild(mkLabel('WhatsApp',true));
+      const telInp=h('input',{className:'input',placeholder:'(98) 9 9999-9999',inputMode:'tel',style:'font-size:14px'});
+      const telErr=h('div',{style:'font-size:10px;color:#ef4444;margin-top:2px;display:none'},'Telefone inválido');
+      telInp.addEventListener('input',e=>{
+        const m=maskTel(e.target.value); e.target.value=m; fd.telefone=m; fd.telRaw=m.replace(/\D/g,'');
+        telOk=fd.telRaw.length>=10; telErr.style.display=(!telOk&&fd.telRaw.length>0)?'block':'none';
+      });
+      telWrap.appendChild(telInp); telWrap.appendChild(telErr);
+      row1.appendChild(telWrap);
+
+      const cpfWrap=h('div');
+      cpfWrap.appendChild(mkLabel('CPF (opcional)'));
+      const cpfInp=h('input',{className:'input',placeholder:'000.000.000-00',inputMode:'numeric',style:'font-size:14px'});
+      const cpfErr=h('div',{style:'font-size:10px;color:#ef4444;margin-top:2px;display:none'},'CPF inválido');
+      cpfInp.addEventListener('input',e=>{
+        const m=maskCPF(e.target.value); e.target.value=m; fd.cpf=m; fd.cpfRaw=m.replace(/\D/g,'');
+        if(fd.cpfRaw.length===11){cpfOk=validCPF(fd.cpfRaw);cpfErr.style.display=cpfOk?'none':'block';}
+        else{cpfOk=true;cpfErr.style.display='none';}
+      });
+      cpfWrap.appendChild(cpfInp); cpfWrap.appendChild(cpfErr);
+      row1.appendChild(cpfWrap);
+      body.appendChild(row1);
+
+      // Divisor
+      const sep=h('div',{style:'display:flex;align-items:center;gap:8px;margin:8px 0 12px'});
+      sep.appendChild(h('div',{style:'flex:1;height:1px;background:var(--border)'}));
+      sep.appendChild(h('span',{style:'font-size:11px;color:var(--text-4);white-space:nowrap'},'👶 Dados do paciente/bebê'));
+      sep.appendChild(h('div',{style:'flex:1;height:1px;background:var(--border)'}));
+      body.appendChild(sep);
+
+      // Paciente
+      const pacWrap=h('div',{style:'margin-bottom:10px'});
+      pacWrap.appendChild(mkLabel('Nome do bebê/paciente',true));
+      const pacInp=h('input',{className:'input',placeholder:'Nome completo do bebê',style:'font-size:14px',autocomplete:'off'});
+      pacInp.addEventListener('input',e=>{fd.paciente_nome=e.target.value.trim();});
+      pacWrap.appendChild(pacInp);
+      body.appendChild(pacWrap);
+
+      const dnWrap=h('div',{style:'margin-bottom:16px'});
+      dnWrap.appendChild(mkLabel('Data de nascimento',true));
+      const dnInp=h('input',{className:'input',placeholder:'DD/MM/AAAA',inputMode:'numeric',style:'font-size:14px'});
+      const dnErr=h('div',{style:'font-size:10px;color:#ef4444;margin-top:2px;display:none'},'Data inválida ou futura');
+      dnInp.addEventListener('input',e=>{
+        const m=maskDate(e.target.value); e.target.value=m; fd.data_nascimento=m;
+        if(m.length===10){
+          const dt=parseDate(m);
+          dnOk=dt&&dt<=new Date()&&dt>new Date('1900-01-01');
+          dnErr.style.display=dnOk?'none':'block';
+        } else {dnOk=false;dnErr.style.display='none';}
+      });
+      dnWrap.appendChild(dnInp); dnWrap.appendChild(dnErr);
+      body.appendChild(dnWrap);
+
+      body.appendChild(h('button',{className:'btn btn-primary btn-block',style:'padding:14px;font-size:15px;font-weight:700',onClick:()=>{
+        if(!fd.nome||fd.nome.length<3)return Toast.show('Nome do responsável obrigatório (mín. 3 letras)','error');
+        if(!fd.telRaw||fd.telRaw.length<10)return Toast.show('WhatsApp obrigatório com DDD','error');
+        if(!fd.cpfRaw||cpfOk===false)return Toast.show('CPF inválido','error');
+        if(!fd.paciente_nome||fd.paciente_nome.length<2)return Toast.show('Nome do bebê obrigatório','error');
+        if(!fd.data_nascimento||fd.data_nascimento.length<10)return Toast.show('Data de nascimento obrigatória','error');
+        if(!dnOk)return Toast.show('Data de nascimento inválida ou futura','error');
         let dn=null;
-        if(fd.data_nascimento){const[d,m,a]=fd.data_nascimento.split('/');if(a&&m&&d)dn=`${a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}
-        cliente={nome:fd.nome.trim(),telefone:fd.telefone,paciente_nome:fd.paciente_nome,data_nascimento:dn};
-        close(); renderCart?.(); Toast.show(`✓ ${cliente.nome} identificado`);
+        const[d,m,a]=fd.data_nascimento.split('/');
+        if(a&&m&&d)dn=`${a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+        cliente={nome:fd.nome,telefone:fd.telefone,cpf:fd.cpf,paciente_nome:fd.paciente_nome,data_nascimento:dn};
+        close();
+        // Update button text
+        const cliBtn=W.querySelector('[data-cliBtn]');
+        if(cliBtn)cliBtn.textContent=`👤 ${cliente.nome.split(' ')[0]}`;
+        renderCart?.();Toast.show(`✓ ${cliente.nome} identificado`);
       }},'Confirmar →'));
-    },'420px');
+
+      setTimeout(()=>nomeInp.focus(),120);
+    },'460px');
   }
+
 
   // ── Confirmar venda ─────────────────────────────────────────
   async function confirmarVenda() {
