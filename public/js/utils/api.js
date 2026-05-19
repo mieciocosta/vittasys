@@ -104,6 +104,8 @@ const Api={
   vendasBuscarCliente(q){return this.get('/vendas/buscar-cliente',{q})},
   vendasFechar(b){return this.post('/vendas/fechar',b)},
   vendasComissao(p){return this.get('/vendas/comissao',p)},
+  comissoesExtrato(p){return this.get('/comissoes/extrato',p)},
+  comissoesDashboard(p){return this.get('/comissoes/dashboard',p)},
   regioes(){return this.get('/agenda/regioes')},
   criarRegiao(b){return this.post('/agenda/regioes',b)},
   editarRegiao(id,b){return this.put(`/agenda/regioes/${id}`,b)},

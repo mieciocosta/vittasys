@@ -6,7 +6,7 @@ const PERMS={
   espontaneos:['dashboard','retirada','estoque','historico','clientes','alertas'],
   atendimento:['dashboard','retirada','estoque','historico','planos','clientes','alertas','agenda','relatorios','estimativas','vendas'],
   operador:['dashboard','retirada','estoque','historico','planos','clientes','alertas'],
-  vendas:['dashboard','clientes','planos','agenda','financeiro','relatorios','estimativas','alertas','vendas']
+  vendas:['dashboard','clientes','planos','agenda','financeiro','relatorios','estimativas','alertas','vendas','extrato']
 };
 
 r.post('/login',async(req,res,next)=>{try{

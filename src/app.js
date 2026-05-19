@@ -38,6 +38,7 @@ app.use('/api/exclusoes', require('./routes/exclusoes'));
 // Compat
 app.use('/api/pacotes', require('./routes/planos'));
 app.use('/api/vendas', require('./routes/vendas'));
+app.use('/api/comissoes', require('./routes/comissoes'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));

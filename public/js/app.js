@@ -35,7 +35,7 @@
       dashboard:renderDashboard,retirada:renderRetirada,estoque:renderEstoque,
       historico:renderHistorico,planos:renderPlanos,clientes:renderClientes,
       financeiro:renderFinanceiro,metas:renderMetas,agenda:renderAgenda,alertas:renderAlertas,
-      aprovacoes:renderAprovacoes,usuarios:renderUsuarios,relatorios:renderRelatorios,vendas:renderVendas,
+      aprovacoes:renderAprovacoes,usuarios:renderUsuarios,relatorios:renderRelatorios,vendas:renderVendas,extrato:renderExtrato,desempenho:renderDesempenho,
       auditoria:renderAuditoria,
       estimativas:renderEstimativas,
       'cliente-detalhe':renderClienteDetalhe,'plano-detalhe':renderPlanoDetalhe
